@@ -21,6 +21,10 @@ const MESSAGES: Record<string, string> = {
   network_error: "Le serveur ne répond pas. Vérifiez votre connexion, puis réessayez.",
   bff_required: "Le serveur est mal configuré : contactez l'exploitant de la plateforme.",
   server_error: "Une erreur inattendue est survenue. Réessayez dans un instant.",
+  // Boutique publique
+  out_of_stock: "Un article de votre panier n’a plus assez de stock : la quantité a été ajustée.",
+  price_changed: "Le total a changé depuis l’affichage de votre panier. Vérifiez le nouveau montant, puis confirmez.",
+  idempotency_conflict: "Votre commande précédente est peut-être déjà enregistrée. Rechargez la page avant de recommencer.",
 };
 
 export function messageFor(code: string, fallback?: string) {

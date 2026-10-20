@@ -16,7 +16,7 @@ export default function MfaPage({ searchParams }: PageProps<"/connexion/code">) 
       <div>
         <h1 className="large text-[clamp(28px,3vw,38px)] leading-none font-extrabold">Vérification</h1>
         <p className="mt-2 text-texte-2">
-          Saisissez le code à 6 chiffres affiché par votre application d'authentification (Google Authenticator, Authy…).
+          Saisissez le code à 6 chiffres affiché par votre application d’authentification (Google Authenticator, Authy…).
         </p>
       </div>
       <Suspense fallback={<div aria-hidden className="h-[180px] rounded-champ bg-encre/30" />}>

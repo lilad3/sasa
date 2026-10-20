@@ -85,7 +85,7 @@ export function LoginForm({ notice, next, demo }: LoginFormProps) {
               onClick={() => setShowPassword((shown) => !shown)}
               aria-controls="password"
               aria-pressed={showPassword}
-              className="rounded-[9px] bg-white/[0.08] px-2.5 py-1.5 text-[13px] font-semibold text-pistache hover:bg-white/15"
+              className="rounded-[9px] bg-white/[0.08] px-2.5 py-1.5 text-[13px] font-semibold text-sable hover:bg-white/15"
             >
               {showPassword ? "Masquer" : "Afficher"}
             </button>
@@ -97,19 +97,19 @@ export function LoginForm({ notice, next, demo }: LoginFormProps) {
             <input type="checkbox" name="shared" role="switch" className="peer sr-only" />
             <span
               aria-hidden
-              className="relative h-6 w-10 rounded-full bg-white/15 transition-colors peer-checked:bg-lime peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-lime-clair after:absolute after:top-[3px] after:left-[3px] after:size-[18px] after:rounded-full after:bg-texte after:transition-transform peer-checked:after:translate-x-4 peer-checked:after:bg-encre"
+              className="relative h-6 w-10 rounded-full bg-white/15 transition-colors peer-checked:bg-orange peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-orange-clair after:absolute after:top-[3px] after:left-[3px] after:size-[18px] after:rounded-full after:bg-texte after:transition-transform peer-checked:after:translate-x-4 peer-checked:after:bg-encre"
             />
             Appareil partagé
           </label>
           <Link
             href="/mot-de-passe-oublie"
-            className="text-sm font-semibold text-pistache underline decoration-pistache/40 underline-offset-[3px] hover:decoration-pistache"
+            className="text-sm font-semibold text-sable underline decoration-sable/40 underline-offset-[3px] hover:decoration-sable"
           >
             Mot de passe oublié ?
           </Link>
         </div>
         <p className="-mt-2 text-[13px] text-texte-3">
-          Cybercafé, téléphone prêté : vous serez déconnecté en fermant le navigateur ou après 15 min d'inactivité.
+          Cybercafé, téléphone prêté : vous serez déconnecté en fermant le navigateur ou après 15 min d’inactivité.
         </p>
 
         <Button type="submit" pending={pending} pendingLabel="Connexion…" disabled={blocked} className="w-full py-3.5">
@@ -128,7 +128,7 @@ export function LoginForm({ notice, next, demo }: LoginFormProps) {
                 onClick={() => fillDemo(account)}
                 className="inline-flex items-center gap-2 rounded-full border border-trait bg-encre/35 py-[7px] pr-3.5 pl-[7px] text-[13.5px] hover:bg-white/10"
               >
-                <span aria-hidden className="grid size-6 place-items-center rounded-full bg-pistache text-[11px] font-bold text-encre">
+                <span aria-hidden className="grid size-6 place-items-center rounded-full bg-sable text-[11px] font-bold text-encre">
                   {account.name
                     .split(" ")
                     .map((part) => part[0])

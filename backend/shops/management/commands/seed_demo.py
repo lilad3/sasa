@@ -27,6 +27,20 @@ DEMO_SHOPS = [
     ]),
 ]
 
+# Ce que les clients voient en vitrine (/boutique/<slug> côté front).
+DEMO_STOREFRONTS = {
+    "maison-adjoua": {
+        "description": "Karité, cacao, café de Man et artisanat tissé main : le meilleur d'ici, livré en 24 h dans le Grand Abidjan.",
+        "city": "Cocody, Abidjan",
+        "accent": "orange",
+    },
+    "comptoir-fofana": {
+        "description": "Épicerie et cosmétiques naturels du Nord, sélectionnés à Korhogo.",
+        "city": "Korhogo",
+        "accent": "indigo",
+    },
+}
+
 # L'exploitant de la plateforme : il consulte le journal d'audit dans l'admin Django.
 DEMO_ADMIN = ("admin@akwaba.test", "Awa", "Koné")
 
@@ -44,7 +58,9 @@ class Command(BaseCommand):
 
         recovery = {}
         for slug, name, plan, accounts in DEMO_SHOPS:
-            shop, _ = Shop.objects.update_or_create(slug=slug, defaults={"name": name, "plan": plan})
+            shop, _ = Shop.objects.update_or_create(
+                slug=slug, defaults={"name": name, "plan": plan, **DEMO_STOREFRONTS[slug]}
+            )
             for email, first_name, last_name, role in accounts:
                 user = self._demo_user(email, first_name, last_name, recovery)
                 Membership.objects.update_or_create(user=user, shop=shop, defaults={"role": role})

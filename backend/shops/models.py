@@ -18,6 +18,19 @@ class Plan(models.TextChoices):
     BUSINESS = "business", "Business"
 
 
+class Accent(models.TextChoices):
+    """
+    Couleur de la vitrine. Une liste fermée plutôt qu'un code couleur libre : le front associe
+    chaque nom à une couleur lisible de sa palette, et aucune valeur saisie n'atterrit dans du CSS.
+    """
+
+    ORANGE = "orange", "Orange"
+    INDIGO = "indigo", "Indigo"
+    OCRE = "ocre", "Ocre"
+    LAGUNE = "lagune", "Lagune"
+    CORAIL = "corail", "Corail"
+
+
 class Shop(models.Model):
     """Une boutique Akwaba. Un compte peut en avoir plusieurs, avec un rôle dans chacune."""
 
@@ -25,6 +38,10 @@ class Shop(models.Model):
     slug = models.SlugField(max_length=60, unique=True)
     name = models.CharField(max_length=60)
     plan = models.CharField(max_length=10, choices=Plan.choices, default=Plan.FREE)
+    # Vitrine publique
+    description = models.CharField(max_length=280, blank=True)
+    city = models.CharField("ville", max_length=60, blank=True)
+    accent = models.CharField("couleur de la vitrine", max_length=10, choices=Accent.choices, default=Accent.ORANGE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -60,6 +77,7 @@ class Product(models.Model):
     slug = models.SlugField(max_length=80)
     name = models.CharField(max_length=120)
     description = models.TextField(max_length=2000, blank=True)
+    category = models.CharField("catégorie", max_length=40, blank=True)
     price = models.PositiveIntegerField(help_text="En FCFA, sans centimes.")
     stock = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
@@ -164,3 +182,22 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} × {self.name}"
+
+
+class IdempotencyRecord(models.Model):
+    """
+    Une commande déjà traitée pour une clé Idempotency-Key, gardée 24 h.
+
+    Sur un réseau mobile instable, le navigateur peut renvoyer la même commande. Avec la même clé
+    et le même contenu, on renvoie la réponse déjà donnée au lieu de créer une deuxième commande.
+    """
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="idempotency_records")
+    key = models.UUIDField()
+    request_hash = models.CharField(max_length=64, help_text="SHA-256 du contenu validé de la commande.")
+    response = models.JSONField()
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["shop", "key"], name="unique_idempotency_key")]
+        indexes = [models.Index(fields=["created_at"])]

@@ -1,0 +1,100 @@
+/*
+ * Lumière orange vivante : remplace le blanc des pages claires (landing, vitrine).
+ *
+ * Une seule couche, fixée derrière la page : le contenu défile par-dessus, comme sous une vitre.
+ * On n'anime que des transformations (déplacement, rotation, échelle) : le navigateur les confie
+ * à la carte graphique sans redessiner la page, ce qui reste fluide sur un téléphone d'entrée de gamme.
+ *
+ * Contraste : le dégradé ne descend pas sous #DA8748 et la traînée brune ne dépasse pas 33 % :
+ * le texte encre garde au moins 4,8:1 partout, même quand la traînée passe dessous.
+ */
+
+.fond-orange {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+  background: #e5914f;
+}
+
+.fond-orange > div {
+  position: absolute;
+}
+
+/* Le dégradé de la référence : cuivre en haut à gauche, pêche en bas à droite. */
+.fond-orange-base {
+  inset: -40%;
+  background: linear-gradient(135deg, #da8748 0%, #e5914f 30%, #eea062 52%, #f4b77f 74%, #f6c896 100%);
+  will-change: transform;
+  animation: fond-derive 18s ease-in-out infinite alternate;
+}
+
+/* Des lueurs pêche, ocre et orange qui dérivent, à un autre rythme que le dégradé. */
+.fond-orange-lueur {
+  inset: -30%;
+  background:
+    radial-gradient(28% 24% at 72% 70%, rgb(249 214 170 / 0.85), transparent 70%),
+    radial-gradient(22% 20% at 30% 40%, rgb(242 179 61 / 0.35), transparent 70%),
+    radial-gradient(30% 26% at 55% 20%, rgb(255 122 31 / 0.35), transparent 72%);
+  will-change: transform;
+  animation: fond-lueur 13s ease-in-out infinite alternate;
+}
+
+/* La traînée brune de la référence (#704420), qui balaie la page en diagonale. */
+.fond-orange-traine {
+  inset: -60%;
+  background: linear-gradient(
+    125deg,
+    transparent 40%,
+    rgb(112 68 32 / 0.2) 46%,
+    rgb(112 68 32 / 0.33) 50%,
+    rgb(112 68 32 / 0.2) 54%,
+    transparent 60%
+  );
+  will-change: transform;
+  animation: fond-traine 11s ease-in-out infinite alternate;
+}
+
+/* Le grain de la référence. Statique : un grain animé obligerait à redessiner toute la page. */
+.fond-orange-grain {
+  inset: 0;
+  opacity: 0.16;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes fond-derive {
+  from {
+    transform: translate3d(-8%, -5%, 0) rotate(-6deg);
+  }
+  to {
+    transform: translate3d(7%, 6%, 0) rotate(6deg) scale(1.06);
+  }
+}
+
+@keyframes fond-lueur {
+  0% {
+    transform: translate3d(10%, -8%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-8%, 5%, 0) scale(1.1);
+  }
+  100% {
+    transform: translate3d(5%, 10%, 0) scale(0.95);
+  }
+}
+
+@keyframes fond-traine {
+  from {
+    transform: translate3d(-22%, -14%, 0);
+  }
+  to {
+    transform: translate3d(22%, 14%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fond-orange > div {
+    animation: none;
+  }
+}

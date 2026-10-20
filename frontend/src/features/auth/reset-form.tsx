@@ -33,8 +33,8 @@ export function ResetForm({ uid, token }: { uid: string; token: string }) {
   if (!uid || !token || state.error?.code === "token_invalid_or_expired") {
     return (
       <div className="flex flex-col gap-4">
-        <FormAlert tone="danger">Ce lien n'est plus valable : il a déjà servi ou a dépassé ses 30 minutes.</FormAlert>
-        <Link href="/mot-de-passe-oublie" className="text-sm font-semibold text-pistache underline decoration-pistache/40 underline-offset-[3px]">
+        <FormAlert tone="danger">Ce lien n’est plus valable : il a déjà servi ou a dépassé ses 30 minutes.</FormAlert>
+        <Link href="/mot-de-passe-oublie" className="text-sm font-semibold text-sable underline decoration-sable/40 underline-offset-[3px]">
           Demander un nouveau lien
         </Link>
       </div>
@@ -60,7 +60,7 @@ export function ResetForm({ uid, token }: { uid: string; token: string }) {
         />
         <div aria-hidden className="grid grid-cols-4 gap-1.5">
           {[1, 2, 3, 4].map((step) => (
-            <span key={step} className={`h-1 rounded-full ${meter.level >= step ? (meter.level >= 3 ? "bg-lime" : "bg-alerte") : "bg-white/10"}`} />
+            <span key={step} className={`h-1 rounded-full ${meter.level >= step ? (meter.level >= 3 ? "bg-vert" : "bg-alerte") : "bg-white/10"}`} />
           ))}
         </div>
         {meter.label ? <p className="text-[13px] text-texte-3">{meter.label}</p> : null}

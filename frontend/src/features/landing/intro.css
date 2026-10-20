@@ -1,0 +1,297 @@
+/*
+ * Ouverture de la landing (classes préfixées intro- : ce fichier est global).
+ * Ouverture de la landing : une scène collante plein écran (verre cannelé en WebGL) pilotée par le défilement.
+ * La scène fait 300vh de haut : l'animation avance pendant que la page défile, puis la suite défile normalement.
+ */
+
+.intro-story {
+  position: relative;
+  height: 300vh;
+  background: var(--color-nuit);
+}
+
+.intro-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.intro-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Sans WebGL : un dégradé aux mêmes couleurs, et le titre en texte. */
+.intro-fallback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  background:
+    radial-gradient(40% 30% at 68% 42%, var(--color-orange), transparent 70%),
+    radial-gradient(35% 30% at 30% 30%, var(--color-indigo), transparent 70%),
+    linear-gradient(135deg, var(--color-nuit-2), var(--color-nuit));
+}
+
+.intro-no-gl .intro-fallback {
+  display: block;
+}
+
+.intro-phrases {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-inline: 16px;
+  pointer-events: none;
+}
+
+.intro-phrase {
+  grid-area: 1 / 1;
+  margin: 0;
+  text-align: center;
+  font-stretch: 125%;
+  font-weight: 700;
+  font-size: clamp(1.65rem, 6vw, 4.4rem);
+  line-height: 1.04;
+  letter-spacing: -0.015em;
+  color: var(--color-creme);
+  text-shadow: 0 2px 40px rgb(14 12 10 / 0.5);
+  opacity: 0;
+  will-change: opacity, transform, filter;
+}
+
+.intro-phrase > span {
+  display: block;
+  text-wrap: balance;
+}
+
+.intro-phrase:first-child {
+  opacity: 1;
+}
+
+.intro-thin {
+  font-weight: 250;
+  letter-spacing: -0.01em;
+}
+
+.intro-final {
+  position: absolute;
+  inset-inline: 0;
+  top: 64%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding-inline: 16px;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.intro-final-word {
+  margin: 0;
+  font-stretch: 125%;
+  font-weight: 800;
+  font-size: clamp(3rem, 13vw, 9.5rem);
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  color: var(--color-encre);
+}
+
+/* Avec WebGL, le mot est dessiné dans le verre : le titre reste là pour les lecteurs d'écran. */
+.intro-gl .intro-final-word {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.intro-no-gl .intro-final {
+  top: 28%;
+}
+
+.intro-no-gl .intro-final-word,
+.intro-no-gl .intro-final-sub,
+.intro-no-gl .intro-final-meaning {
+  color: var(--color-creme);
+}
+
+.intro-final-sub {
+  margin: 0;
+  max-width: 30ch;
+  text-wrap: balance;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  font-weight: 500;
+  color: var(--color-encre);
+}
+
+.intro-final-meaning {
+  margin: 0;
+  font-size: 13px;
+  color: #3d2a1c; /* 5,8:1 sur l'orange (l'ancien gris ne faisait que 2,4:1) */
+}
+
+.intro-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(250 244 234 / 0.85);
+}
+
+.intro-hint svg {
+  width: 18px;
+  height: 18px;
+  animation: intro-nudge 1.6s ease-in-out infinite;
+}
+
+@keyframes intro-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+.intro-progress {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgb(250 244 234 / 0.15);
+}
+
+.intro-progress span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, var(--color-indigo), var(--color-orange), var(--color-ocre));
+}
+
+/* Mouvement réduit : pas de défilement piloté, on montre directement la composition finale. */
+.intro-reduced .intro-story {
+  height: auto;
+}
+
+.intro-reduced .intro-stage {
+  position: relative;
+}
+
+.intro-reduced .intro-phrases,
+.intro-reduced .intro-hint,
+.intro-reduced .intro-progress {
+  display: none;
+}
+
+.intro-reduced .intro-final {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ---------- Barre de navigation : verre cannelé, sombre sur la scène, claire quand la lumière arrive ---------- */
+
+.intro-nav {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 30;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 0;
+  pointer-events: none;
+}
+
+.intro-nav-inner {
+  pointer-events: auto;
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 8px 8px 18px;
+  border-radius: 999px;
+  color: var(--color-creme);
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.07) 0 1px, transparent 1px 22px),
+    linear-gradient(180deg, rgb(14 12 10 / 0.2), rgb(14 12 10 / 0.42));
+  border: 1px solid rgb(255 255 255 / 0.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.25),
+    0 10px 30px rgb(14 12 10 / 0.25);
+  transition:
+    color 0.45s ease,
+    border-color 0.45s ease,
+    background 0.45s ease;
+}
+
+/* Sur l'orange : une vitre pêche (plus de blanc), et l'anneau de focus passe en encre. */
+.intro-on-light {
+  --anneau: var(--color-encre);
+}
+
+.intro-on-light .intro-nav-inner {
+  color: var(--color-encre);
+  background:
+    repeating-linear-gradient(90deg, rgb(23 17 10 / 0.04) 0 1px, transparent 1px 22px),
+    linear-gradient(180deg, rgb(255 232 205 / 0.5), rgb(255 214 170 / 0.32));
+  border-color: rgb(255 244 230 / 0.55);
+  box-shadow:
+    inset 0 1px 0 rgb(255 250 240 / 0.55),
+    0 10px 30px rgb(122 58 18 / 0.14);
+}
+
+.intro-nav-link {
+  font-size: 15px;
+  font-weight: 500;
+  color: inherit;
+  padding: 9px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.intro-nav-link:hover {
+  background: rgb(255 255 255 / 0.12);
+}
+
+.intro-on-light .intro-nav-link:hover {
+  background: rgb(23 17 10 / 0.06);
+}
+
+@media (max-width: 560px) {
+  .intro-hide-sm {
+    display: none;
+  }
+
+  .intro-nav-inner {
+    padding-left: 14px;
+  }
+
+  .intro-nav-link {
+    padding: 9px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-hint svg {
+    animation: none;
+  }
+}

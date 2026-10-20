@@ -1,0 +1,61 @@
+/* Couverture de la vitrine, façon magazine (classes préfixées vit- : ce fichier est global). */
+
+.vit-mast .vit-word {
+  display: inline-flex;
+  overflow: hidden;
+  padding-bottom: 0.04em;
+}
+
+.vit-mast .vit-word > span {
+  display: inline-block;
+  animation: vit-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 60ms + 150ms);
+}
+
+.vit-fade {
+  animation: vit-fade-up 0.7s ease both;
+  animation-delay: var(--d, 0.7s);
+}
+
+.vit-sticker svg {
+  animation: vit-turn 18s linear infinite;
+}
+
+@keyframes vit-rise {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes vit-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes vit-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Stries de verre cannelé sur les visuels de produits sans photo. */
+.vit-flutes {
+  background-image: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.16) 0 1px, transparent 1px 22px, rgb(0 0 0 / 0.08) 22px 23px, transparent 23px 44px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vit-mast .vit-word > span,
+  .vit-fade,
+  .vit-sticker svg {
+    animation: none;
+  }
+}

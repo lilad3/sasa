@@ -16,7 +16,7 @@ export default function ResetPasswordPage({ searchParams }: PageProps<"/nouveau-
       <Logo />
       <div>
         <h1 className="large text-[clamp(26px,2.8vw,36px)] leading-none font-extrabold">Nouveau mot de passe</h1>
-        <p className="mt-2 text-texte-2">Choisissez un mot de passe d'au moins 10 caractères. Une phrase courte et inhabituelle fonctionne très bien.</p>
+        <p className="mt-2 text-texte-2">Choisissez un mot de passe d’au moins 10 caractères. Une phrase courte et inhabituelle fonctionne très bien.</p>
       </div>
       <Suspense fallback={<div aria-hidden className="h-[220px] rounded-champ bg-encre/30" />}>
         <ResetFromLink searchParams={searchParams} />

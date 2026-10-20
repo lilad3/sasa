@@ -30,7 +30,7 @@ export function NavLinks({ slug, canSeeRevenue }: NavLinksProps) {
             aria-current={active ? "page" : undefined}
             className="group flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm whitespace-nowrap text-texte-2 hover:bg-white/5 hover:text-texte aria-[current=page]:bg-white/10 aria-[current=page]:text-texte"
           >
-            <svg viewBox="0 0 24 24" className="size-[17px] shrink-0 opacity-85 group-aria-[current=page]:text-lime-clair group-aria-[current=page]:opacity-100" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg viewBox="0 0 24 24" className="size-[17px] shrink-0 opacity-85 group-aria-[current=page]:text-orange-clair group-aria-[current=page]:opacity-100" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d={link.icon} />
             </svg>
             {link.label}

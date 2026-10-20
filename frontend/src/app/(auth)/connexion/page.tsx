@@ -27,7 +27,7 @@ export default function LoginPage({ searchParams }: PageProps<"/connexion">) {
       <Suspense fallback={<LoginFormSkeleton />}>
         <LoginFormWithParams searchParams={searchParams} />
       </Suspense>
-      <Link href="/inscription" className="text-center text-sm font-semibold text-pistache underline decoration-pistache/40 underline-offset-[3px]">
+      <Link href="/inscription" className="text-center text-sm font-semibold text-sable underline decoration-sable/40 underline-offset-[3px]">
         Créer une boutique
       </Link>
     </section>
@@ -51,7 +51,7 @@ function LoginFormSkeleton() {
           <div className="h-[50px] rounded-champ bg-encre/40" />
         </div>
       ))}
-      <div className="mt-2 h-[50px] rounded-full bg-lime/40" />
+      <div className="mt-2 h-[50px] rounded-full bg-white/[0.08]" />
     </div>
   );
 }

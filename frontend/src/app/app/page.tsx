@@ -31,9 +31,9 @@ async function OpenFirstShop() {
     <section className="vitre-claire flex max-w-md flex-col gap-4 rounded-vitre p-7">
       <Logo />
       <h1 className="text-2xl font-medium">Aucune boutique liée à ce compte</h1>
-      <p className="text-texte-2">Demandez au propriétaire d'une boutique de vous ajouter à son équipe, puis reconnectez-vous.</p>
+      <p className="text-texte-2">Demandez au propriétaire d’une boutique de vous ajouter à son équipe, puis reconnectez-vous.</p>
       <form action={logout}>
-        <button type="submit" className="text-sm font-semibold text-pistache underline underline-offset-[3px]">
+        <button type="submit" className="text-sm font-semibold text-sable underline underline-offset-[3px]">
           Se déconnecter
         </button>
       </form>

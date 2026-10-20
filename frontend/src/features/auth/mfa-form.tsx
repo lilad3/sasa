@@ -77,7 +77,7 @@ export function MfaForm({ next }: { next: string }) {
         <button
           type="button"
           onClick={() => setRecovery((value) => !value)}
-          className="font-semibold text-pistache underline decoration-pistache/40 underline-offset-[3px] hover:decoration-pistache"
+          className="font-semibold text-sable underline decoration-sable/40 underline-offset-[3px] hover:decoration-sable"
         >
           {recovery ? "Utiliser l'application" : "Utiliser un code de secours"}
         </button>

@@ -2,6 +2,7 @@ import "server-only";
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 
 import type { DashboardSummary, Me, Paginated, Order, Period, Problem, ShopMembership } from "@/lib/types";
@@ -40,6 +41,9 @@ function handleAuthProblem(problem: Problem): never | void {
  * Les erreurs de session redirigent ; les autres (403, 404…) reviennent à l'appelant pour qu'il affiche le bon état.
  */
 async function authed<T>(path: string): Promise<ApiResult<T>> {
+  // Ces données n'existent qu'au moment de la requête : sans cette ligne, Next tenterait de
+  // pré-rendre l'appel et refuserait l'identifiant aléatoire de requête (crypto.randomUUID).
+  await connection();
   const jar = await cookies();
   const access = jar.get(COOKIE.access)?.value;
   if (!access) {

@@ -28,7 +28,7 @@ export function Field({ id, label, error, hint, trailing, className, ...input }:
           {...input}
           className={cn(
             "w-full rounded-champ border border-white/15 bg-encre/45 px-[15px] py-[13px] text-base text-texte outline-none transition-[border-color,box-shadow]",
-            "placeholder:text-texte-3 focus-visible:border-lime focus-visible:shadow-[0_0_0_3px_rgb(97_196_18/0.28)] focus-visible:outline-none",
+            "placeholder:text-texte-3 focus-visible:border-orange focus-visible:shadow-[0_0_0_3px_rgb(255_122_31/0.28)] focus-visible:outline-none",
             error && "border-danger",
             trailing && "pr-24",
             className,
