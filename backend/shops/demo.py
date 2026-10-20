@@ -1,0 +1,201 @@
+"""Données de démonstration : produits d'ici, clients d'ici, 180 jours de commandes en FCFA."""
+
+import random
+from datetime import datetime, time, timedelta
+
+from django.db import transaction
+from django.utils import timezone
+from django.utils.text import slugify
+
+from .models import REFERENCE_ALPHABET, Order, OrderItem, OrderStatus, PaymentMethod, Product
+
+DEMO_DAYS = 180  # deux fois 90 jours : la période précédente existe aussi pour le filtre 90d
+
+# (sku, nom, prix en FCFA, popularité, description)
+CATALOG = [
+    ("KAR-500", "Beurre de karité brut 500 g", 2500, 9, "Karité non raffiné, pressé à froid dans le Nord."),
+    ("SAV-250", "Savon noir artisanal 250 g", 1000, 8, "Savon à l'huile de palme et à la cendre de cabosse."),
+    ("CAF-250", "Café robusta de Man, moulu 250 g", 3000, 7, "Torréfaction moyenne, notes de cacao."),
+    ("CAC-200", "Cacao pur en poudre 200 g", 2000, 6, "Fèves de Soubré, sans sucre ajouté."),
+    ("BIS-500", "Fleurs de bissap séchées 500 g", 1500, 7, "Pour le jus de bissap ou l'infusion."),
+    ("GIN-200", "Gingembre en poudre 200 g", 1200, 5, "Séché au soleil puis moulu finement."),
+    ("HPR-1L", "Huile de palme rouge 1 L", 1800, 5, "Huile artisanale pour la sauce graine."),
+    ("CHO-100", "Chocolat noir 70 % 100 g", 2500, 6, "Tablette fabriquée à Abidjan."),
+    ("PAG-BAO", "Pagne baoulé tissé main", 35000, 2, "Bandes tissées à la main, assemblées en pagne de 2 m."),
+    ("SAC-RAF", "Cabas en raphia tressé", 12000, 3, "Grand cabas solide, anses en cuir."),
+    ("SAN-CUI", "Sandales en cuir", 8500, 3, "Cuir tanné à la main, semelle cousue."),
+    ("PAN-ROT", "Panier en rotin avec couvercle", 9000, 2, "Rotin tressé, pour ranger ou offrir."),
+]
+
+FIRST_NAMES = [
+    "Aya", "Adjoua", "Akissi", "Amenan", "Affoué", "Mariam", "Fatou", "Aminata", "Salimata", "Awa",
+    "Christelle", "Marie-Laure", "Grâce", "Nadège", "Koffi", "Kouassi", "Yao", "Konan", "Kouadio",
+    "Moussa", "Ibrahim", "Seydou", "Didier", "Serge", "Hervé", "Jean-Marc", "Arnaud", "Wilfried",
+]
+LAST_NAMES = [
+    "Kouassi", "Konan", "N'Guessan", "Kouamé", "Yao", "Koné", "Traoré", "Coulibaly", "Bamba",
+    "Diabaté", "Sanogo", "Touré", "Gnagne", "Yapi", "Brou", "Ahoussou", "Assi", "Kacou",
+    "Diomandé", "Fofana", "Cissé", "Dosso", "Ehui", "Loukou",
+]
+
+# (ville, commune, frais de livraison en FCFA, poids)
+LOCATIONS = [
+    ("Abidjan", "Cocody", 1500, 14),
+    ("Abidjan", "Yopougon", 1500, 12),
+    ("Abidjan", "Marcory", 1500, 7),
+    ("Abidjan", "Abobo", 1500, 7),
+    ("Abidjan", "Plateau", 1500, 5),
+    ("Abidjan", "Treichville", 1500, 5),
+    ("Abidjan", "Koumassi", 1500, 5),
+    ("Abidjan", "Port-Bouët", 2000, 4),
+    ("Bingerville", "", 2000, 3),
+    ("Grand-Bassam", "", 2500, 3),
+    ("Bouaké", "", 3000, 4),
+    ("Yamoussoukro", "", 3000, 3),
+    ("Daloa", "", 3000, 2),
+    ("San-Pédro", "", 3500, 2),
+    ("Korhogo", "", 3500, 2),
+]
+
+LANDMARKS = [
+    "Près de la pharmacie du quartier",
+    "Derrière le grand marché",
+    "Face à l'église catholique",
+    "À côté de la station-service",
+    "Près de l'école primaire publique",
+    "Après le carrefour, portail bleu",
+    "En face du maquis",
+    "Près de la mosquée",
+    "Au-dessus du salon de coiffure",
+    "Deuxième rue après le terminus des gbaka",
+]
+
+PAYMENTS = [
+    (PaymentMethod.WAVE, 35),
+    (PaymentMethod.ORANGE_MONEY, 30),
+    (PaymentMethod.CASH_ON_DELIVERY, 20),
+    (PaymentMethod.MTN_MOMO, 10),
+    (PaymentMethod.MOOV_MONEY, 5),
+]
+
+
+@transaction.atomic
+def generate_demo_data(shop):
+    """Remplace les données de démo de la boutique. Les données réelles ne sont jamais touchées."""
+    rng = random.Random(shop.pk.int)  # même boutique, mêmes données : la démo est reproductible
+    Order.objects.for_shop(shop).filter(is_demo=True).delete()
+    Product.objects.for_shop(shop).filter(is_demo=True).delete()
+
+    taken = set(Product.objects.for_shop(shop).values_list("sku", flat=True))
+    entries = [entry for entry in CATALOG if entry[0] not in taken]
+    products = Product.objects.bulk_create(
+        [
+            Product(
+                shop=shop,
+                sku=sku,
+                slug=slugify(name),
+                name=name,
+                description=description,
+                price=price,
+                stock=rng.choice([0, 2, 4]) if rng.random() < 0.15 else rng.randint(12, 80),
+                is_demo=True,
+            )
+            for sku, name, price, _, description in entries
+        ]
+    )
+    if not products:
+        return {"products": 0, "orders": 0, "days": DEMO_DAYS}
+    weights = [entry[3] for entry in entries]
+    customers = [_customer(rng) for _ in range(60)]
+
+    today = timezone.localdate()
+    tz = timezone.get_current_timezone()
+    now = timezone.now()
+    orders, items, references = [], [], set()
+    for age in range(DEMO_DAYS - 1, -1, -1):
+        day = today - timedelta(days=age)
+        per_day = 1.6 + 2.4 * (DEMO_DAYS - age) / DEMO_DAYS  # la boutique grandit : ~1,6 → 4 commandes/jour
+        per_day *= {5: 1.4, 6: 0.7}.get(day.weekday(), 1.0)  # samedi chargé, dimanche calme
+        for _ in range(max(0, round(rng.gauss(per_day, 1.0)))):
+            created_at = datetime.combine(day, time(rng.randint(8, 21), rng.randint(0, 59)), tzinfo=tz)
+            if created_at > now:
+                created_at = now - timedelta(minutes=rng.randint(1, 90))
+            customer = rng.choice(customers)
+            lines = _lines(rng, products, weights)
+            subtotal = sum(product.price * quantity for product, quantity in lines)
+            order = Order(
+                shop=shop,
+                reference=_reference(rng, references),
+                status=_status(rng, age),
+                payment_method=rng.choices([p for p, _ in PAYMENTS], weights=[w for _, w in PAYMENTS])[0],
+                customer_name=customer["name"],
+                customer_phone=customer["phone"],
+                customer_city=customer["city"],
+                customer_commune=customer["commune"],
+                customer_landmark=customer["landmark"],
+                subtotal=subtotal,
+                delivery_fee=customer["fee"],
+                total=subtotal + customer["fee"],
+                is_demo=True,
+                created_at=created_at,
+            )
+            orders.append(order)
+            items.extend(
+                OrderItem(
+                    order=order,
+                    product=product,
+                    name=product.name,
+                    unit_price=product.price,
+                    quantity=quantity,
+                    line_total=product.price * quantity,
+                )
+                for product, quantity in lines
+            )
+
+    Order.objects.bulk_create(orders, batch_size=500)
+    OrderItem.objects.bulk_create(items, batch_size=1000)
+    return {"products": len(products), "orders": len(orders), "days": DEMO_DAYS}
+
+
+def _customer(rng):
+    city, commune, fee, _ = rng.choices(LOCATIONS, weights=[loc[3] for loc in LOCATIONS])[0]
+    return {
+        "name": f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}",
+        "phone": f"+225{rng.choice(['07', '05', '01'])}{rng.randint(0, 99_999_999):08d}",
+        "city": city,
+        "commune": commune,
+        "fee": fee,
+        "landmark": rng.choice(LANDMARKS),
+    }
+
+
+def _lines(rng, products, weights):
+    wanted = min(rng.choices([1, 2, 3], weights=[55, 32, 13])[0], len(products))
+    chosen = set()
+    while len(chosen) < wanted:
+        chosen.add(rng.choices(range(len(products)), weights=weights)[0])
+    lines = []
+    for index in sorted(chosen):
+        product = products[index]
+        quantity = 1 if product.price >= 5000 else rng.choices([1, 2, 3], weights=[60, 30, 10])[0]
+        lines.append((product, quantity))
+    return lines
+
+
+def _status(rng, age):
+    if rng.random() < 0.06:
+        return OrderStatus.CANCELLED
+    if age >= 5:
+        return OrderStatus.DELIVERED
+    if age >= 2:
+        return rng.choice([OrderStatus.CONFIRMED, OrderStatus.SHIPPED, OrderStatus.DELIVERED])
+    return rng.choice([OrderStatus.PENDING, OrderStatus.PENDING, OrderStatus.CONFIRMED])
+
+
+def _reference(rng, taken):
+    while True:
+        chars = "".join(rng.choice(REFERENCE_ALPHABET) for _ in range(6))
+        reference = f"{chars[:3]}-{chars[3:]}"
+        if reference not in taken:
+            taken.add(reference)
+            return reference

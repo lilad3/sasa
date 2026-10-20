@@ -1,0 +1,53 @@
+"""Catalogue des événements du journal : catégorie, gravité et libellé lisible."""
+
+from django.db import models
+
+
+class Category(models.TextChoices):
+    SECURITY = "security", "Sécurité"
+    BUSINESS = "business", "Activité des boutiques"
+    ADMIN = "admin", "Administration"
+
+
+class Severity(models.TextChoices):
+    INFO = "info", "Info"
+    WARNING = "warning", "À surveiller"
+    CRITICAL = "critical", "Critique"
+
+
+S, B, A = Category.SECURITY, Category.BUSINESS, Category.ADMIN
+INFO, WARNING, CRITICAL = Severity.INFO, Severity.WARNING, Severity.CRITICAL
+
+ACTIONS = {
+    # Sécurité des comptes
+    "login_succeeded": (S, INFO, "Connexion réussie"),
+    "login_failed": (S, WARNING, "Connexion échouée"),
+    "account_locked": (S, WARNING, "Compte verrouillé"),
+    "account_unlocked": (S, INFO, "Compte débloqué"),
+    "new_device": (S, INFO, "Connexion depuis un nouvel appareil"),
+    "refresh_reuse_detected": (S, CRITICAL, "Vol de session détecté"),
+    "logged_out": (S, INFO, "Déconnexion"),
+    "session_revoked": (S, INFO, "Session fermée"),
+    "password_changed": (S, WARNING, "Mot de passe changé"),
+    "password_reset": (S, WARNING, "Mot de passe réinitialisé"),
+    "mfa_enabled": (S, INFO, "Double authentification activée"),
+    "mfa_disabled": (S, WARNING, "Double authentification désactivée"),
+    # Un code 2FA faux veut dire que le mot de passe, lui, était juste.
+    "mfa_failed": (S, WARNING, "Code de double authentification refusé"),
+    "recovery_code_used": (S, WARNING, "Code de secours utilisé"),
+    "recovery_codes_regenerated": (S, WARNING, "Codes de secours régénérés"),
+    "reauth_succeeded": (S, INFO, "Identité confirmée"),
+    "reauth_failed": (S, WARNING, "Confirmation d'identité refusée"),
+    "signup_completed": (S, INFO, "Compte créé"),
+    # Activité des boutiques
+    "shop_created": (B, INFO, "Boutique créée"),
+    "order_status_changed": (B, INFO, "Statut de commande modifié"),
+    "demo_data_generated": (B, INFO, "Données de démo générées"),
+    # Administration de la plateforme
+    "admin_login_succeeded": (A, INFO, "Connexion à l'administration"),
+    "admin_login_failed": (A, WARNING, "Connexion à l'administration refusée"),
+    "audit_exported": (A, INFO, "Journal exporté"),
+    "audit_verified": (A, INFO, "Intégrité du journal vérifiée"),
+}
+
+ACTION_CHOICES = [(action, label) for action, (_, _, label) in ACTIONS.items()]

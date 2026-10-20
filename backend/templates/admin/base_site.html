@@ -1,0 +1,19 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block extrahead %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'akwaba_admin/akwaba-admin.css' %}" {% csp_nonce_attr %}>
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+  <a href="{% url 'admin:index' %}" class="akw-brand">
+    <span class="akw-logo">akwaba</span>
+    <span class="akw-badge">Plateforme</span>
+  </a>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

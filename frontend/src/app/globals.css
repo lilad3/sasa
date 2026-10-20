@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+/*
+ * Identité Akwaba : tout le site baigne dans le vert (décor en verre cannelé),
+ * les blocs sont des vitres arrondies, le lime est réservé aux actions principales.
+ * Le lime ne porte jamais de texte blanc : sur le lime, le texte est toujours « encre ».
+ */
+@theme {
+  --color-encre: #0b1403;
+  --color-foret: #1a2f0c;
+  --color-olive: #34491f;
+  --color-lime: #61c412;
+  --color-lime-clair: #8bda4b;
+  --color-pistache: #d7e0a1;
+  --color-brume: #f3f4f1;
+
+  --color-texte: #eef2e6;
+  --color-texte-2: #b9c3ac;
+  --color-texte-3: #8a957e;
+  --color-danger: #ff8a75;
+  --color-danger-clair: #ffb4a6;
+  --color-alerte: #f0b557;
+
+  --color-trait: rgb(215 224 161 / 0.14);
+  --color-trait-doux: rgb(215 224 161 / 0.08);
+
+  --radius-vitre: 28px;
+  --radius-carte: 20px;
+  --radius-champ: 14px;
+}
+
+@theme inline {
+  --font-sans: var(--font-archivo), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, Consolas, monospace;
+}
+
+/* Police large de la marque (Archivo étendu) pour les titres. */
+@utility large {
+  font-stretch: 125%;
+  letter-spacing: -0.01em;
+}
+
+/* Vitre : bloc posé dans le décor. */
+@utility vitre {
+  background: rgb(233 240 220 / 0.07);
+  border: 1px solid var(--color-trait);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  backdrop-filter: blur(20px) saturate(1.35);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07);
+}
+
+/* Panneau neutre et sombre pour les écrans d'authentification. */
+@utility auth-panel {
+  background: rgb(12 17 20 / 0.92);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 30px 80px rgb(0 0 0 / 0.55);
+}
+
+.auth-shell {
+  background:
+    linear-gradient(180deg, rgb(5 9 13 / 0.78), rgb(5 9 13 / 0.86)),
+    url("/decor.jpg") center / cover no-repeat fixed,
+    #080d11;
+}
+
+.auth-panel input:not([type="hidden"]) {
+  background-color: rgb(6 10 13 / 0.76);
+}
+
+/* Carte sombre, à l'intérieur d'une vitre. */
+@utility carte {
+  background: linear-gradient(180deg, rgb(233 240 220 / 0.05), rgb(9 17 4 / 0.38));
+  border: 1px solid var(--color-trait-doux);
+}
+
+/* Chiffres en deux tons : la partie importante claire, l'unité en retrait. */
+@utility chiffres {
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+html {
+  background: var(--color-encre);
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100dvh;
+  color: var(--color-texte);
+  background:
+    linear-gradient(180deg, rgb(6 11 3 / var(--voile, 0)), rgb(6 11 3 / calc(var(--voile, 0) + 0.25))),
+    url("/decor.jpg") center top / cover no-repeat fixed,
+    var(--color-encre);
+}
+
+::selection {
+  background: rgb(97 196 18 / 0.35);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-lime-clair);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

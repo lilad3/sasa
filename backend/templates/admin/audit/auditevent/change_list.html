@@ -1,0 +1,18 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+  <li><a href="{% url 'admin:audit_auditevent_verify' %}">Vérifier l'intégrité</a></li>
+  {{ block.super }}
+{% endblock %}
+
+{% block content %}
+  <div class="akw-summary">
+    <h2>Dernières 24 h</h2>
+    <div class="akw-stat"><strong>{{ audit_summary.critical }}</strong><span><a href="?severity__exact=critical">critique{{ audit_summary.critical|pluralize }}</a></span></div>
+    <div class="akw-stat"><strong>{{ audit_summary.warning }}</strong><span><a href="?severity__exact=warning">à surveiller</a></span></div>
+    <div class="akw-stat"><strong>{{ audit_summary.failed_logins }}</strong><span><a href="?action__in=login_failed,admin_login_failed">connexion{{ audit_summary.failed_logins|pluralize }} échouée{{ audit_summary.failed_logins|pluralize }}</a></span></div>
+    <div class="akw-stat"><strong>{{ audit_summary.mfa_failed }}</strong><span><a href="?action__exact=mfa_failed">code{{ audit_summary.mfa_failed|pluralize }} 2FA refusé{{ audit_summary.mfa_failed|pluralize }}</a></span></div>
+    <div class="akw-stat"><strong>{{ audit_summary.locked }}</strong><span><a href="?action__exact=account_locked">compte{{ audit_summary.locked|pluralize }} verrouillé{{ audit_summary.locked|pluralize }}</a></span></div>
+  </div>
+  {{ block.super }}
+{% endblock %}
