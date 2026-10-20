@@ -115,7 +115,7 @@ export function Features() {
                 Votre article phare fait la une, comme la couverture d’un magazine. Vos clients commandent sans créer de compte.
               </p>
               <span className="bouton-nuit inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold">
-                Voir la boutique de démo <Icon path={ICONS.arrow} className="size-4" />
+                Pousser la porte <Icon path={ICONS.arrow} className="size-4" />
               </span>
             </div>
           </Link>
@@ -379,7 +379,7 @@ export function Footer() {
         </p>
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm text-texte-2">
           <Link href="/boutique/maison-adjoua" className="underline decoration-white/30 underline-offset-[3px] hover:decoration-white">
-            Boutique de démo
+            Visiter Maison Adjoua
           </Link>
           <a href="#tarifs" className="underline decoration-white/30 underline-offset-[3px] hover:decoration-white">
             Tarifs
