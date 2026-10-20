@@ -2,22 +2,27 @@ import type { Accent } from "@/lib/types";
 
 /**
  * La couleur choisie par le marchand. L'API ne renvoie qu'un nom pris dans une liste fermée :
- * c'est ici qu'il devient des classes, toutes vérifiées pour le contraste (4,5:1 au minimum).
+ * c'est ici qu'il devient des classes, vérifiées pour le contraste (4,5:1 au minimum).
+ * Les boutons, eux, sont les mêmes partout (verre cannelé sombre) : la couleur du marchand
+ * colore la couverture, ses chiffres et la pastille de prix.
  */
-export const ACCENTS: Record<Accent, { button: string; text: string; soft: string; hex: string }> = {
-  orange: { button: "bg-orange text-encre hover:bg-orange-clair", text: "text-[#b04a06]", soft: "bg-orange/15", hex: "#ff7a1f" },
-  indigo: { button: "bg-indigo text-creme hover:bg-[#5d69e0]", text: "text-indigo", soft: "bg-indigo/12", hex: "#4a57d6" },
-  ocre: { button: "bg-ocre text-encre hover:bg-[#f5c262]", text: "text-[#7d5300]", soft: "bg-ocre/20", hex: "#f2b33d" },
-  // Crème sur le lagune de la palette ne fait que 3,8:1 : le bouton prend une teinte plus foncée.
-  lagune: { button: "bg-[#237264] text-creme hover:bg-[#2b8273]", text: "text-[#237264]", soft: "bg-lagune/15", hex: "#2e8c7a" },
+export const ACCENTS: Record<Accent, { disc: string; hex: string }> = {
+  orange: { disc: "bg-orange text-encre", hex: "#ff7a1f" },
+  indigo: { disc: "bg-indigo text-creme", hex: "#4a57d6" },
+  ocre: { disc: "bg-ocre text-encre", hex: "#f2b33d" },
+  // Crème sur le lagune de la palette ne fait que 3,8:1 : la pastille prend une teinte plus foncée.
+  lagune: { disc: "bg-[#237264] text-creme", hex: "#2e8c7a" },
   // Même chose pour le corail : texte encre plutôt que crème.
-  corail: { button: "bg-corail text-encre hover:bg-[#ee6c58]", text: "text-[#b23a26]", soft: "bg-corail/15", hex: "#e8553f" },
+  corail: { disc: "bg-corail text-encre", hex: "#e8553f" },
 };
 
-/** Visuel de remplacement quand le produit n'a pas de photo : une couleur par rayon. */
+/**
+ * Visuel de remplacement quand le produit n'a pas de photo : une couleur par rayon.
+ * Teintes profondes : sur la vitre orangée, un visuel orange clair se confondrait avec le fond.
+ */
 export const CATEGORY_ART: Record<string, string> = {
-  Beauté: "from-ocre via-[#e9905a] to-corail",
-  Épicerie: "from-orange via-[#f59a3a] to-ocre",
+  Beauté: "from-[#6e2742] via-corail to-ocre",
+  Épicerie: "from-[#8f3410] via-[#d9601c] to-ocre",
   Artisanat: "from-indigo via-[#3b6fb0] to-lagune",
 };
 

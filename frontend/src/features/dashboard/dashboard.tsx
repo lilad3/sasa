@@ -110,7 +110,7 @@ function RevenueRestricted({ slug }: { slug: string }) {
       <p className="max-w-[60ch] text-texte-2">
         En tant que vendeur, vous traitez les commandes de la boutique. Les chiffres de vente sont réservés au propriétaire et aux gérants.
       </p>
-      <Link href={`/app/${slug}/commandes`} className="mt-1 rounded-full bg-orange px-5 py-2.5 text-sm font-bold text-encre hover:bg-orange-clair">
+      <Link href={`/app/${slug}/commandes`} className="bouton-nuit mt-1 rounded-full px-5 py-2.5 text-sm font-bold">
         Voir les commandes
       </Link>
     </section>

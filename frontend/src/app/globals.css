@@ -2,9 +2,11 @@
 
 /*
  * Identité Akwaba : une nuit chaude, des vitres arrondies, et les couleurs du marché.
+ * Pas de blanc : les pages claires reposent sur une lumière orange animée (components/ui/fond-orange),
+ * et les boutons sont en verre cannelé sombre (.bouton-nuit, plus bas).
  * Chaque couleur a un rôle, pour qu'aucune ne recouvre tout :
- *   orange  → l'action principale (boutons, lien actif) ;
- *   indigo  → l'information (statuts, liens secondaires, graphiques) ;
+ *   orange  → la lumière des pages claires, le logo, le lien actif ;
+ *   indigo  → la lueur des boutons et l'information (statuts, liens secondaires, graphiques) ;
  *   ocre    → la mise en avant et les alertes ;
  *   vert    → seulement ce qui monte ou réussit (hausse, livré, mot de passe solide) ;
  *   corail  → les erreurs ;
@@ -102,6 +104,195 @@
   line-height: 1;
 }
 
+/*
+ * Vitre claire : remplace le blanc des cartes sur les surfaces orange. Pêche translucide,
+ * sans flou d'arrière-plan : le fond bouge en permanence, et un flou se recalculerait à chaque image.
+ * Bordure et ombre passent par des variables, pour qu'une carte active puisse les changer sans conflit de classes.
+ */
+@utility verre-clair {
+  background-color: rgb(255 236 214 / 0.36);
+  border: 1px solid var(--verre-bord, rgb(255 248 238 / 0.55));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    var(--verre-ombre, 0 12px 32px rgb(122 58 18 / 0.1));
+}
+
+/*
+ * Surface orange (landing, vitrine). Le texte secondaire et les filets foncent ici :
+ * le gris habituel ne ferait que 4,2:1 sur la vitre claire, ce brun fait 7,3:1.
+ * Le texte posé directement sur l'orange reste en encre (au moins 4,8:1, même sous la traînée brune).
+ */
+.surface-orange {
+  --anneau: var(--color-encre);
+  --color-encre-doux: #3d2a1c;
+  --color-trait-clair: rgb(23 17 10 / 0.16);
+  color: var(--color-encre);
+}
+
+/* Bloc sombre posé sur une surface orange (couverture de la vitrine, barre du panier). */
+.zone-sombre {
+  --anneau: var(--color-sable);
+}
+
+@layer components {
+  /*
+   * Bouton principal : le verre cannelé sombre de l'ouverture, traversé d'une lueur indigo
+   * qui glisse lentement derrière les cannelures. Texte crème : 15,9:1.
+   * --decalage (en secondes) désynchronise les boutons d'une même grille.
+   */
+  .bouton-nuit {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    color: var(--color-creme);
+    background-color: #1a1613;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(0 0 0 / 0.2));
+    border: 1px solid rgb(255 255 255 / 0.16);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.1),
+      0 0 0 1px rgb(74 87 214 / 0.22),
+      0 8px 22px rgb(23 17 10 / 0.25);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  /* La lueur indigo, sous les cannelures. */
+  .bouton-nuit::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: -30%;
+    bottom: -30%;
+    left: 0;
+    width: 42%;
+    background: radial-gradient(closest-side, rgb(74 87 214 / 0.85), rgb(74 87 214 / 0.3) 55%, transparent);
+    opacity: 0.8;
+    transform: translateX(-30%);
+    animation: bouton-lueur 7s ease-in-out infinite alternate;
+    animation-delay: calc(var(--decalage, 0) * -1s);
+    transition: opacity 0.2s ease;
+  }
+
+  /* Les cannelures : de fines lignes verticales, par-dessus la lueur, comme dans le verre. */
+  .bouton-nuit::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background-image: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.075) 0 1px, transparent 1px 13px);
+    pointer-events: none;
+  }
+
+  .bouton-nuit:hover {
+    border-color: rgb(163 171 255 / 0.5);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.14),
+      0 0 0 3px rgb(74 87 214 / 0.22),
+      0 10px 26px rgb(23 17 10 / 0.3);
+  }
+
+  .bouton-nuit:hover::before {
+    opacity: 1;
+  }
+
+  .bouton-nuit:disabled::before {
+    animation-play-state: paused;
+    opacity: 0.35;
+  }
+
+  /* Bouton secondaire sur l'orange : une vitre pêche bordée d'encre, sans blanc. */
+  .bouton-verre {
+    color: var(--color-encre);
+    background-color: rgb(255 240 225 / 0.3);
+    border: 1px solid rgb(23 17 10 / 0.22);
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .bouton-verre:hover {
+    background-color: rgb(255 240 225 / 0.5);
+    border-color: rgb(23 17 10 / 0.4);
+  }
+
+  /* Bouton radio dessiné : le rond natif est blanc, celui-ci prend la vitre et l'encre. */
+  .radio-verre {
+    appearance: none;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid rgb(23 17 10 / 0.5);
+    background: rgb(255 244 232 / 0.35);
+    cursor: pointer;
+  }
+
+  .radio-verre:checked {
+    border-color: var(--color-encre);
+    background: radial-gradient(circle, var(--color-encre) 0 4px, rgb(255 244 232 / 0.5) 4.5px);
+  }
+
+  /*
+   * Curseur dessiné : la piste native est blanche. Ici, piste encre translucide, partie remplie
+   * en indigo (variable --rempli, de 0 % à 100 %) et poignée en verre sombre, comme les boutons.
+   */
+  .curseur {
+    appearance: none;
+    height: 28px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .curseur::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--color-indigo) var(--rempli, 0%), rgb(23 17 10 / 0.18) var(--rempli, 0%));
+  }
+
+  .curseur::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: rgb(23 17 10 / 0.18);
+  }
+
+  .curseur::-moz-range-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-indigo);
+  }
+
+  .curseur::-webkit-slider-thumb {
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -8px;
+    border-radius: 50%;
+    background: #1a1613;
+    border: 2px solid var(--color-indigo-clair);
+    box-shadow: 0 0 0 4px rgb(74 87 214 / 0.25);
+  }
+
+  .curseur::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #1a1613;
+    border: 2px solid var(--color-indigo-clair);
+    box-shadow: 0 0 0 4px rgb(74 87 214 / 0.25);
+  }
+}
+
+/* Course de la lueur : son centre va de 8 % à 92 % de la largeur, elle reste toujours visible dans le bouton. */
+@keyframes bouton-lueur {
+  from {
+    transform: translateX(-30%);
+  }
+  to {
+    transform: translateX(170%);
+  }
+}
+
 html {
   background: var(--color-nuit);
   color-scheme: dark;
@@ -124,8 +315,9 @@ body {
   background: rgb(255 122 31 / 0.35);
 }
 
+/* Anneau de focus : orange clair sur les fonds sombres, encre sur l'orange (où l'orange clair ne ferait que 1,2:1). */
 :focus-visible {
-  outline: 2px solid var(--color-orange-clair);
+  outline: 2px solid var(--anneau, var(--color-orange-clair));
   outline-offset: 3px;
 }
 

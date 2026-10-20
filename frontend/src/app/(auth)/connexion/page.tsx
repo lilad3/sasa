@@ -51,7 +51,7 @@ function LoginFormSkeleton() {
           <div className="h-[50px] rounded-champ bg-encre/40" />
         </div>
       ))}
-      <div className="mt-2 h-[50px] rounded-full bg-orange/40" />
+      <div className="mt-2 h-[50px] rounded-full bg-white/[0.08]" />
     </div>
   );
 }

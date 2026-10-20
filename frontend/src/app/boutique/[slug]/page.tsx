@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { FondOrange } from "@/components/ui/fond-orange";
 import { StorefrontApp } from "@/features/storefront/storefront-app";
 import { getStorefront, getStorefrontProducts } from "@/lib/server/storefront";
 
@@ -34,9 +35,10 @@ async function StorefrontFromRoute({ params }: Pick<PageProps<"/boutique/[slug]"
 
 function StorefrontSkeleton() {
   return (
-    <div aria-hidden className="min-h-dvh bg-creme px-3 pt-3 md:px-5">
+    <div aria-hidden className="relative isolate min-h-dvh px-3 pt-3 md:px-5">
+      <FondOrange />
       <div className="mx-auto flex max-w-[1180px] flex-col gap-8">
-        <div className="h-[60px] animate-pulse rounded-full bg-white/70" />
+        <div className="h-[60px] animate-pulse rounded-full bg-[rgb(255_244_232/0.4)]" />
         <div className="h-[clamp(520px,60vw,660px)] animate-pulse rounded-[28px] bg-nuit-2" />
       </div>
     </div>

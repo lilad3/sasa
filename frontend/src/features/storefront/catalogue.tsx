@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { type CSSProperties, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
-import type { Accent, PublicProduct } from "@/lib/types";
+import type { PublicProduct } from "@/lib/types";
 
-import { ACCENTS, CATEGORY_ART, DEFAULT_ART } from "./accent";
+import { CATEGORY_ART, DEFAULT_ART } from "./accent";
 
 export type Line = { product: PublicProduct; quantity: number };
 
@@ -53,7 +53,7 @@ export function QuantityStepper({
   size?: "sm" | "md";
 }) {
   const button = cn(
-    "grid place-items-center rounded-full border border-trait-clair bg-white font-bold transition-colors hover:bg-creme-2 disabled:cursor-not-allowed disabled:opacity-40",
+    "bouton-nuit grid place-items-center rounded-full font-bold disabled:cursor-not-allowed disabled:opacity-40",
     size === "sm" ? "size-7 text-sm" : "size-9",
   );
   return (
@@ -76,13 +76,11 @@ type Sort = "rayon" | "prix-croissant" | "prix-decroissant";
 export function Collection({
   products,
   description,
-  accent,
   quantities,
   onChange,
 }: {
   products: PublicProduct[];
   description: string;
-  accent: Accent;
   quantities: Readonly<Record<string, number>>;
   onChange: (product: PublicProduct, quantity: number) => void;
 }) {
@@ -98,17 +96,17 @@ export function Collection({
     <section id="collection" aria-labelledby="collection-titre" className="flex scroll-mt-24 flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex max-w-[60ch] flex-col gap-1.5">
-          <p className="font-mono text-xs tracking-[0.08em] text-encre-doux uppercase">
+          <p className="font-mono text-xs tracking-[0.08em] text-encre uppercase">
             Catalogue · {products.length} article{products.length > 1 ? "s" : ""}
           </p>
           <h2 id="collection-titre" className="large text-[clamp(1.5rem,3vw,2rem)] font-bold">
             Toute la collection
           </h2>
-          {description ? <p className="text-encre-doux">{description}</p> : null}
+          {description ? <p className="text-encre">{description}</p> : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {categories.length > 1 ? (
-            <div className="flex gap-1 rounded-2xl border border-trait-clair bg-white p-1" role="group" aria-label="Filtrer par rayon">
+            <div className="verre-clair flex gap-1 rounded-2xl p-1" role="group" aria-label="Filtrer par rayon">
               {["tout", ...categories].map((c) => (
                 <button
                   key={c}
@@ -129,7 +127,7 @@ export function Collection({
             id="tri"
             value={sort}
             onChange={(event) => setSort(event.target.value as Sort)}
-            className="rounded-2xl border border-trait-clair bg-white px-3 py-2.5 text-[13px] font-semibold"
+            className="verre-clair rounded-2xl px-3 py-2.5 text-[13px] font-semibold"
           >
             <option value="rayon">Par rayon</option>
             <option value="prix-croissant">Prix croissant</option>
@@ -139,12 +137,12 @@ export function Collection({
       </header>
 
       {shown.length === 0 ? (
-        <p className="rounded-[20px] border border-dashed border-trait-clair p-6 text-encre-doux">Aucun article dans ce rayon pour le moment.</p>
+        <p className="rounded-[20px] border border-dashed border-trait-clair p-6 text-encre">Aucun article dans ce rayon pour le moment.</p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {shown.map((product) => (
+          {shown.map((product, index) => (
             <li key={product.id}>
-              <ProductCard product={product} accent={accent} quantity={quantities[product.id] ?? 0} onChange={(q) => onChange(product, q)} />
+              <ProductCard product={product} index={index} quantity={quantities[product.id] ?? 0} onChange={(q) => onChange(product, q)} />
             </li>
           ))}
         </ul>
@@ -155,17 +153,18 @@ export function Collection({
 
 function ProductCard({
   product,
-  accent,
+  index,
   quantity,
   onChange,
 }: {
   product: PublicProduct;
-  accent: Accent;
+  /** Rang dans la grille : décale la lueur de chaque bouton, pour qu'ils ne bougent pas tous ensemble. */
+  index: number;
   quantity: number;
   onChange: (quantity: number) => void;
 }) {
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-[22px] border border-trait-clair bg-white p-2">
+    <article className="verre-clair flex h-full flex-col overflow-hidden rounded-[22px] p-2">
       <div className="relative h-[200px] overflow-hidden rounded-[16px]">
         <ProductArt product={product} />
         {product.category ? (
@@ -188,7 +187,8 @@ function ProductCard({
             <button
               type="button"
               onClick={() => onChange(1)}
-              className={cn("rounded-full px-4 py-2.5 text-sm font-bold whitespace-nowrap", ACCENTS[accent].button)}
+              className="bouton-nuit rounded-full px-4 py-2.5 text-sm font-bold whitespace-nowrap"
+              style={{ "--decalage": index * 1.3 } as CSSProperties}
               aria-label={`Ajouter ${product.name} au panier`}
             >
               Ajouter
@@ -201,7 +201,8 @@ function ProductCard({
 }
 
 function StockNote({ product }: { product: PublicProduct }) {
-  if (!product.in_stock) return <span className="text-xs font-semibold text-[#b23a26]">Épuisé</span>;
-  if (product.low_stock) return <span className="text-xs font-semibold text-[#7d5300]">Plus que quelques pièces</span>;
-  return <span className="text-xs text-[#2c6a14]">En stock</span>;
+  // Couleurs foncées exprès : sur la vitre orangée, il faut 4,5:1 (le vert, l'ocre et le rouge habituels n'y arrivent pas).
+  if (!product.in_stock) return <span className="text-xs font-semibold text-[#8a2412]">Épuisé</span>;
+  if (product.low_stock) return <span className="text-xs font-semibold text-[#5c3d00]">Plus que quelques pièces</span>;
+  return <span className="text-xs text-[#1f5410]">En stock</span>;
 }

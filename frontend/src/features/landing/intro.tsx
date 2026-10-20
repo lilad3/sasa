@@ -55,7 +55,8 @@ void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }
 `;
 
 // Le décor : nuit chaude, traînée orange bordée d'ocre, lueur indigo, vu à travers un verre cannelé.
-// En fin de défilement, la lumière envahit la scène et le mot AKWABA apparaît en encre sur crème.
+// En fin de défilement, l'orange envahit la scène (plus de blanc) et le mot AKWABA apparaît en encre.
+// La scène ne se fige jamais : la traînée brune oscille et le champ orange ondule tant que la page est visible.
 const FRAGMENT = `
 precision highp float;
 uniform vec2 u_res;
@@ -71,8 +72,12 @@ const vec3 NUIT2  = vec3(0.110, 0.090, 0.075);
 const vec3 ORANGE = vec3(1.000, 0.478, 0.122);
 const vec3 OCRE   = vec3(0.949, 0.702, 0.239);
 const vec3 INDIGO = vec3(0.290, 0.341, 0.839);
-const vec3 CREME  = vec3(0.980, 0.957, 0.918);
 const vec3 SABLE  = vec3(0.941, 0.867, 0.729);
+// Phase claire, mesurée sur la référence : cuivre, abricot, pêche, et la traînée brune.
+const vec3 CUIVRE  = vec3(0.690, 0.412, 0.208);
+const vec3 ABRICOT = vec3(0.918, 0.604, 0.357);
+const vec3 PECHE   = vec3(0.961, 0.753, 0.549);
+const vec3 BRUN    = vec3(0.439, 0.267, 0.125);
 const vec3 ENCRE  = vec3(0.090, 0.067, 0.039);
 
 float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
@@ -89,24 +94,28 @@ float fbm(vec2 p){
 
 vec3 scene(vec2 px, float p, float t, float light){
   vec2 c = (px - 0.5 * u_res) / u_res.y;
-  float ang = mix(0.95, 0.62, smoothstep(0.42, 0.72, p));
+  float ang = mix(0.95, 0.62, smoothstep(0.42, 0.72, p)) + 0.06 * sin(0.21 * t) * light;
   vec2 nrm = vec2(-sin(ang), cos(ang));
   float d = dot(c, nrm);
   d += 0.10 * (fbm(c * 1.7 + vec2(0.05 * t, -0.04 * t)) - 0.5);
   float shift = mix(0.42, 0.0, smoothstep(0.0, 0.64, p)) + 0.02 * sin(0.4 * t);
-  shift = mix(shift, -0.40, smoothstep(0.70, 0.95, p));
+  shift = mix(shift, -0.40 + 0.10 * sin(0.27 * t), smoothstep(0.70, 0.95, p));
   float b = d - shift;
   float glow = exp(-b * b * mix(9.0, 6.0, p));
   float core = exp(-(b + 0.04) * (b + 0.04) * 55.0);
   float rim  = exp(-(b - 0.09) * (b - 0.09) * 90.0);
   float side = smoothstep(-0.6, 0.6, c.y - c.x);
   vec3 dark = mix(NUIT, mix(NUIT2, INDIGO * 0.55, side * 0.6), 0.35 + 0.65 * side);
-  vec3 bright = mix(CREME, SABLE, smoothstep(0.5, -0.1, b));
+  // Le champ orange : cuivre en haut à gauche, pêche en bas à droite, qui ondule avec le temps.
+  float diag = dot(c, vec2(0.7071, -0.7071));
+  float wave = 0.10 * sin(0.35 * t + c.x * 1.6) + 0.12 * (fbm(c * 1.3 + vec2(0.06 * t, 0.045 * t)) - 0.5);
+  vec3 bright = mix(ABRICOT, PECHE, smoothstep(-0.30, 0.60, diag + wave));
+  bright = mix(bright, CUIVRE, smoothstep(0.0, -0.75, diag + wave) * 0.6);
   vec3 col = mix(dark, bright, light);
   col = mix(col, OCRE, 0.22 * light * (1.0 - light) * 4.0);
-  col = mix(col, ORANGE, glow * 0.86);
-  col = mix(col, mix(NUIT, NUIT2, 0.6), core * mix(0.9, 0.7, light));
-  col += OCRE * rim * 0.35;
+  col = mix(col, ORANGE, glow * mix(0.86, 0.5, light));
+  col = mix(col, mix(mix(NUIT, NUIT2, 0.6), BRUN, light), core * mix(0.9, 0.8, light));
+  col += OCRE * rim * mix(0.35, 0.25, light);
   return col;
 }
 
@@ -367,7 +376,7 @@ export function LandingIntro() {
             <Link className={styles.navLink} href="/connexion">
               Connexion
             </Link>
-            <Link href="/inscription" className="rounded-full bg-orange px-4 py-2.5 text-[15px] font-semibold whitespace-nowrap text-encre hover:bg-orange-clair">
+            <Link href="/inscription" className="bouton-nuit rounded-full px-4 py-2.5 text-[15px] font-semibold whitespace-nowrap">
               <span className="hidden sm:inline">Créer ma boutique</span>
               <span className="sm:hidden">Commencer</span>
             </Link>
@@ -398,10 +407,10 @@ export function LandingIntro() {
             <h1 className={styles.finalWord}>Akwaba</h1>
             <p className={styles.finalSub}>La boutique en ligne faite pour vous.</p>
             <div className="mt-1.5 flex flex-wrap justify-center gap-2">
-              <Link href="/inscription" className="rounded-full bg-orange px-6 py-3.5 font-semibold text-encre hover:bg-orange-clair">
+              <Link href="/inscription" className="bouton-nuit rounded-full px-6 py-3.5 font-semibold">
                 Créer ma boutique
               </Link>
-              <Link href="/boutique/maison-adjoua" className="rounded-full border border-encre/15 bg-white/60 px-6 py-3.5 font-semibold text-encre hover:bg-white">
+              <Link href="/boutique/maison-adjoua" className="bouton-verre rounded-full px-6 py-3.5 font-semibold">
                 Voir une boutique
               </Link>
             </div>

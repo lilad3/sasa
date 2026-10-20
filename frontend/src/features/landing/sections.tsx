@@ -40,11 +40,11 @@ const ICONS = {
 /* ---------- 1. Ce que vous obtenez ---------- */
 
 const PAYMENTS = [
-  { label: "À la livraison", tone: "bg-encre text-creme" },
-  { label: "Orange Money", tone: "bg-orange text-encre" },
-  { label: "MTN MoMo", tone: "bg-ocre text-encre" },
-  { label: "Moov Money", tone: "bg-indigo text-creme" },
-  { label: "Wave", tone: "bg-lagune text-creme" },
+  { label: "À la livraison", dot: "bg-sable" },
+  { label: "Orange Money", dot: "bg-orange" },
+  { label: "MTN MoMo", dot: "bg-ocre" },
+  { label: "Moov Money", dot: "bg-indigo-clair" },
+  { label: "Wave", dot: "bg-[#6fd3bf]" },
 ];
 
 const ROLES = [
@@ -74,22 +74,22 @@ function Sparkline() {
     <svg viewBox={`0 0 ${W} ${H}`} className="h-[90px] w-full" preserveAspectRatio="none" aria-hidden>
       <defs>
         <linearGradient id="landing-spark" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ff7a1f" stopOpacity="0.28" />
-          <stop offset="1" stopColor="#ff7a1f" stopOpacity="0" />
+          <stop offset="0" stopColor="#4a57d6" stopOpacity="0.3" />
+          <stop offset="1" stopColor="#4a57d6" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={`${line} L${W} ${H} L0 ${H} Z`} fill="url(#landing-spark)" />
-      <path d={line} fill="none" stroke="#e8661a" strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      <path d={line} fill="none" stroke="#3b45b8" strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
 
 export function Features() {
   return (
-    <section id="fonctionnalites" className="scroll-mt-24 bg-creme px-4 py-24 text-encre scheme-light md:py-28">
+    <section id="fonctionnalites" className="surface-orange scroll-mt-24 px-4 py-24 scheme-light md:py-28">
       <div className="mx-auto flex max-w-[1120px] flex-col gap-10">
         <header className="flex flex-col gap-3">
-          <Eyebrow className="text-encre-doux">Ce que vous obtenez</Eyebrow>
+          <Eyebrow className="text-encre">Ce que vous obtenez</Eyebrow>
           <SectionTitle>
             Une vitrine qui donne envie, <span className="font-light">des ventes que vous suivez en direct.</span>
           </SectionTitle>
@@ -114,13 +114,13 @@ export function Features() {
               <p className="max-w-[34ch] text-sm text-texte-2">
                 Votre article phare fait la une, comme la couverture d’un magazine. Vos clients commandent sans créer de compte.
               </p>
-              <span className="inline-flex items-center gap-2 rounded-full bg-orange px-4 py-2.5 text-sm font-semibold text-encre group-hover:bg-orange-clair">
+              <span className="bouton-nuit inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold">
                 Voir la boutique de démo <Icon path={ICONS.arrow} className="size-4" />
               </span>
             </div>
           </Link>
 
-          <article className="flex flex-col gap-3 overflow-hidden rounded-[24px] border border-trait-clair bg-white p-5 md:col-span-2">
+          <article className="verre-clair flex flex-col gap-3 overflow-hidden rounded-[24px] p-5 md:col-span-2">
             <h3 className="text-lg font-semibold">Vos ventes, en direct</h3>
             <p className="flex items-baseline gap-2">
               <span className="chiffres text-[clamp(2rem,3.6vw,2.6rem)]">4 812 500</span>
@@ -133,11 +133,12 @@ export function Features() {
             </div>
           </article>
 
-          <article className="flex flex-col gap-3 rounded-[24px] border border-trait-clair bg-white p-5 md:col-span-2">
+          <article className="verre-clair flex flex-col gap-3 rounded-[24px] p-5 md:col-span-2">
             <h3 className="text-lg font-semibold">Payé comme vos clients préfèrent</h3>
             <ul className="flex flex-wrap gap-1.5" aria-label="Moyens de paiement">
               {PAYMENTS.map((p) => (
-                <li key={p.label} className={cn("rounded-full px-3 py-1.5 text-[13px] font-semibold", p.tone)}>
+                <li key={p.label} className="inline-flex items-center gap-1.5 rounded-full bg-encre px-3 py-1.5 text-[13px] font-semibold text-creme">
+                  <span aria-hidden className={cn("size-2 rounded-full", p.dot)} />
                   {p.label}
                 </li>
               ))}
@@ -145,11 +146,11 @@ export function Features() {
             <p className="text-sm text-encre-doux">Espèces au livreur ou Mobile Money : le client choisit au moment de commander.</p>
           </article>
 
-          <article className="flex flex-col gap-3 rounded-[24px] border border-trait-clair bg-white p-5 md:col-span-3">
+          <article className="verre-clair flex flex-col gap-3 rounded-[24px] p-5 md:col-span-3">
             <h3 className="text-lg font-semibold">Votre équipe, vos règles</h3>
             <ul className="flex flex-col gap-2">
               {ROLES.map((role) => (
-                <li key={role.name} className="flex items-center gap-3 rounded-xl bg-creme px-3 py-2.5 text-sm">
+                <li key={role.name} className="flex items-center gap-3 rounded-xl bg-[rgb(255_244_232/0.4)] px-3 py-2.5 text-sm">
                   <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full", role.dot)} />
                   <span className="font-semibold">{role.name}</span>
                   <span className="ml-auto text-right text-[13px] text-encre-doux">{role.rights}</span>
@@ -158,7 +159,7 @@ export function Features() {
             </ul>
           </article>
 
-          <article className="flex flex-col gap-3 rounded-[24px] border border-trait-clair bg-white p-5 md:col-span-3">
+          <article className="verre-clair flex flex-col gap-3 rounded-[24px] p-5 md:col-span-3">
             <h3 className="text-lg font-semibold">Livraison calculée pour vous</h3>
             <p className="text-sm text-encre-doux">15 zones, du Plateau à Korhogo. Les frais s’ajoutent tout seuls au panier.</p>
             <ul className="mt-auto flex flex-wrap gap-1.5">
@@ -178,24 +179,24 @@ export function Features() {
 /* ---------- 2. Comment ça marche ---------- */
 
 const STEPS = [
-  { title: "Créez votre boutique", text: "Votre e-mail, le nom de la boutique, et c’est parti. Le lien de confirmation arrive en une minute.", tone: "bg-orange text-encre" },
+  { title: "Créez votre boutique", text: "Votre e-mail, le nom de la boutique, et c’est parti. Le lien de confirmation arrive en une minute.", tone: "bg-encre text-creme" },
   { title: "Partagez le lien", text: "Sur WhatsApp, Instagram ou TikTok : vos clients ouvrent la vitrine et commandent directement.", tone: "bg-indigo text-creme" },
-  { title: "Suivez chaque franc", text: "Commandes, chiffre d’affaires et meilleurs produits, sur ordinateur comme sur téléphone.", tone: "bg-lagune text-creme" },
+  { title: "Suivez chaque franc", text: "Commandes, chiffre d’affaires et meilleurs produits, sur ordinateur comme sur téléphone.", tone: "bg-[#237264] text-creme" },
 ];
 
 export function Steps() {
   return (
-    <section className="bg-creme-2 px-4 py-24 text-encre scheme-light">
+    <section className="surface-orange px-4 pt-8 pb-24 scheme-light">
       <div className="mx-auto flex max-w-[1120px] flex-col gap-10">
         <header className="flex flex-col gap-3">
-          <Eyebrow className="text-encre-doux">Comment ça marche</Eyebrow>
+          <Eyebrow className="text-encre">Comment ça marche</Eyebrow>
           <SectionTitle>
             Trois étapes, <span className="font-light">aucune compétence technique.</span>
           </SectionTitle>
         </header>
         <ol className="grid gap-3 md:grid-cols-3">
           {STEPS.map((step, i) => (
-            <li key={step.title} className="flex flex-col gap-4 rounded-[24px] bg-white p-6">
+            <li key={step.title} className="verre-clair flex flex-col gap-4 rounded-[24px] p-6">
               <span aria-hidden className={cn("large grid size-12 place-items-center rounded-full text-xl font-extrabold", step.tone)}>
                 {i + 1}
               </span>
@@ -301,10 +302,10 @@ export function Partners() {
 
 export function Pricing() {
   return (
-    <section id="tarifs" className="scroll-mt-24 bg-creme px-4 py-24 text-encre scheme-light">
+    <section id="tarifs" className="surface-orange scroll-mt-24 px-4 py-24 scheme-light">
       <div className="mx-auto flex max-w-[1120px] flex-col gap-10">
         <header className="flex flex-col gap-3">
-          <Eyebrow className="text-encre-doux">Tarifs</Eyebrow>
+          <Eyebrow className="text-encre">Tarifs</Eyebrow>
           <SectionTitle>
             Un seul critère : <span className="font-light">le nombre de commandes que vous recevez.</span>
           </SectionTitle>
@@ -327,10 +328,10 @@ const FAQ = [
 
 export function Faq() {
   return (
-    <section className="bg-creme px-4 pb-24 text-encre scheme-light">
+    <section className="surface-orange px-4 pb-24 scheme-light">
       <div className="mx-auto grid max-w-[1120px] gap-8 md:grid-cols-[1fr_1.6fr]">
         <header className="flex flex-col gap-3">
-          <Eyebrow className="text-encre-doux">Questions fréquentes</Eyebrow>
+          <Eyebrow className="text-encre">Questions fréquentes</Eyebrow>
           <SectionTitle className="text-[clamp(1.5rem,3vw,2.2rem)] leading-[1.1]">Ce qu’on nous demande le plus.</SectionTitle>
         </header>
         <div className="flex flex-col border-t border-trait-clair">
@@ -338,11 +339,11 @@ export function Faq() {
             <details key={question} className="group border-b border-trait-clair py-4">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-semibold [&::-webkit-details-marker]:hidden">
                 {question}
-                <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-creme-2 transition-transform group-open:rotate-45">
+                <span aria-hidden className="verre-clair grid size-8 shrink-0 place-items-center rounded-full transition-transform group-open:rotate-45">
                   +
                 </span>
               </summary>
-              <p className="mt-3 max-w-[62ch] text-encre-doux">{answer}</p>
+              <p className="mt-3 max-w-[62ch] text-encre">{answer}</p>
             </details>
           ))}
         </div>
@@ -362,7 +363,7 @@ export function Footer() {
             Votre boutique peut être en ligne <span className="font-light">avant ce soir.</span>
           </SectionTitle>
           <div className="flex flex-wrap gap-2">
-            <Link href="/inscription" className="rounded-full bg-orange px-6 py-3.5 font-semibold text-encre hover:bg-orange-clair">
+            <Link href="/inscription" className="bouton-nuit rounded-full px-6 py-3.5 font-semibold">
               Créer ma boutique
             </Link>
             <Link href="/connexion" className="rounded-full border border-white/20 px-6 py-3.5 font-semibold hover:bg-white/10">

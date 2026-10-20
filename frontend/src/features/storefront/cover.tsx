@@ -21,7 +21,7 @@ export function Cover({ shop, featured, onAdd }: { shop: Storefront; featured: P
   return (
     <section
       aria-label={`Couverture de ${shop.name}`}
-      className="relative isolate h-[clamp(520px,60vw,660px)] overflow-hidden rounded-[28px] bg-nuit text-creme"
+      className="zone-sombre relative isolate h-[clamp(520px,60vw,660px)] overflow-hidden rounded-[28px] bg-nuit text-creme"
       style={{ "--accent": accent.hex } as CSSProperties}
     >
       <div aria-hidden className="absolute inset-0 -z-10 bg-[url('/decor.jpg')] bg-cover bg-center" />
@@ -82,7 +82,7 @@ export function Cover({ shop, featured, onAdd }: { shop: Storefront; featured: P
               </p>
             ) : null}
             <div className="vit-fade mt-1 flex flex-wrap gap-2" style={{ "--d": "1.3s" } as CSSProperties}>
-              <button type="button" onClick={() => onAdd(featured)} className={cn("rounded-full px-5 py-3 font-bold", accent.button)}>
+              <button type="button" onClick={() => onAdd(featured)} className="bouton-nuit rounded-full px-5 py-3 font-bold">
                 Ajouter au panier
               </button>
               <a href="#collection" className="rounded-full border border-white/25 bg-white/5 px-5 py-3 font-semibold hover:bg-white/10">
@@ -102,7 +102,7 @@ export function Cover({ shop, featured, onAdd }: { shop: Storefront; featured: P
                 </textPath>
               </text>
             </svg>
-            <div className={cn("absolute inset-[16px] grid place-items-center rounded-full text-center shadow-[0_10px_30px_rgb(0_0_0/0.35)] md:inset-[18px]", accent.button)}>
+            <div className={cn("absolute inset-[16px] grid place-items-center rounded-full text-center shadow-[0_10px_30px_rgb(0_0_0/0.35)] md:inset-[18px]", accent.disc)}>
               <span className="large text-[13px] leading-none font-extrabold md:text-[15px]">{formatNumber(featured.price)} F</span>
             </div>
           </div>

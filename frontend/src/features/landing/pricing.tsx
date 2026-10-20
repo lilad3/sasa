@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { type CSSProperties, useId, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
@@ -23,7 +23,7 @@ const PLANS: Plan[] = [
     price: 0,
     upTo: 100,
     features: ["25 produits", "1 personne pour gérer la boutique", "Le dashboard des ventes au quotidien"],
-    tone: "bg-lagune text-creme",
+    tone: "bg-[#237264] text-creme",
   },
   {
     id: "pro",
@@ -31,7 +31,7 @@ const PLANS: Plan[] = [
     price: 9900,
     upTo: 2000,
     features: ["500 produits", "Jusqu’à 5 personnes, avec des rôles", "Import depuis Excel et clés API", "Votre couleur et votre couverture"],
-    tone: "bg-orange text-encre",
+    tone: "bg-encre text-creme",
   },
   {
     id: "business",
@@ -55,7 +55,7 @@ export function PricingSimulator() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4 rounded-[24px] border border-trait-clair bg-white p-5 md:flex-row md:items-center md:gap-8 md:p-6">
+      <div className="verre-clair flex flex-col gap-4 rounded-[24px] p-5 md:flex-row md:items-center md:gap-8 md:p-6">
         <label htmlFor={inputId} className="text-lg font-medium md:max-w-[24ch]">
           Combien de commandes recevez-vous par mois ?
         </label>
@@ -67,7 +67,8 @@ export function PricingSimulator() {
           step={10}
           value={orders}
           onChange={(event) => setOrders(Number(event.target.value))}
-          className="h-7 flex-1 accent-orange"
+          className="curseur flex-1"
+          style={{ "--rempli": `${(orders / 3000) * 100}%` } as CSSProperties}
           aria-describedby={`${inputId}-valeur`}
         />
         <output id={`${inputId}-valeur`} htmlFor={inputId} className="chiffres min-w-[7ch] text-[34px]">
@@ -84,8 +85,8 @@ export function PricingSimulator() {
               key={plan.id}
               aria-current={active ? "true" : undefined}
               className={cn(
-                "flex flex-col gap-4 rounded-[24px] border bg-white p-6 transition-[border-color,box-shadow]",
-                active ? "border-encre shadow-[0_18px_40px_rgb(23_17_10/0.12)]" : "border-trait-clair",
+                "verre-clair flex flex-col gap-4 rounded-[24px] p-6",
+                active && "[--verre-bord:var(--color-encre)] [--verre-ombre:0_18px_40px_rgb(23_17_10/0.16)]",
               )}
             >
               <div className="flex items-center justify-between gap-2">
@@ -102,7 +103,7 @@ export function PricingSimulator() {
               <ul className="flex flex-col gap-2 text-[15px]">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex gap-2.5">
-                    <span aria-hidden className="mt-[9px] size-1.5 shrink-0 rounded-full bg-orange" />
+                    <span aria-hidden className="mt-[9px] size-1.5 shrink-0 rounded-full bg-encre" />
                     {feature}
                   </li>
                 ))}
@@ -111,7 +112,7 @@ export function PricingSimulator() {
                 href="/inscription"
                 className={cn(
                   "mt-auto rounded-full px-5 py-3 text-center font-semibold",
-                  active ? "bg-orange text-encre hover:bg-orange-clair" : "border border-trait-clair hover:bg-creme",
+                  active ? "bouton-nuit" : "bouton-verre",
                 )}
               >
                 {plan.price === 0 ? "Commencer gratuitement" : `Choisir ${plan.name}`}
@@ -120,7 +121,7 @@ export function PricingSimulator() {
           );
         })}
       </ul>
-      <p className="text-sm text-encre-doux">Montants en F CFA, sans engagement. Toutes les boutiques commencent sur le plan Gratuit.</p>
+      <p className="text-sm text-encre">Montants en F CFA, sans engagement. Toutes les boutiques commencent sur le plan Gratuit.</p>
     </div>
   );
 }

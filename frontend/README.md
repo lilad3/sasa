@@ -51,12 +51,26 @@ Chaque couleur a un rôle, pour qu'aucune ne recouvre tout (jetons dans `src/app
 | Jeton | Rôle |
 |---|---|
 | `nuit`, `nuit-2` | Fonds sombres (espace marchand, sections sombres) |
-| `creme`, `creme-2` | Fonds clairs (landing, vitrine) |
-| `orange` | L'action principale : boutons, lien actif. Toujours avec un texte `encre` |
-| `indigo` | L'information : statuts, liens secondaires, séries de graphiques |
+| `orange` | La lumière des pages claires (fond animé, voir plus bas), le logo, le graphique des ventes |
+| `indigo` | La lueur des boutons, l'information : statuts, liens secondaires, séries de graphiques |
 | `ocre` | La mise en avant et les alertes. Toujours avec un texte `encre` |
 | `vert` | Uniquement ce qui monte ou réussit (hausse, livré, mot de passe solide) |
 | `corail` | Les erreurs |
 | `lagune` | Une couleur de plus pour distinguer des séries |
+| `creme`, `sable` | Le texte sur fond sombre |
+
+**Il n'y a plus de blanc.** Les pages claires (landing, vitrine) sont posées sur une lumière orange qui bouge en permanence, et les boutons sont en verre cannelé sombre.
+
+| Classe | Où | Ce qu'elle fait |
+|---|---|---|
+| `<FondOrange />` | `components/ui/fond-orange.tsx` | Lumière orange fixée derrière la page (dégradé, lueurs, traînée brune, grain). Seules des transformations sont animées : fluide même sur un petit téléphone |
+| `surface-orange` | Sections claires | Section transparente sur la lumière orange ; le texte secondaire fonce pour rester lisible |
+| `verre-clair` | Cartes, champs, panier | Vitre pêche translucide, à la place des cartes blanches |
+| `bouton-nuit` | Tous les boutons principaux | Verre cannelé sombre, lueur indigo qui glisse. `--decalage` désynchronise les boutons d'une même grille |
+| `bouton-verre` | Boutons secondaires sur l'orange | Vitre pêche bordée d'encre |
+| `zone-sombre` | Bloc sombre posé sur l'orange | Remet l'anneau de focus en clair |
+| `curseur`, `radio-verre` | Curseur des tarifs, choix du paiement | Contrôles dessinés à la main (les versions natives sont blanches) |
+
+Contraste vérifié (WCAG, 4,5:1 pour le texte) : le dégradé orange ne descend pas sous `#DA8748` et la traînée brune ne dépasse pas 33 % d'opacité, ce qui garde le texte encre au-dessus de 4,8:1. Le texte posé directement sur l'orange reste en `encre` ; le texte secondaire n'apparaît que dans les vitres.
 
 Le décor (`public/decor.jpg`) se régénère avec `python scripts/generer-decor.py public/decor.jpg` (numpy et Pillow). Copiez-le aussi dans `backend/static/akwaba_admin/decor.jpg` pour l'admin Django.

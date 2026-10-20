@@ -9,12 +9,12 @@ import { formatWait } from "@/lib/messages";
 import type { PaymentMethod, PlacedOrder, Storefront } from "@/lib/types";
 
 import { type CheckoutInput, placeOrder } from "./actions";
-import { ACCENTS } from "./accent";
 import { subtotalOf } from "./basket";
 import { type Line, Price } from "./catalogue";
 
+// Champs en pêche translucide (plus de blanc). Indice gris-brun à 4,6:1, anneau de focus indigo.
 const INPUT =
-  "w-full rounded-[14px] border border-trait-clair bg-white px-4 py-3 text-base text-encre outline-none transition-[border-color,box-shadow] placeholder:text-[#9a8f81] focus-visible:border-orange focus-visible:shadow-[0_0_0_3px_rgb(255_122_31/0.25)] aria-invalid:border-corail";
+  "w-full rounded-[14px] border border-encre/20 bg-[rgb(255_246_236/0.62)] px-4 py-3 text-base text-encre outline-none transition-[border-color,box-shadow] placeholder:text-[#6b5440] focus-visible:border-encre focus-visible:shadow-[0_0_0_3px_rgb(74_87_214/0.35)] aria-invalid:border-[#8a2412]";
 
 type FieldName = "name" | "phone" | "zone" | "landmark";
 
@@ -52,7 +52,6 @@ export function Checkout({
 }) {
   const router = useRouter();
   const id = useId();
-  const accent = ACCENTS[shop.accent];
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [zoneId, setZoneId] = useState("");
@@ -135,13 +134,13 @@ export function Checkout({
         <h2 id={`${id}-titre`} className="large text-[clamp(1.5rem,3vw,2rem)] font-bold">
           Votre commande
         </h2>
-        <button type="button" onClick={onBack} className="rounded-full border border-trait-clair bg-white px-4 py-2.5 text-sm font-semibold hover:bg-creme-2">
+        <button type="button" onClick={onBack} className="bouton-verre rounded-full px-4 py-2.5 text-sm font-semibold">
           ← Retour à la collection
         </button>
       </header>
 
       <form noValidate onSubmit={submit} className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
-        <fieldset className="flex flex-col gap-4 rounded-[22px] border border-trait-clair bg-white p-5">
+        <fieldset className="verre-clair flex flex-col gap-4 rounded-[22px] p-5">
           <legend className="sr-only">Livraison</legend>
           <h3 className="text-sm font-semibold text-encre-doux">Livraison</h3>
           <Labeled id={`${id}-nom`} label="Nom complet" error={errors.name}>
@@ -170,7 +169,7 @@ export function Checkout({
           </div>
         </fieldset>
 
-        <div className="flex flex-col gap-4 rounded-[22px] border border-trait-clair bg-white p-5">
+        <div className="verre-clair flex flex-col gap-4 rounded-[22px] p-5">
           <fieldset className="flex flex-col gap-2.5">
             <legend className="mb-2 text-sm font-semibold text-encre-doux">Paiement</legend>
             <div className="grid grid-cols-2 gap-2">
@@ -178,12 +177,12 @@ export function Checkout({
                 <label
                   key={method.id}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2 rounded-2xl border px-3 py-2.5 text-[13.5px] font-semibold transition-colors has-focus-visible:ring-2 has-focus-visible:ring-orange",
-                    payment === method.id ? "border-encre bg-creme" : "border-trait-clair hover:bg-creme",
+                    "flex cursor-pointer items-center gap-2 rounded-2xl border px-3 py-2.5 text-[13.5px] font-semibold transition-colors has-focus-visible:ring-2 has-focus-visible:ring-encre",
+                    payment === method.id ? "border-encre bg-[rgb(255_244_232/0.55)]" : "border-encre/20 hover:bg-[rgb(255_244_232/0.35)]",
                     method.id === "cash_on_delivery" && "col-span-2",
                   )}
                 >
-                  <input type="radio" name="paiement" value={method.id} checked={payment === method.id} onChange={() => setPayment(method.id)} className="accent-encre" />
+                  <input type="radio" name="paiement" value={method.id} checked={payment === method.id} onChange={() => setPayment(method.id)} className="radio-verre" />
                   {method.label}
                 </label>
               ))}
@@ -220,7 +219,7 @@ export function Checkout({
             </p>
           ) : null}
 
-          <button type="submit" disabled={pending || lines.length === 0} aria-busy={pending || undefined} className={cn("inline-flex items-center justify-center gap-2 rounded-full px-5 py-3.5 font-bold disabled:cursor-not-allowed disabled:opacity-60", accent.button)}>
+          <button type="submit" disabled={pending || lines.length === 0} aria-busy={pending || undefined} className="bouton-nuit inline-flex items-center justify-center gap-2 rounded-full px-5 py-3.5 font-bold disabled:cursor-not-allowed disabled:opacity-60">
             {pending ? <span aria-hidden className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" /> : null}
             {pending ? "Envoi de la commande…" : "Confirmer la commande"}
           </button>
@@ -244,7 +243,7 @@ function Labeled({ id, label, error, hint, children }: { id: string; label: stri
         </p>
       ) : null}
       {error ? (
-        <p id={`${id}-erreur`} className="text-[13px] text-[#b23a26]">
+        <p id={`${id}-erreur`} className="text-[13px] text-[#8a2412]">
           {error}
         </p>
       ) : null}
@@ -255,7 +254,7 @@ function Labeled({ id, label, error, hint, children }: { id: string; label: stri
 export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; shop: Storefront; onContinue: () => void }) {
   const firstName = receipt.name.split(/\s+/)[0];
   return (
-    <section aria-labelledby="confirmation-titre" className="flex flex-col gap-5 rounded-[24px] border border-trait-clair bg-white p-6 md:p-8">
+    <section aria-labelledby="confirmation-titre" className="verre-clair flex flex-col gap-5 rounded-[24px] p-6 md:p-8">
       <span aria-hidden className="grid size-12 place-items-center rounded-full bg-[#e5f5dc] text-2xl text-[#2c6a14]">
         ✓
       </span>
@@ -265,7 +264,7 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
         </h2>
         <p className="text-encre-doux">{shop.name} vous appelle au {receipt.phone} pour convenir de la livraison.</p>
       </div>
-      <dl className="grid gap-3 rounded-[18px] bg-creme p-4 sm:grid-cols-3">
+      <dl className="grid gap-3 rounded-[18px] bg-[rgb(255_244_232/0.45)] p-4 sm:grid-cols-3">
         <div>
           <dt className="text-xs text-encre-doux">Référence à noter</dt>
           <dd className="large font-mono text-2xl font-bold tracking-wide">{receipt.order.reference}</dd>
@@ -282,7 +281,7 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
           <dd className="text-xs text-encre-doux">Livraison : {receipt.zone}</dd>
         </div>
       </dl>
-      <button type="button" onClick={onContinue} className={cn("self-start rounded-full px-5 py-3 font-bold", ACCENTS[shop.accent].button)}>
+      <button type="button" onClick={onContinue} className="bouton-nuit self-start rounded-full px-5 py-3 font-bold">
         Continuer mes achats
       </button>
     </section>
