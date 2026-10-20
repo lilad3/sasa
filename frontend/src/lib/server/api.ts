@@ -99,6 +99,7 @@ function toProblem(status: number, json: unknown): Problem {
     retry_after: typeof body.retry_after === "number" ? body.retry_after : undefined,
     attempts_remaining: typeof body.attempts_remaining === "number" ? body.attempts_remaining : undefined,
     request_id: typeof body.request_id === "string" ? body.request_id : undefined,
+    total: typeof body.total === "number" ? body.total : undefined,
   };
 }
 

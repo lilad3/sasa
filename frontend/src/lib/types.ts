@@ -81,8 +81,44 @@ export type Problem = {
   status: number;
   code: string;
   detail: string;
-  errors?: Record<string, { code: string; message: string }[]>;
+  /** `available` : stock restant, sur une ligne `out_of_stock`. */
+  errors?: Record<string, { code: string; message: string; available?: number }[]>;
   retry_after?: number;
   attempts_remaining?: number;
   request_id?: string;
+  /** Total recalculé par le serveur, sur `price_changed`. */
+  total?: number;
 };
+
+/* ---------- Boutique publique (contrat §4.4) ---------- */
+
+export type Accent = "orange" | "indigo" | "ocre" | "lagune" | "corail";
+
+export type DeliveryZone = { id: string; city: string; commune: string; label: string; fee: number };
+
+export type Storefront = {
+  slug: string;
+  name: string;
+  description: string;
+  city: string;
+  accent: Accent;
+  currency: "XOF";
+  product_count: number;
+  delivery_zones: DeliveryZone[];
+  payment_methods: { id: PaymentMethod; label: string }[];
+};
+
+export type PublicProduct = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  image_url: string | null;
+  in_stock: boolean;
+  low_stock: boolean;
+  max_quantity: number;
+};
+
+export type PlacedOrder = { reference: string; total: number; status: OrderStatus };

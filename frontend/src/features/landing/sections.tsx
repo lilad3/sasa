@@ -86,7 +86,7 @@ function Sparkline() {
 
 export function Features() {
   return (
-    <section id="fonctionnalites" className="scroll-mt-24 bg-creme px-4 py-24 text-encre md:py-28">
+    <section id="fonctionnalites" className="scroll-mt-24 bg-creme px-4 py-24 text-encre scheme-light md:py-28">
       <div className="mx-auto flex max-w-[1120px] flex-col gap-10">
         <header className="flex flex-col gap-3">
           <Eyebrow className="text-encre-doux">Ce que vous obtenez</Eyebrow>
@@ -185,7 +185,7 @@ const STEPS = [
 
 export function Steps() {
   return (
-    <section className="bg-creme-2 px-4 py-24 text-encre">
+    <section className="bg-creme-2 px-4 py-24 text-encre scheme-light">
       <div className="mx-auto flex max-w-[1120px] flex-col gap-10">
         <header className="flex flex-col gap-3">
           <Eyebrow className="text-encre-doux">Comment ça marche</Eyebrow>
@@ -301,7 +301,7 @@ export function Partners() {
 
 export function Pricing() {
   return (
-    <section id="tarifs" className="scroll-mt-24 bg-creme px-4 py-24 text-encre">
+    <section id="tarifs" className="scroll-mt-24 bg-creme px-4 py-24 text-encre scheme-light">
       <div className="mx-auto flex max-w-[1120px] flex-col gap-10">
         <header className="flex flex-col gap-3">
           <Eyebrow className="text-encre-doux">Tarifs</Eyebrow>
@@ -327,7 +327,7 @@ const FAQ = [
 
 export function Faq() {
   return (
-    <section className="bg-creme px-4 pb-24 text-encre">
+    <section className="bg-creme px-4 pb-24 text-encre scheme-light">
       <div className="mx-auto grid max-w-[1120px] gap-8 md:grid-cols-[1fr_1.6fr]">
         <header className="flex flex-col gap-3">
           <Eyebrow className="text-encre-doux">Questions fréquentes</Eyebrow>
