@@ -39,8 +39,11 @@ ACTIONS = {
     "reauth_succeeded": (S, INFO, "Identité confirmée"),
     "reauth_failed": (S, WARNING, "Confirmation d'identité refusée"),
     "signup_completed": (S, INFO, "Compte créé"),
+    # Le champ piège du checkout a été rempli : un robot, pas un client.
+    "checkout_bot_blocked": (S, WARNING, "Commande de robot bloquée"),
     # Activité des boutiques
     "shop_created": (B, INFO, "Boutique créée"),
+    "order_placed": (B, INFO, "Commande passée en boutique"),
     "order_status_changed": (B, INFO, "Statut de commande modifié"),
     "demo_data_generated": (B, INFO, "Données de démo générées"),
     # Administration de la plateforme

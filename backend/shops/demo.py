@@ -7,6 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
 
+from .delivery import ZONES
 from .models import REFERENCE_ALPHABET, Order, OrderItem, OrderStatus, PaymentMethod, Product
 
 DEMO_DAYS = 180  # deux fois 90 jours : la période précédente existe aussi pour le filtre 90d
@@ -38,24 +39,17 @@ LAST_NAMES = [
     "Diomandé", "Fofana", "Cissé", "Dosso", "Ehui", "Loukou",
 ]
 
-# (ville, commune, frais de livraison en FCFA, poids)
-LOCATIONS = [
-    ("Abidjan", "Cocody", 1500, 14),
-    ("Abidjan", "Yopougon", 1500, 12),
-    ("Abidjan", "Marcory", 1500, 7),
-    ("Abidjan", "Abobo", 1500, 7),
-    ("Abidjan", "Plateau", 1500, 5),
-    ("Abidjan", "Treichville", 1500, 5),
-    ("Abidjan", "Koumassi", 1500, 5),
-    ("Abidjan", "Port-Bouët", 2000, 4),
-    ("Bingerville", "", 2000, 3),
-    ("Grand-Bassam", "", 2500, 3),
-    ("Bouaké", "", 3000, 4),
-    ("Yamoussoukro", "", 3000, 3),
-    ("Daloa", "", 3000, 2),
-    ("San-Pédro", "", 3500, 2),
-    ("Korhogo", "", 3500, 2),
-]
+# Poids de chaque zone de livraison dans les commandes de démo (les frais viennent de delivery.ZONES).
+ZONE_WEIGHTS = [14, 12, 7, 7, 5, 5, 5, 4, 3, 3, 4, 3, 2, 2, 2]
+LOCATIONS = [(zone.city, zone.commune, zone.fee, weight) for zone, weight in zip(ZONES, ZONE_WEIGHTS, strict=True)]
+
+# Rayon de chaque produit, affiché en vitrine.
+CATEGORY_BY_SKU = {
+    "KAR-500": "Beauté", "SAV-250": "Beauté",
+    "CAF-250": "Épicerie", "CAC-200": "Épicerie", "BIS-500": "Épicerie", "GIN-200": "Épicerie",
+    "HPR-1L": "Épicerie", "CHO-100": "Épicerie",
+    "PAG-BAO": "Artisanat", "SAC-RAF": "Artisanat", "SAN-CUI": "Artisanat", "PAN-ROT": "Artisanat",
+}
 
 LANDMARKS = [
     "Près de la pharmacie du quartier",
@@ -96,6 +90,7 @@ def generate_demo_data(shop):
                 slug=slugify(name),
                 name=name,
                 description=description,
+                category=CATEGORY_BY_SKU.get(sku, ""),
                 price=price,
                 stock=rng.choice([0, 2, 4]) if rng.random() < 0.15 else rng.randint(12, 80),
                 is_demo=True,

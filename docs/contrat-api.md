@@ -1,6 +1,6 @@
 # Contrat d'API — Akwaba
 
-Version 0.3 · 20/10/2026 · **Statut : P1 et P2 implémentés et testés** (`backend/`). Le P3 reste une proposition.
+Version 0.4 · 20/10/2026 · **Statut : P1 et P2 implémentés et testés** (`backend/`), ainsi que la boutique publique (§4.4). Le reste du P3 reste une proposition.
 
 Ce document est la référence commune du front (Next.js) et du back (Django + DRF). Une réponse qui n'est pas décrite ici n'existe pas : le front ne l'invente pas et le back ne l'improvise pas.
 
@@ -531,13 +531,44 @@ type ImportReport = {
 };
 ```
 
-### 4.4 Boutique publique — `/api/v1/storefront/{slug}/` (sans compte)
+### 4.4 Boutique publique — `/api/v1/storefront/{slug}/` (sans compte) · **implémentée**
+
+Ces routes n'acceptent aucun token (un visiteur connecté ou non voit la même vitrine), mais passent quand même par le BFF : sans `X-Akwaba-Bff`, la réponse est `403 bff_required`.
 
 | | Méthode et route | Rôle |
 |---|---|---|
-| P3 | `GET /` | Vitrine : nom, couleur d'accent, description |
-| P3 | `GET /products` · `GET /products/{product_slug}` | Produits actifs uniquement |
-| P3 | `POST /orders` | En-tête `Idempotency-Key` obligatoire → `201 { reference, total, status }` |
+| ✓ | `GET /storefront/{slug}` | `Storefront` : nom, description, ville, couleur d'accent, zones de livraison, moyens de paiement |
+| ✓ | `GET /storefront/{slug}/products` · `GET /storefront/{slug}/products/{product_slug}` | `PublicProduct[]`, produits actifs uniquement, triés par rayon puis par nom |
+| ✓ | `POST /storefront/{slug}/orders` | En-tête `Idempotency-Key` (UUID) obligatoire → `201 { reference, total, status }` |
+
+```ts
+type Accent = "orange" | "indigo" | "ocre" | "lagune" | "corail"; // liste fermée : jamais de code couleur libre
+
+type Storefront = {
+  slug: string;
+  name: string;
+  description: string;
+  city: string;
+  accent: Accent;
+  currency: "XOF";
+  product_count: number;
+  delivery_zones: { id: string; city: string; commune: string; label: string; fee: number }[];
+  payment_methods: { id: PaymentMethod; label: string }[];
+};
+
+type PublicProduct = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  image_url: string | null;
+  in_stock: boolean;
+  low_stock: boolean;     // 5 pièces ou moins
+  max_quantity: number;   // min(stock, 99) : le stock exact n'est pas publié
+};
+```
 
 Corps de `POST /orders` :
 
@@ -551,7 +582,12 @@ Corps de `POST /orders` :
 }
 ```
 
-Le panier vit côté client. Le serveur ne le croit pas : il revalide tout au checkout.
+- Le panier vit côté client. Le serveur ne le croit pas : il revalide tout au checkout.
+- `city` + `commune` doivent correspondre à une zone de `delivery_zones`, sinon `400` avec `customer.city: delivery_unavailable`. Les frais viennent de la zone, jamais du client.
+- Article masqué, inconnu ou d'une autre boutique : `400` avec `items.N.product_id: product_unavailable`.
+- Stock insuffisant : `409 out_of_stock`, avec `items.N.quantity: [{ code, message, available }]`.
+- Total différent de `expected_total` : `409 price_changed`, avec `subtotal`, `delivery_fee` et `total` recalculés.
+- Chaque commande est journalisée (`order_placed`) ; un champ piège rempli est journalisé (`checkout_bot_blocked`).
 
 ### 4.5 API publique — `/api/public/v1/` (clé API)
 
