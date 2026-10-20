@@ -1,4 +1,8 @@
-"""Génère le décor « verre cannelé » d'Akwaba : nuit chaude, traînée orange et ocre, lueur indigo."""
+"""
+Génère le décor « verre cannelé » d'Akwaba : nuit chaude, traînée orange et ocre, lueur indigo.
+
+Usage : python scripts/generer-decor.py public/decor.jpg   (numpy et Pillow requis)
+"""
 import sys
 import numpy as np
 from PIL import Image
@@ -67,5 +71,4 @@ col *= vig[..., None]
 col += rng.normal(0, 0.022, (H, W, 1))
 img = Image.fromarray((np.clip(col, 0, 1) * 255).astype(np.uint8))
 img.save(sys.argv[1], quality=86, optimize=True, progressive=True)
-img.resize((480, 300)).save(sys.argv[1].replace(".jpg", "-apercu.png"))
 print("ok")
