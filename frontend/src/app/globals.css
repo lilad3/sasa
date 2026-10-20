@@ -16,7 +16,11 @@
   --color-nuit: #0e0c0a;
   --color-nuit-2: #1c1713;
   --color-creme: #faf4ea;
+  --color-creme-2: #f3e9d9;
   --color-sable: #f0ddba;
+  /* Sur les sections claires (landing, vitrine) : texte secondaire et filets. */
+  --color-encre-doux: #5c5146;
+  --color-trait-clair: #e3d6c2;
 
   --color-orange: #ff7a1f;
   --color-orange-clair: #ff9b52;
