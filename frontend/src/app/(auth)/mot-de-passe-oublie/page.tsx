@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
       <Logo />
       <div>
         <h1 className="large text-[clamp(26px,2.8vw,36px)] leading-none font-extrabold">Mot de passe oublié</h1>
-        <p className="mt-2 text-texte-2">Indiquez l'adresse de votre compte : nous vous envoyons un lien pour en choisir un nouveau.</p>
+        <p className="mt-2 text-texte-2">Indiquez l’adresse de votre compte : nous vous envoyons un lien pour en choisir un nouveau.</p>
       </div>
       <ForgotForm />
     </section>

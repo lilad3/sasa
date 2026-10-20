@@ -76,7 +76,7 @@ export async function Dashboard({ slug, period }: { slug: string; period: (typeo
         <div className="carte grid gap-5 rounded-carte p-[18px] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <div className="flex min-w-0 flex-col gap-3">
             <h2 id="titre-ca" className="text-[12.5px] text-texte-3">
-              Chiffre d'affaires · {period.label}
+              Chiffre d’affaires · {period.label}
             </h2>
             <div className="flex flex-wrap items-center gap-3.5">
               <TwoTone value={formatNumber(kpis.revenue.value)} unit=" F" className="text-[clamp(40px,6vw,66px)]" />
@@ -90,7 +90,7 @@ export async function Dashboard({ slug, period }: { slug: string; period: (typeo
             <StatCard label="Clients" kpi={kpis.customers} />
           </div>
         </div>
-        <p className="px-1 text-xs text-texte-3">Les commandes annulées ne comptent ni dans le chiffre d'affaires ni dans le nombre de commandes.</p>
+        <p className="px-1 text-xs text-texte-3">Les commandes annulées ne comptent ni dans le chiffre d’affaires ni dans le nombre de commandes.</p>
       </section>
 
       <section aria-labelledby="titre-commandes" className="vitre col-span-full rounded-[24px] px-[18px] pt-4 pb-3">
@@ -106,11 +106,11 @@ export async function Dashboard({ slug, period }: { slug: string; period: (typeo
 function RevenueRestricted({ slug }: { slug: string }) {
   return (
     <section className="vitre col-span-full flex flex-col items-start gap-3 rounded-[24px] p-6">
-      <h1 className="text-[clamp(22px,2.4vw,28px)] font-medium tracking-tight">Le chiffre d'affaires n'est pas accessible avec votre rôle</h1>
+      <h1 className="text-[clamp(22px,2.4vw,28px)] font-medium tracking-tight">Le chiffre d’affaires n’est pas accessible avec votre rôle</h1>
       <p className="max-w-[60ch] text-texte-2">
         En tant que vendeur, vous traitez les commandes de la boutique. Les chiffres de vente sont réservés au propriétaire et aux gérants.
       </p>
-      <Link href={`/app/${slug}/commandes`} className="mt-1 rounded-full bg-lime px-5 py-2.5 text-sm font-bold text-encre hover:bg-lime-clair">
+      <Link href={`/app/${slug}/commandes`} className="mt-1 rounded-full bg-orange px-5 py-2.5 text-sm font-bold text-encre hover:bg-orange-clair">
         Voir les commandes
       </Link>
     </section>
@@ -124,7 +124,7 @@ export function DashboardSkeleton() {
       {[0, 1, 2].map((i) => (
         <div key={i} aria-hidden className="carte col-span-4 h-[250px] animate-pulse rounded-carte md:col-span-4 lg:col-span-2" />
       ))}
-      <div aria-hidden className="col-span-4 h-[250px] animate-pulse rounded-[24px] bg-olive/30 md:col-span-4" />
+      <div aria-hidden className="col-span-4 h-[250px] animate-pulse rounded-[24px] bg-white/[0.06] md:col-span-4" />
       <div aria-hidden className="vitre col-span-full h-[340px] animate-pulse rounded-[24px]" />
     </>
   );

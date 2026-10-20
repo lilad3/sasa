@@ -19,7 +19,7 @@ export function Delta({ kpi }: { kpi: Kpi }) {
   if (percent === null) return <span className="text-xs text-texte-3">pas de période précédente</span>;
   const up = percent >= 0;
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold", up ? "text-lime-clair" : "text-danger")}>
+    <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold", up ? "text-vert" : "text-danger")}>
       <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <circle cx="12" cy="12" r="9" />
         <path d={up ? "M8 13l4-4 4 4" : "M8 11l4 4 4-4"} />
@@ -41,7 +41,8 @@ export function StatCard({ label, kpi, money }: { label: string; kpi: Kpi; money
   );
 }
 
-const SWATCHES = ["bg-[#1f3a6b]", "bg-[#b97f12]", "bg-[#2f6b0a]", "bg-[#7a3b2e]", "bg-[#4b3f8f]"];
+// Une couleur par rang : les produits se distinguent sans dépendre du vert.
+const SWATCHES = ["bg-indigo", "bg-orange text-encre", "bg-ocre text-encre", "bg-corail", "bg-lagune"];
 
 export function ProductCard({ rank, name, units, revenue, total }: { rank: number; name: string; units: number; revenue: number; total: number }) {
   const [value, unit] = compactFcfa(revenue);
@@ -49,20 +50,20 @@ export function ProductCard({ rank, name, units, revenue, total }: { rank: numbe
   return (
     <article className="carte flex min-w-0 flex-col gap-2 rounded-carte p-3.5">
       <div className="flex items-center gap-2.5">
-        <span aria-hidden className={cn("grid size-[34px] shrink-0 place-items-center rounded-[10px] text-sm font-bold text-brume", SWATCHES[rank % SWATCHES.length])}>
+        <span aria-hidden className={cn("grid size-[34px] shrink-0 place-items-center rounded-[10px] text-sm font-bold text-creme", SWATCHES[rank % SWATCHES.length])}>
           {name.trim().charAt(0).toUpperCase()}
         </span>
         <span className="text-[11.5px] text-texte-3">N° {rank + 1} des ventes</span>
       </div>
       <h3 className="line-clamp-2 min-h-[2.6em] text-[14px] leading-snug font-semibold">{name}</h3>
-      <span className="text-xs text-texte-3">Chiffre d'affaires</span>
+      <span className="text-xs text-texte-3">Chiffre d’affaires</span>
       <TwoTone value={value} unit={unit} className="text-[clamp(24px,2.6vw,32px)]" />
       <span className="text-xs text-texte-2">{formatNumber(units)} vendus</span>
       <div className="mt-auto flex flex-col gap-1.5 pt-2">
         <div className="h-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
-          <div className="h-full rounded-full bg-lime-clair shadow-[0_0_10px_rgb(139_218_75/0.8)]" style={{ width: `${Math.max(share, 2)}%` }} />
+          <div className="h-full rounded-full bg-orange-clair shadow-[0_0_10px_rgb(255_155_82/0.7)]" style={{ width: `${Math.max(share, 2)}%` }} />
         </div>
-        <span className="text-[11.5px] text-texte-3">{share} % du chiffre d'affaires</span>
+        <span className="text-[11.5px] text-texte-3">{share} % du chiffre d’affaires</span>
       </div>
     </article>
   );
@@ -83,17 +84,17 @@ export function RoleCard({ membership }: { membership: ShopMembership }) {
   return (
     <aside
       aria-label="Votre rôle dans la boutique"
-      className="relative flex flex-col gap-3 overflow-hidden rounded-[24px] border border-pistache/30 bg-[radial-gradient(70%_60%_at_85%_0%,rgb(139_218_75/0.5),transparent_70%),radial-gradient(60%_60%_at_0%_100%,rgb(97_196_18/0.3),transparent_70%),linear-gradient(165deg,rgb(52_73_31/0.92),rgb(16_29_7/0.94))] p-[22px] before:pointer-events-none before:absolute before:inset-0 before:bg-[repeating-linear-gradient(90deg,rgb(255_255_255/0.06)_0_1px,transparent_1px_26px)]"
+      className="relative flex flex-col gap-3 overflow-hidden rounded-[24px] border border-sable/30 bg-[radial-gradient(70%_60%_at_85%_0%,rgb(74_87_214/0.55),transparent_70%),radial-gradient(60%_60%_at_0%_100%,rgb(255_122_31/0.32),transparent_70%),linear-gradient(165deg,rgb(38_30_24/0.94),rgb(16_13_11/0.95))] p-[22px] before:pointer-events-none before:absolute before:inset-0 before:bg-[repeating-linear-gradient(90deg,rgb(255_255_255/0.06)_0_1px,transparent_1px_26px)]"
     >
       <div className="relative flex items-center justify-between">
         <span className="large text-base font-extrabold">{membership.name}</span>
-        <span className="rounded-full bg-pistache/20 px-2.5 py-0.5 text-xs font-semibold text-pistache capitalize">plan {membership.plan}</span>
+        <span className="rounded-full bg-sable/20 px-2.5 py-0.5 text-xs font-semibold text-sable capitalize">plan {membership.plan}</span>
       </div>
       <h2 className="relative mt-3 text-[clamp(20px,2vw,26px)] font-medium tracking-tight">Votre rôle : {ROLE_LABEL[membership.role]}</h2>
       <ul className="relative flex flex-col gap-1.5 text-[13.5px] text-texte-2">
         {rights.map((text) => (
           <li key={text} className="flex gap-2">
-            <span aria-hidden className="mt-[7px] size-1.5 shrink-0 rounded-full bg-lime-clair" />
+            <span aria-hidden className="mt-[7px] size-1.5 shrink-0 rounded-full bg-ocre" />
             Vous pouvez {text}.
           </li>
         ))}
@@ -105,9 +106,9 @@ export function RoleCard({ membership }: { membership: ShopMembership }) {
 
 const STATUS_TONE: Record<OrderStatus, string> = {
   pending: "text-alerte",
-  confirmed: "text-pistache",
+  confirmed: "text-indigo-clair",
   shipped: "text-texte-2",
-  delivered: "text-lime-clair",
+  delivered: "text-vert",
   cancelled: "text-danger",
 };
 
@@ -122,7 +123,7 @@ export function StatusPill({ status }: { status: OrderStatus }) {
 
 export function OrderRows({ orders, slug, showAllLink = true }: { orders: Order[]; slug: string; showAllLink?: boolean }) {
   if (orders.length === 0) {
-    return <p className="rounded-[16px] border border-dashed border-trait p-4 text-sm text-texte-3">Aucune commande pour l'instant.</p>;
+    return <p className="rounded-[16px] border border-dashed border-trait p-4 text-sm text-texte-3">Aucune commande pour l’instant.</p>;
   }
   return (
     <ul className="flex flex-col">
@@ -143,7 +144,7 @@ export function OrderRows({ orders, slug, showAllLink = true }: { orders: Order[
       ))}
       {showAllLink ? (
         <li className="pt-3">
-          <Link href={`/app/${slug}/commandes`} className="text-sm font-semibold text-pistache underline decoration-pistache/40 underline-offset-[3px] hover:decoration-pistache">
+          <Link href={`/app/${slug}/commandes`} className="text-sm font-semibold text-sable underline decoration-sable/40 underline-offset-[3px] hover:decoration-sable">
             Voir toutes les commandes
           </Link>
         </li>

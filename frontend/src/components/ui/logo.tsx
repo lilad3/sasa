@@ -9,10 +9,10 @@ type LogoProps = {
 export function Logo({ className, badge }: LogoProps) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <span aria-hidden className="size-[9px] rounded-full bg-lime shadow-[0_0_0_4px_rgb(97_196_18/0.22)]" />
+      <span aria-hidden className="size-[9px] rounded-full bg-orange shadow-[0_0_0_4px_rgb(255_122_31/0.22)]" />
       <span className="large text-lg font-extrabold text-texte">akwaba</span>
       {badge ? (
-        <span className="rounded-full bg-pistache/15 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-pistache">
+        <span className="rounded-full bg-sable/15 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-sable">
           {badge}
         </span>
       ) : null}

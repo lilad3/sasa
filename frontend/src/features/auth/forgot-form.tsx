@@ -22,9 +22,9 @@ export function ForgotForm() {
       <div className="flex flex-col gap-4">
         <FormAlert tone="success">
           Si un compte existe pour cette adresse, un e-mail vient de partir. Le lien est valable 30 minutes et ne sert
-          qu'une fois.
+          qu’une fois.
         </FormAlert>
-        <Link href="/connexion" className="text-sm font-semibold text-pistache underline decoration-pistache/40 underline-offset-[3px]">
+        <Link href="/connexion" className="text-sm font-semibold text-sable underline decoration-sable/40 underline-offset-[3px]">
           Retour à la connexion
         </Link>
       </div>

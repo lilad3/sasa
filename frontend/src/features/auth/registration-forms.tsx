@@ -22,7 +22,7 @@ export function SignupRequestForm() {
     return (
       <div className="flex flex-col gap-4">
         <FormAlert tone="success">Si cette adresse peut être utilisée, un e-mail vient de partir. Ouvrez-le pour choisir votre mot de passe et créer votre boutique.</FormAlert>
-        <Link href="/connexion" className="text-sm font-semibold text-pistache underline decoration-pistache/40 underline-offset-[3px]">Retour à la connexion</Link>
+        <Link href="/connexion" className="text-sm font-semibold text-sable underline decoration-sable/40 underline-offset-[3px]">Retour à la connexion</Link>
       </div>
     );
   }
@@ -48,7 +48,7 @@ export function SignupCompletionForm({ token }: { token: string }) {
     return (
       <div className="flex flex-col gap-4">
         <FormAlert tone="danger">{state.error?.message ?? "Ce lien d'inscription est incomplet."}</FormAlert>
-        <Link href="/inscription" className="text-sm font-semibold text-pistache underline decoration-pistache/40 underline-offset-[3px]">Demander un nouveau lien</Link>
+        <Link href="/inscription" className="text-sm font-semibold text-sable underline decoration-sable/40 underline-offset-[3px]">Demander un nouveau lien</Link>
       </div>
     );
   }
@@ -71,7 +71,7 @@ export function UnlockForm({ token }: { token: string }) {
     return (
       <div className="flex flex-col gap-4">
         <FormAlert tone="danger">Le lien de déverrouillage est incomplet.</FormAlert>
-        <Link href="/connexion" className="text-sm font-semibold text-pistache underline decoration-pistache/40 underline-offset-[3px]">Retour à la connexion</Link>
+        <Link href="/connexion" className="text-sm font-semibold text-sable underline decoration-sable/40 underline-offset-[3px]">Retour à la connexion</Link>
       </div>
     );
   }

@@ -44,22 +44,22 @@ export function RevenueChart({ series }: { series: Point[] }) {
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-[170px] w-full overflow-visible" aria-hidden>
         <defs>
           <linearGradient id="ca-remplissage" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#8bda4b" stopOpacity="0.3" />
-            <stop offset="1" stopColor="#8bda4b" stopOpacity="0" />
+            <stop offset="0" stopColor="#ff7a1f" stopOpacity="0.32" />
+            <stop offset="1" stopColor="#ff7a1f" stopOpacity="0" />
           </linearGradient>
           <filter id="ca-halo" x="-5%" y="-30%" width="110%" height="160%">
             <feGaussianBlur stdDeviation="4" />
           </filter>
         </defs>
-        <line x1="0" x2={W} y1={H - BOTTOM} y2={H - BOTTOM} stroke="rgb(215 224 161 / 0.18)" strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
+        <line x1="0" x2={W} y1={H - BOTTOM} y2={H - BOTTOM} stroke="rgb(240 221 186 / 0.18)" strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
         <path d={`${line} L${W} ${H} L0 ${H} Z`} fill="url(#ca-remplissage)" />
-        <path d={line} fill="none" stroke="#8bda4b" strokeWidth="6" opacity="0.4" filter="url(#ca-halo)" vectorEffect="non-scaling-stroke" />
-        <path d={line} fill="none" stroke="#8bda4b" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+        <path d={line} fill="none" stroke="#ff9b52" strokeWidth="6" opacity="0.4" filter="url(#ca-halo)" vectorEffect="non-scaling-stroke" />
+        <path d={line} fill="none" stroke="#ff9b52" strokeWidth="2" vectorEffect="non-scaling-stroke" />
       </svg>
       {/* Point du dernier jour en HTML : dans un SVG étiré, un cercle deviendrait une ellipse. */}
       <span
         aria-hidden
-        className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-lime-clair bg-encre"
+        className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-orange-clair bg-encre"
         style={{ left: `${(last[0] / W) * 100}%`, top: `${(last[1] / H) * 100}%` }}
       />
       </div>
