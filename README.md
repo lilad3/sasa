@@ -101,9 +101,17 @@ La liste complète, avec le test qui prouve chaque point : [`docs/contrat-api.md
 ## Vérifier
 
 ```bash
-cd backend && .venv/Scripts/python manage.py test     # 173 tests
+cd backend && .venv/Scripts/python manage.py test     # 191 tests
 cd frontend && npm run lint && npm run build          # le build vérifie aussi les types
 ```
+
+Dépendances (vérifié le 21 octobre 2026) :
+
+| Commande | Résultat |
+|---|---|
+| `uvx pip-audit -r backend/requirements.txt` | Aucune vulnérabilité connue |
+| `npm audit --omit=dev` (ce qui part en production) | 0 vulnérabilité |
+| `npm audit` (avec les outils de développement) | 5 alertes, toutes dans la chaîne du lint : `eslint-config-next` → `fast-glob` → `micromatch` → `braces`. Elles ne concernent que l'analyse de motifs de fichiers sur le poste du développeur. **Ne lancez pas `npm audit fix --force`** : il rétrograderait `eslint-config-next` de la version 16 à la 14 |
 
 ## Limites connues
 
