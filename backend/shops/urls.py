@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import api_keys, catalog, shop_settings, storefront, team, views
+from . import activity, api_keys, catalog, shop_settings, storefront, team, views
 
 urlpatterns = [
     path("shops/<slug:slug>/dashboard", views.DashboardView.as_view()),
@@ -28,6 +28,8 @@ urlpatterns = [
     path("shops/<slug:slug>/plan", shop_settings.PlanChangeView.as_view()),
     path("shops/<slug:slug>/api-keys", api_keys.ApiKeyListView.as_view()),
     path("shops/<slug:slug>/api-keys/<uuid:key_id>", api_keys.ApiKeyDetailView.as_view()),
+    path("shops/<slug:slug>/activity", activity.ShopActivityView.as_view()),
+    path("shops/<slug:slug>/security-overview", activity.SecurityOverviewView.as_view()),
     # Boutique publique, sans compte
     path("storefront/<slug:slug>", storefront.StorefrontDetailView.as_view()),
     path("storefront/<slug:slug>/products", storefront.StorefrontProductListView.as_view()),
