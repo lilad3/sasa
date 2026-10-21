@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { FondOrange } from "@/components/ui/fond-orange";
 import { StorefrontApp } from "@/features/storefront/storefront-app";
+import { StorefrontUnavailable } from "@/features/storefront/unavailable";
 import { getStorefront, getStorefrontProducts } from "@/lib/server/storefront";
 
 export async function generateMetadata({ params }: PageProps<"/boutique/[slug]">): Promise<Metadata> {
@@ -25,6 +26,10 @@ export default function StorefrontPage({ params }: PageProps<"/boutique/[slug]">
 async function StorefrontFromRoute({ params }: Pick<PageProps<"/boutique/[slug]">, "params">) {
   const { slug } = await params;
   const [shop, products] = await Promise.all([getStorefront(slug), getStorefrontProducts(slug)]);
+  // Django injoignable : une page qui explique, au lieu d'une erreur brute (c'est un cas prévu, pas un bug).
+  if ((!shop.ok && shop.problem.code === "network_error") || (!products.ok && products.problem.code === "network_error")) {
+    return <StorefrontUnavailable slug={slug} />;
+  }
   if (!shop.ok) {
     if (shop.problem.status === 404) notFound();
     throw new Error(shop.problem.detail);

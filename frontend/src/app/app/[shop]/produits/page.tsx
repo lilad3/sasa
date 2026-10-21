@@ -132,26 +132,8 @@ async function ProductsFromRoute({ params, searchParams }: Pick<PageProps<"/app/
 
         <Form action={`/app/${shop}/produits`} role="search" className="flex w-full flex-wrap gap-2 sm:w-auto">
           {filters.stock ? <input type="hidden" name="stock" value={filters.stock} /> : null}
-          {summary.categories.length > 0 ? (
-            <>
-              <label htmlFor="rayon" className="sr-only">
-                Rayon
-              </label>
-              <select
-                id="rayon"
-                name="rayon"
-                defaultValue={filters.category ?? ""}
-                className="rounded-full border border-white/15 bg-encre/45 px-4 py-2.5 text-sm text-texte outline-none [color-scheme:dark] focus-visible:border-orange [&>option]:bg-nuit"
-              >
-                <option value="">Tous les rayons</option>
-                {summary.categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : null}
+          {/* Le rayon choisi reste actif pendant la recherche. */}
+          {filters.category ? <input type="hidden" name="rayon" value={filters.category} /> : null}
           <label htmlFor="recherche" className="sr-only">
             Chercher un produit
           </label>
@@ -169,6 +151,22 @@ async function ProductsFromRoute({ params, searchParams }: Pick<PageProps<"/app/
           </button>
         </Form>
       </div>
+
+      {/* Des pastilles plutôt qu'une liste déroulante : la liste native est dessinée par le système, en gris et sans verre. */}
+      {summary.categories.length > 0 ? (
+        <nav aria-label="Filtrer par rayon" className="col-span-full flex flex-wrap gap-1.5">
+          {[undefined, ...summary.categories].map((category) => (
+            <Link
+              key={category ?? "tous"}
+              href={listHref(shop, { ...filters, category, page: 1 })}
+              aria-current={filters.category === category ? "page" : undefined}
+              className="rounded-full border border-trait-doux bg-encre/40 px-3.5 py-1.5 text-[13px] font-semibold text-texte-3 transition-colors hover:border-trait hover:text-texte aria-[current=page]:border-orange/60 aria-[current=page]:bg-orange/15 aria-[current=page]:text-texte"
+            >
+              {category ?? "Tous les rayons"}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
 
       <section aria-label="Liste des produits" className="vitre col-span-full rounded-[24px] px-[18px] pt-3.5 pb-4">
         {filtered ? (

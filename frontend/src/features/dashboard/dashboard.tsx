@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
+import { SecurityCard, SecurityCardSkeleton } from "@/features/settings/security-card";
 import { formatNumber, formatToday } from "@/lib/format";
 import { getDashboard, getMyShops } from "@/lib/server/session";
 import type { Period } from "@/lib/types";
@@ -73,7 +75,15 @@ export async function Dashboard({ slug, period }: { slug: string; period: (typeo
     <>
       {header}
 
-      <Comptoir counts={summary.to_process} lowStock={summary.low_stock} slug={slug} />
+      {/* Colonne de droite, collée à l'écran : le comptoir, puis, pour le propriétaire, la sécurité de la boutique. */}
+      <div className="col-span-full flex flex-col gap-2.5 md:gap-3 lg:sticky lg:top-5 lg:order-last lg:col-span-3 lg:max-h-[calc(100dvh-2.5rem)] lg:self-start lg:gap-3.5 lg:overflow-y-auto">
+        <Comptoir counts={summary.to_process} lowStock={summary.low_stock} slug={slug} />
+        {membership?.permissions.includes("shop.manage") ? (
+          <Suspense fallback={<SecurityCardSkeleton />}>
+            <SecurityCard slug={slug} />
+          </Suspense>
+        ) : null}
+      </div>
 
       <div className="cascade col-span-full grid grid-cols-subgrid content-start gap-y-2.5 md:gap-y-3 lg:col-span-7 lg:gap-y-3.5">
         <section aria-labelledby="titre-ca" className="vitre col-span-full flex flex-col gap-4 rounded-[24px] p-[18px]">

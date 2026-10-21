@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition } from "react";
 
@@ -11,6 +12,7 @@ import type { PaymentMethod, PlacedOrder, Storefront } from "@/lib/types";
 import { type CheckoutInput, placeOrder } from "./actions";
 import { subtotalOf } from "./basket";
 import { type Line, Price } from "./catalogue";
+import { ZonePicker } from "./zone-picker";
 
 // Champs en pêche translucide (plus de blanc). Indice gris-brun à 4,6:1, anneau de focus indigo.
 const INPUT =
@@ -115,7 +117,8 @@ export function Checkout({
       }
       setErrors(fieldErrors);
       if (result.code === "out_of_stock" && result.available) onStockShortage(result.available);
-      if (["out_of_stock", "price_changed", "validation_error"].includes(result.code)) router.refresh();
+      // La boutique a pu changer entre l'affichage et l'envoi (stock, prix, mise en congé) : on recharge ses données.
+      if (["out_of_stock", "price_changed", "validation_error", "shop_on_vacation"].includes(result.code)) router.refresh();
       setNotice(
         result.code === "too_many_requests" && result.retryAfter
           ? `Trop de commandes depuis cette connexion. Réessayez dans ${formatWait(result.retryAfter)}.`
@@ -150,14 +153,15 @@ export function Checkout({
             <input id={`${id}-tel`} className={INPUT} value={phone} onChange={(e) => edit("phone", setPhone)(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="07 07 12 34 56" aria-invalid={!!errors.phone || undefined} aria-describedby={`${id}-tel-aide${errors.phone ? ` ${id}-tel-erreur` : ""}`} maxLength={24} />
           </Labeled>
           <Labeled id={`${id}-zone`} label="Commune ou ville" error={errors.zone}>
-            <select id={`${id}-zone`} className={INPUT} value={zoneId} onChange={(e) => edit("zone", setZoneId)(e.target.value)} aria-invalid={!!errors.zone || undefined} aria-describedby={errors.zone ? `${id}-zone-erreur` : undefined}>
-              <option value="">Choisissez…</option>
-              {shop.delivery_zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.label} · livraison {formatFcfa(z.fee)}
-                </option>
-              ))}
-            </select>
+            <ZonePicker
+              id={`${id}-zone`}
+              zones={shop.delivery_zones}
+              value={zoneId}
+              onChange={edit("zone", setZoneId)}
+              className={INPUT}
+              invalid={!!errors.zone}
+              describedBy={errors.zone ? `${id}-zone-erreur` : undefined}
+            />
           </Labeled>
           <Labeled id={`${id}-repere`} label="Adresse ou repère" error={errors.landmark} hint="Facultatif. Par exemple : derrière la pharmacie des Deux-Plateaux.">
             <input id={`${id}-repere`} className={INPUT} value={landmark} onChange={(e) => edit("landmark", setLandmark)(e.target.value)} autoComplete="street-address" aria-invalid={!!errors.landmark || undefined} aria-describedby={`${id}-repere-aide${errors.landmark ? ` ${id}-repere-erreur` : ""}`} maxLength={160} />
@@ -255,7 +259,7 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
   const firstName = receipt.name.split(/\s+/)[0];
   return (
     <section aria-labelledby="confirmation-titre" className="verre-clair flex flex-col gap-5 rounded-[24px] p-6 md:p-8">
-      <span aria-hidden className="grid size-12 place-items-center rounded-full bg-[#e5f5dc] text-2xl text-[#2c6a14]">
+      <span aria-hidden className="grid size-12 place-items-center rounded-full bg-encre text-2xl text-creme">
         ✓
       </span>
       <div className="flex flex-col gap-2">
@@ -281,9 +285,15 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
           <dd className="text-xs text-encre-doux">Livraison : {receipt.zone}</dd>
         </div>
       </dl>
-      <button type="button" onClick={onContinue} className="bouton-nuit self-start rounded-full px-5 py-3 font-bold">
-        Continuer mes achats
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={onContinue} className="bouton-nuit rounded-full px-5 py-3 font-bold">
+          Continuer mes achats
+        </button>
+        <Link href={`/boutique/${shop.slug}/suivi?ref=${encodeURIComponent(receipt.order.reference)}`} className="bouton-verre rounded-full px-5 py-3 font-semibold">
+          Suivre ma commande
+        </Link>
+      </div>
+      <p className="text-xs text-encre-doux">Pour la suivre plus tard, il suffit de la référence et des 4 derniers chiffres de votre numéro.</p>
     </section>
   );
 }

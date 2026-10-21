@@ -36,6 +36,12 @@ class SignupSerializer(serializers.Serializer):
     shop_name = serializers.CharField(min_length=2, max_length=60)
 
 
+class DirectSignupSerializer(SignupSerializer):
+    """Inscription en une étape (sans e-mail de confirmation) : le mot de passe vient avec le reste."""
+
+    password = serializers.CharField(**PASSWORD_FIELD)
+
+
 class SignupCompleteSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=2000)
     password = serializers.CharField(**PASSWORD_FIELD)

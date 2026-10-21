@@ -7,7 +7,7 @@ type FormAlertProps = { tone: "info" | "danger" | "success"; children: ReactNode
 const TONES = {
   info: "border-sable/25 bg-sable/10 text-texte",
   danger: "border-danger/40 bg-danger/12 text-danger-clair",
-  success: "border-vert/40 bg-vert/12 text-texte",
+  success: "border-indigo-clair/40 bg-indigo/15 text-texte",
 };
 
 /** Message global d'un formulaire, annoncé aux lecteurs d'écran. */

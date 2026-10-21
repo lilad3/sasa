@@ -10,8 +10,9 @@ export const ACCENTS: Record<Accent, { disc: string; hex: string }> = {
   orange: { disc: "bg-orange text-encre", hex: "#ff7a1f" },
   indigo: { disc: "bg-indigo text-creme", hex: "#4a57d6" },
   ocre: { disc: "bg-ocre text-encre", hex: "#f2b33d" },
-  // Crème sur le lagune de la palette ne fait que 3,8:1 : la pastille prend une teinte plus foncée.
-  lagune: { disc: "bg-[#237264] text-creme", hex: "#2e8c7a" },
+  // Bleu de lagune. La pastille prend une teinte plus foncée (crème dessus : 6,3:1),
+  // et la teinte claire sert aux chiffres posés sur la couverture sombre (5,4:1).
+  lagune: { disc: "bg-[#1f5f8a] text-creme", hex: "#3b8fc4" },
   // Même chose pour le corail : texte encre plutôt que crème.
   corail: { disc: "bg-corail text-encre", hex: "#e8553f" },
 };

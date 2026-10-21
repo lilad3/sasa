@@ -411,7 +411,7 @@ export function LandingIntro() {
                 Créer ma boutique
               </Link>
               <Link href="/boutique/maison-adjoua" className="bouton-verre rounded-full px-6 py-3.5 font-semibold">
-                Voir une boutique
+                Entrer chez Maison Adjoua
               </Link>
             </div>
             <p className={styles.finalMeaning}>« Akwaba » veut dire « bienvenue » en baoulé.</p>

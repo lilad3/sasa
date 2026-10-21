@@ -104,10 +104,10 @@ function Receipts({ receipts }: { receipts: NonNullable<TeamNote["receipts"]> })
             key={receipt.name}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px]",
-              receipt.read_at ? "border-vert/35 text-texte" : "border-trait text-texte-3",
+              receipt.read_at ? "border-indigo-clair/40 text-texte" : "border-trait text-texte-3",
             )}
           >
-            <span aria-hidden className={cn("size-1.5 rounded-full", receipt.read_at ? "bg-vert" : "bg-white/25")} />
+            <span aria-hidden className={cn("size-1.5 rounded-full", receipt.read_at ? "bg-indigo-clair" : "bg-white/25")} />
             {receipt.name}
             <span className="text-texte-3">{receipt.read_at ? formatDateTime(receipt.read_at) : "pas encore lu"}</span>
           </li>

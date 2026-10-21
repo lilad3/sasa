@@ -6,11 +6,10 @@
  * et les boutons sont en verre cannelé sombre (.bouton-nuit, plus bas).
  * Chaque couleur a un rôle, pour qu'aucune ne recouvre tout :
  *   orange  → la lumière des pages claires, le logo, le lien actif ;
- *   indigo  → la lueur des boutons et l'information (statuts, liens secondaires, graphiques) ;
+ *   indigo  → la lueur des boutons, l'information et ce qui monte ou réussit (hausse, lu, mot de passe solide) ;
  *   ocre    → la mise en avant et les alertes ;
- *   vert    → seulement ce qui monte ou réussit (hausse, livré, mot de passe solide) ;
  *   corail  → les erreurs ;
- *   lagune  → une couleur de plus pour distinguer des séries.
+ *   lagune  → un bleu de lagune, pour distinguer des séries. Il n'y a plus de vert.
  * L'orange et l'ocre portent toujours un texte « encre » : du blanc dessus serait peu lisible.
  */
 @theme {
@@ -29,9 +28,8 @@
   --color-indigo: #4a57d6;
   --color-indigo-clair: #a3abff;
   --color-ocre: #f2b33d;
-  --color-vert: #7bd65a;
   --color-corail: #e8553f;
-  --color-lagune: #2e8c7a;
+  --color-lagune: #24709f;
 
   --color-texte: #f6f0e7;
   --color-texte-2: #ccc2b4;

@@ -4,11 +4,12 @@ from unittest import mock
 
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
-from django.core import mail
+from django.core import mail, signing
 from django.core.exceptions import ValidationError
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from accounts.models import User
+from accounts.views import SIGNUP_SALT
 from core.testing import PASSWORD, ApiTestCase, make_user, without_request_id
 from shops.models import Membership
 
@@ -28,7 +29,23 @@ def link_token(message):
     return re.search(r"token=(\S+)", message.body).group(1)
 
 
+@override_settings(SIGNUP_EMAIL_VERIFICATION=True)
 class SignupTests(ApiTestCase):
+    """Inscription en deux temps, avec lien de confirmation par e-mail (SIGNUP_EMAIL_VERIFICATION=1)."""
+
+    def test_mode_is_announced_to_the_front(self):
+        self.assertEqual(self.client.get(SIGNUP_URL).json(), {"email_verification": True})
+
+    def test_password_sent_too_early_is_never_kept(self):
+        # Le formulaire en une étape enverrait un mot de passe : en mode e-mail, il est ignoré
+        # et ne finit jamais dans le jeton du lien (lisible par qui a la boîte mail).
+        response = self.client.post(SIGNUP_URL, {**signup_payload("aya@example.ci"), "password": PASSWORD})
+
+        self.assertEqual(response.status_code, 202)
+        pending = signing.loads(link_token(mail.outbox[0]), salt=SIGNUP_SALT)
+        self.assertNotIn("password", pending)
+        self.assertFalse(User.objects.filter(email="aya@example.ci").exists())
+
     def test_signup_answers_the_same_for_free_and_taken_emails(self):
         make_user("pris@example.ci")
         free = self.client.post(SIGNUP_URL, signup_payload("libre@example.ci"))
@@ -82,6 +99,58 @@ class SignupTests(ApiTestCase):
         self.assertProblem(response, 400, "validation_error")
         codes = [error["code"] for error in response.json()["errors"]["password"]]
         self.assertIn("password_local_pattern", codes)
+
+
+@override_settings(SIGNUP_EMAIL_VERIFICATION=False)
+class DirectSignupTests(ApiTestCase):
+    """Inscription en une étape, sans e-mail (SIGNUP_EMAIL_VERIFICATION=0, le réglage par défaut)."""
+
+    def payload(self, email="aya@example.ci", password=PASSWORD):
+        return {**signup_payload(email), "password": password}
+
+    def test_mode_is_announced_to_the_front(self):
+        self.assertEqual(self.client.get(SIGNUP_URL).json(), {"email_verification": False})
+
+    def test_creates_account_shop_and_session_without_any_email(self):
+        response = self.client.post(SIGNUP_URL, self.payload())
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["status"], "authenticated")
+        self.assertEqual(body["shops"][0]["slug"], "chez-aya")
+        self.assertEqual(body["shops"][0]["role"], "owner")
+        self.assertEqual(mail.outbox, [])
+        self.assertTrue(User.objects.get(email="aya@example.ci").check_password(PASSWORD))
+
+    def test_taken_email_is_refused(self):
+        make_user("aya@example.ci")
+        response = self.client.post(SIGNUP_URL, self.payload())
+
+        self.assertProblem(response, 409, "email_taken")
+        self.assertEqual(Membership.objects.filter(user__email="aya@example.ci").count(), 0)
+
+    def test_password_is_required(self):
+        response = self.client.post(SIGNUP_URL, signup_payload("aya@example.ci"))
+
+        self.assertProblem(response, 400, "validation_error")
+        self.assertIn("password", response.json()["errors"])
+
+    def test_weak_password_is_refused_and_costs_no_attempt(self):
+        for _ in range(6):
+            weak = self.client.post(SIGNUP_URL, self.payload(password="abidjan2026"))
+            self.assertProblem(weak, 400, "validation_error")
+        codes = [error["code"] for error in weak.json()["errors"]["password"]]
+        self.assertIn("password_local_pattern", codes)
+        # Six refus pour mot de passe faible, et la personne peut toujours s'inscrire.
+        self.assertEqual(self.client.post(SIGNUP_URL, self.payload()).status_code, 201)
+
+    def test_probing_addresses_is_rate_limited_per_ip(self):
+        for i in range(5):
+            self.client.post(SIGNUP_URL, self.payload(email=f"essai{i}@example.ci"))
+        response = self.client.post(SIGNUP_URL, self.payload(email="essai5@example.ci"))
+
+        self.assertProblem(response, 429, "too_many_requests")
+        self.assertFalse(User.objects.filter(email="essai5@example.ci").exists())
 
 
 class PasswordResetTests(ApiTestCase):

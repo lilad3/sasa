@@ -28,7 +28,7 @@ export function Comptoir({ counts, lowStock, slug }: { counts: DashboardSummary[
   return (
     <aside
       aria-label="À faire"
-      className="vitre col-span-full flex flex-col gap-3 rounded-[24px] p-2.5 lg:sticky lg:top-5 lg:order-last lg:col-span-3 lg:max-h-[calc(100dvh-2.5rem)] lg:self-start lg:overflow-y-auto"
+      className="vitre flex flex-col gap-3 rounded-[24px] p-2.5"
     >
       <section aria-labelledby="titre-a-traiter" className="flex flex-col gap-2">
         <div className="px-2 pt-1.5">

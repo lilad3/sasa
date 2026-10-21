@@ -221,6 +221,11 @@ AUDIT_HMAC_KEY = os.environ['AUDIT_HMAC_KEY']
 
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
 
+# Inscription (contrat §2.5). À 1, un lien de confirmation part par e-mail avant la création du compte.
+# À 0 (par défaut, tant qu'Akwaba n'a pas de nom de domaine pour envoyer des e-mails), le compte
+# et la boutique sont créés en une étape, avec le mot de passe saisi dans le formulaire.
+SIGNUP_EMAIL_VERIFICATION = os.environ.get('SIGNUP_EMAIL_VERIFICATION', '0') == '1'
+
 ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'admin/')
 
 

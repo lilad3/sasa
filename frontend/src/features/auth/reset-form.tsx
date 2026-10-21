@@ -8,22 +8,13 @@ import { Field } from "@/components/ui/field";
 
 import { FormAlert } from "./form-alert";
 import { type PasswordFormState, resetPassword } from "./password-actions";
+import { PasswordMeter } from "./password-meter";
 
 const initial: PasswordFormState = {};
-
-/** Jauge indicative : la vraie règle est vérifiée par Django (liste noire, similarité, motifs locaux). */
-function strength(password: string) {
-  if (password.length < 10) return { level: password ? 1 : 0, label: password ? "Trop court : au moins 10 caractères" : "" };
-  let score = 2;
-  if (password.length >= 14) score++;
-  if (/[^A-Za-z0-9]/.test(password) || (/[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password))) score++;
-  return { level: Math.min(score, 4), label: ["", "", "Correct", "Solide", "Très solide"][Math.min(score, 4)] };
-}
 
 export function ResetForm({ uid, token }: { uid: string; token: string }) {
   const [state, formAction, pending] = useActionState(resetPassword, initial);
   const [password, setPassword] = useState("");
-  const meter = strength(password);
 
   useEffect(() => {
     // Le jeton ne reste pas dans la barre d'adresse (historique, partage d'écran, capture).
@@ -58,12 +49,7 @@ export function ResetForm({ uid, token }: { uid: string; token: string }) {
           error={state.fields?.password}
           required
         />
-        <div aria-hidden className="grid grid-cols-4 gap-1.5">
-          {[1, 2, 3, 4].map((step) => (
-            <span key={step} className={`h-1 rounded-full ${meter.level >= step ? (meter.level >= 3 ? "bg-vert" : "bg-alerte") : "bg-white/10"}`} />
-          ))}
-        </div>
-        {meter.label ? <p className="text-[13px] text-texte-3">{meter.label}</p> : null}
+        <PasswordMeter password={password} />
       </div>
       <Field id="confirmation" name="confirmation" type="password" label="Confirmer le mot de passe" autoComplete="new-password" error={state.fields?.confirmation} required />
       <Button type="submit" pending={pending} pendingLabel="Enregistrement…" className="w-full py-3.5">
