@@ -108,3 +108,9 @@ Chaque protection du contrat (§5) a son test :
 | `core/middleware.py` | Secret BFF, IP réelle du visiteur, `request_id` |
 | `core/exceptions.py` | Format d'erreur unique |
 | `shops/permissions.py` | Rôles et isolation entre boutiques |
+| `accounts/permissions.py` | Compte sur mot de passe provisoire : rien d'autre que choisir son mot de passe |
+| `shops/team.py` | Équipe (comptes créés par le propriétaire, mot de passe provisoire) et mot du patron |
+| `shops/plans.py` | Plans et limites, appliqués par le serveur |
+| `shops/api_keys.py` · `shops/public_api.py` | Clés API (empreinte seule, temps constant) et API publique `/api/public/v1/` |
+| `shops/catalog.py` · `shops/csv_import.py` | Catalogue, alertes de stock, import CSV tout ou rien |
+| `core/spreadsheet.py` | Exports CSV pour Excel, formules neutralisées |

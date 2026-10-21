@@ -102,7 +102,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "first_name", "last_name", "mfa_enabled", "is_demo", "date_joined"]
+        fields = ["id", "email", "first_name", "last_name", "mfa_enabled", "is_demo", "must_change_password", "date_joined"]
         read_only_fields = fields
 
     def get_mfa_enabled(self, user):

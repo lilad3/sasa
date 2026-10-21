@@ -41,11 +41,23 @@ ACTIONS = {
     "signup_completed": (S, INFO, "Compte créé"),
     # Le champ piège du checkout a été rempli : un robot, pas un client.
     "checkout_bot_blocked": (S, WARNING, "Commande de robot bloquée"),
+    # Accès aux données d'une boutique : qui entre, avec quels droits, et ce qui sort.
+    "member_added": (S, WARNING, "Membre ajouté à la boutique"),
+    "member_role_changed": (S, WARNING, "Rôle d'un membre modifié"),
+    "member_removed": (S, INFO, "Membre retiré de la boutique"),
+    "member_password_reset": (S, WARNING, "Nouveau mot de passe provisoire"),
+    "api_key_created": (S, WARNING, "Clé API créée"),
+    "api_key_revoked": (S, INFO, "Clé API révoquée"),
+    "orders_exported": (S, WARNING, "Ventes exportées"),
     # Activité des boutiques
     "shop_created": (B, INFO, "Boutique créée"),
     "order_placed": (B, INFO, "Commande passée en boutique"),
     "order_status_changed": (B, INFO, "Statut de commande modifié"),
     "demo_data_generated": (B, INFO, "Données de démo générées"),
+    "products_imported": (B, INFO, "Produits importés"),
+    "plan_changed": (B, INFO, "Plan changé"),
+    "shop_updated": (B, INFO, "Boutique modifiée"),
+    "team_note_sent": (B, INFO, "Message envoyé à l'équipe"),
     # Administration de la plateforme
     "admin_login_succeeded": (A, INFO, "Connexion à l'administration"),
     "admin_login_failed": (A, WARNING, "Connexion à l'administration refusée"),

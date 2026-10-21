@@ -42,10 +42,21 @@ class Shop(models.Model):
     description = models.CharField(max_length=280, blank=True)
     city = models.CharField("ville", max_length=60, blank=True)
     accent = models.CharField("couleur de la vitrine", max_length=10, choices=Accent.choices, default=Accent.ORANGE)
+    # Mode vacances : la vitrine reste visible, mais les commandes sont fermées jusqu'à la date de retour.
+    vacation_active = models.BooleanField("en vacances", default=False)
+    vacation_message = models.CharField("message de vacances", max_length=280, blank=True)
+    vacation_until = models.DateField("date de retour", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+
+    def on_vacation(self, today=None):
+        """Vrai tant que le mode vacances est actif et que la date de retour n'est pas arrivée."""
+        if not self.vacation_active:
+            return False
+        today = today or timezone.localdate()
+        return self.vacation_until is None or today < self.vacation_until
 
 
 class Membership(models.Model):
@@ -80,6 +91,8 @@ class Product(models.Model):
     category = models.CharField("catégorie", max_length=40, blank=True)
     price = models.PositiveIntegerField(help_text="En FCFA, sans centimes.")
     stock = models.PositiveIntegerField(default=0)
+    # Sous ce seuil (inclus), le produit apparaît dans « Bientôt en rupture » et la vitrine annonce « derniers articles ».
+    low_stock_threshold = models.PositiveIntegerField("seuil d'alerte de stock", default=5)
     is_active = models.BooleanField(default=True)
     image_url = models.URLField(blank=True)
     is_demo = models.BooleanField(default=False)
@@ -182,6 +195,90 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} × {self.name}"
+
+
+class OrderNote(models.Model):
+    """Note interne sur une commande (« client injoignable, rappeler à 18 h »). Le client ne la voit jamais."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="notes")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    # Copie du nom : la note reste signée même si le compte disparaît.
+    author_name = models.CharField(max_length=160)
+    body = models.CharField(max_length=500)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["created_at"]
+
+
+class NoteAudience(models.TextChoices):
+    ALL = "all", "Toute l'équipe"
+    MANAGERS = "managers", "Les gérants"
+    SELLERS = "sellers", "Les vendeurs"
+    MEMBER = "member", "Une personne"
+
+
+class TeamNote(models.Model):
+    """
+    Le mot du patron : une consigne du propriétaire ou d'un gérant à son équipe.
+    Chaque destinataire a un accusé de lecture, créé à l'envoi : l'auteur voit qui a lu, et quand.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="team_notes")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    author_name = models.CharField(max_length=160)
+    author_role = models.CharField(max_length=10, choices=Role.choices)
+    body = models.TextField(max_length=1000)
+    urgent = models.BooleanField(default=False)
+    audience = models.CharField(max_length=10, choices=NoteAudience.choices)
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    created_at = models.DateTimeField(default=timezone.now)
+    # Retirée par son auteur ou le propriétaire : elle ne s'affiche plus en haut des pages.
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class TeamNoteReceipt(models.Model):
+    note = models.ForeignKey(TeamNote, on_delete=models.CASCADE, related_name="receipts")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_note_receipts")
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["note", "user"], name="unique_note_receipt")]
+
+
+class ApiKey(models.Model):
+    """
+    Clé de l'API publique (contrat §2.12). On garde l'identifiant en clair, pour la retrouver,
+    et l'empreinte SHA-256 du secret : la clé complète n'apparaît qu'une fois, à sa création.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="api_keys")
+    name = models.CharField(max_length=60)
+    key_id = models.CharField(max_length=8, unique=True)
+    secret_hash = models.CharField(max_length=64)
+    scopes = models.JSONField(default=list)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    last_used_ip = models.GenericIPAddressField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} (akw_live_{self.key_id}_…)"
 
 
 class IdempotencyRecord(models.Model):

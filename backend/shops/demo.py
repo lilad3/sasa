@@ -64,6 +64,12 @@ LANDMARKS = [
     "Deuxième rue après le terminus des gbaka",
 ]
 
+# (heure, poids) : un pic à la pause de midi, un autre le soir après le travail.
+ORDER_HOURS = [
+    (7, 2), (8, 3), (9, 4), (10, 5), (11, 6), (12, 9), (13, 9), (14, 6),
+    (15, 4), (16, 4), (17, 5), (18, 7), (19, 10), (20, 10), (21, 7), (22, 3),
+]
+
 PAYMENTS = [
     (PaymentMethod.WAVE, 35),
     (PaymentMethod.ORANGE_MONEY, 30),
@@ -101,7 +107,9 @@ def generate_demo_data(shop):
     if not products:
         return {"products": 0, "orders": 0, "days": DEMO_DAYS}
     weights = [entry[3] for entry in entries]
-    customers = [_customer(rng) for _ in range(60)]
+    # Un noyau de 40 habitués qui reviennent souvent, et beaucoup de clients d'une ou deux commandes.
+    customers = [_customer(rng) for _ in range(260)]
+    loyalty = [6] * 40 + [1] * 220
 
     today = timezone.localdate()
     tz = timezone.get_current_timezone()
@@ -112,10 +120,11 @@ def generate_demo_data(shop):
         per_day = 1.6 + 2.4 * (DEMO_DAYS - age) / DEMO_DAYS  # la boutique grandit : ~1,6 → 4 commandes/jour
         per_day *= {5: 1.4, 6: 0.7}.get(day.weekday(), 1.0)  # samedi chargé, dimanche calme
         for _ in range(max(0, round(rng.gauss(per_day, 1.0)))):
-            created_at = datetime.combine(day, time(rng.randint(8, 21), rng.randint(0, 59)), tzinfo=tz)
+            hour = rng.choices([h for h, _ in ORDER_HOURS], weights=[w for _, w in ORDER_HOURS])[0]
+            created_at = datetime.combine(day, time(hour, rng.randint(0, 59)), tzinfo=tz)
             if created_at > now:
                 created_at = now - timedelta(minutes=rng.randint(1, 90))
-            customer = rng.choice(customers)
+            customer = rng.choices(customers, weights=loyalty)[0]
             lines = _lines(rng, products, weights)
             subtotal = sum(product.price * quantity for product, quantity in lines)
             order = Order(
