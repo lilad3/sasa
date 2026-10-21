@@ -218,7 +218,7 @@ Chaque événement porte une gravité (info, à surveiller, critique), le compte
 
 Entrer dans l'admin exige le mot de passe **et** un code 2FA. Exporter le journal ou vérifier son intégrité est lui-même journalisé. Le marchand, lui, voit seulement ses propres événements de sécurité des 90 derniers jours (`GET /me/security-events`).
 
-**Le propriétaire, pour sa boutique** (Paramètres > Journal, avec la carte « Sécurité de la boutique ») :
+**Le propriétaire, pour sa boutique** (la carte « Sécurité de la boutique » de sa vue d'ensemble, et Paramètres > Journal) :
 - `GET /shops/{slug}/activity` : les événements de **sa** boutique sur 90 jours, toujours filtrés par `shop_id`. Avec `?type=sensible` (par défaut), seulement la catégorie Sécurité : équipe, clés, exports, robots. Avec `?type=tout`, aussi les commandes, le catalogue et les messages.
 - Chaque ligne nomme l'auteur et son rôle actuel (`null` s'il a quitté la boutique), ainsi que la cible.
 - Les détails sortent par **liste blanche**, type par type (`rows`, `previous_role`, `new_status`…). Rien d'autre que ces clés ne quitte le journal.

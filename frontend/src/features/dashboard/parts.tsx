@@ -20,7 +20,7 @@ export function Delta({ kpi }: { kpi: Kpi }) {
   if (percent === null) return <span className="text-xs text-texte-3">pas de période précédente</span>;
   const up = percent >= 0;
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold", up ? "text-vert" : "text-danger")}>
+    <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold", up ? "text-indigo-clair" : "text-danger")}>
       <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <circle cx="12" cy="12" r="9" />
         <path d={up ? "M8 13l4-4 4 4" : "M8 11l4 4 4-4"} />
@@ -42,7 +42,7 @@ export function StatCard({ label, kpi, money }: { label: string; kpi: Kpi; money
   );
 }
 
-// Une couleur par rang : les produits se distinguent sans dépendre du vert.
+// Une couleur par rang : les produits se distinguent d'un coup d'œil.
 const SWATCHES = ["bg-indigo", "bg-orange text-encre", "bg-ocre text-encre", "bg-corail", "bg-lagune"];
 
 export function ProductCard({ rank, name, units, revenue, total }: { rank: number; name: string; units: number; revenue: number; total: number }) {
@@ -109,7 +109,7 @@ export const STATUS_TONE: Record<OrderStatus, string> = {
   pending: "text-alerte",
   confirmed: "text-indigo-clair",
   shipped: "text-texte-2",
-  delivered: "text-vert",
+  delivered: "text-orange-clair",
   cancelled: "text-danger",
 };
 

@@ -181,7 +181,7 @@ export function Features() {
 const STEPS = [
   { title: "Créez votre boutique", text: "Votre e-mail, le nom de la boutique, un mot de passe, et c’est parti : la boutique est prête en une minute.", tone: "bg-encre text-creme" },
   { title: "Partagez le lien", text: "Sur WhatsApp, Instagram ou TikTok : vos clients ouvrent la vitrine et commandent directement.", tone: "bg-indigo text-creme" },
-  { title: "Suivez chaque franc", text: "Commandes, chiffre d’affaires et meilleurs produits, sur ordinateur comme sur téléphone.", tone: "bg-[#237264] text-creme" },
+  { title: "Suivez chaque franc", text: "Commandes, chiffre d’affaires et meilleurs produits, sur ordinateur comme sur téléphone.", tone: "bg-[#1f5f8a] text-creme" },
 ];
 
 export function Steps() {

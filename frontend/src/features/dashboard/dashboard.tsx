@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatNumber, formatToday } from "@/lib/format";
@@ -9,6 +10,8 @@ import type { Period } from "@/lib/types";
 import { EmptyShop } from "./empty-shop";
 import { CustomersPanel, HoursPanel, LowStockPanel, PaymentsPanel, PlacesPanel, StatusesPanel, ToProcess } from "./insights";
 import { Delta, OrderRows, ProductCard, RoleCard, StatCard, TwoTone } from "./parts";
+import { SecurityCard, SecurityCardSkeleton } from "@/features/settings/security-card";
+
 import { RevenueChart } from "./revenue-chart";
 
 export const PERIODS: { value: Period; param: string; short: string; label: string }[] = [
@@ -89,7 +92,14 @@ export async function Dashboard({ slug, period }: { slug: string; period: (typeo
 
       {membership ? (
         <div className="col-span-4 grid md:col-span-4 lg:col-span-4 lg:mt-[30px]">
-          <RoleCard membership={membership} />
+          {/* Le propriétaire a tous les droits : à cette place, il voit plutôt si la boutique est bien gardée. */}
+          {membership.permissions.includes("shop.manage") ? (
+            <Suspense fallback={<SecurityCardSkeleton />}>
+              <SecurityCard slug={slug} />
+            </Suspense>
+          ) : (
+            <RoleCard membership={membership} />
+          )}
         </div>
       ) : null}
 

@@ -162,7 +162,7 @@ function StatusTrack({ status }: { status: OrderStatus }) {
                   "h-1 rounded-full",
                   !done && "bg-white/10",
                   done && !delivered && "bg-orange-clair shadow-[0_0_10px_rgb(255_155_82/0.6)]",
-                  delivered && "bg-vert shadow-[0_0_10px_rgb(123_214_90/0.5)]",
+                  delivered && "bg-indigo-clair shadow-[0_0_10px_rgb(163_171_255/0.6)]",
                 )}
               />
               <span className={cn("text-sm", current ? "font-semibold text-texte" : done ? "text-texte-2" : "text-texte-3")}>
