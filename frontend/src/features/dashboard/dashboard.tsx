@@ -6,6 +6,8 @@ import { formatNumber, formatToday } from "@/lib/format";
 import { getDashboard, getMyShops } from "@/lib/server/session";
 import type { Period } from "@/lib/types";
 
+import { EmptyShop } from "./empty-shop";
+import { CustomersPanel, HoursPanel, LowStockPanel, PaymentsPanel, PlacesPanel, StatusesPanel, ToProcess } from "./insights";
 import { Delta, OrderRows, ProductCard, RoleCard, StatCard, TwoTone } from "./parts";
 import { RevenueChart } from "./revenue-chart";
 
@@ -28,28 +30,47 @@ export async function Dashboard({ slug, period }: { slug: string; period: (typeo
     throw new Error(result.problem.detail);
   }
   const membership = shops.ok ? shops.data.find((shop) => shop.slug === slug) : undefined;
-  const { kpis, revenue_series, top_products, recent_orders } = result.data;
+  const summary = result.data;
+  const { kpis, revenue_series, previous_series, top_products, recent_orders } = summary;
+
+  const header = (
+    <header className="col-span-full flex flex-wrap items-end justify-between gap-3 px-1 pt-1.5">
+      <div>
+        <p className="text-[12.5px] text-texte-2">{formatToday()}</p>
+        <h1 className="mt-1.5 text-[clamp(24px,2.6vw,30px)] font-medium tracking-tight">Vos ventes</h1>
+      </div>
+      {/* Le filtre de période est unique et placé au-dessus de tout ce qu'il change. */}
+      <nav aria-label="Période" className="flex gap-1 rounded-[14px] border border-trait-doux bg-encre/50 p-1">
+        {PERIODS.map((p) => (
+          <Link
+            key={p.value}
+            href={`/app/${slug}?periode=${p.param}`}
+            aria-current={p.value === period.value ? "page" : undefined}
+            className="rounded-[10px] px-3 py-1.5 text-[13px] font-semibold text-texte-3 hover:text-texte aria-[current=page]:bg-white/12 aria-[current=page]:text-texte"
+          >
+            {p.short}
+          </Link>
+        ))}
+      </nav>
+    </header>
+  );
+
+  // Aucune commande, même ancienne : le dashboard n'aurait que des zéros.
+  if (recent_orders.length === 0) {
+    return (
+      <>
+        {header}
+        <EmptyShop slug={slug} canFillDemo={membership?.permissions.includes("shop.manage") ?? false} />
+      </>
+    );
+  }
 
   return (
     <>
-      <header className="col-span-full flex flex-wrap items-end justify-between gap-3 px-1 pt-1.5">
-        <div>
-          <p className="text-[12.5px] text-texte-2">{formatToday()}</p>
-          <h1 className="mt-1.5 text-[clamp(24px,2.6vw,30px)] font-medium tracking-tight">Vos ventes</h1>
-        </div>
-        <nav aria-label="Période" className="flex gap-1 rounded-[14px] border border-trait-doux bg-encre/50 p-1">
-          {PERIODS.map((p) => (
-            <Link
-              key={p.value}
-              href={`/app/${slug}?periode=${p.param}`}
-              aria-current={p.value === period.value ? "page" : undefined}
-              className="rounded-[10px] px-3 py-1.5 text-[13px] font-semibold text-texte-3 hover:text-texte aria-[current=page]:bg-white/12 aria-[current=page]:text-texte"
-            >
-              {p.short}
-            </Link>
-          ))}
-        </nav>
-      </header>
+      {header}
+
+      <ToProcess counts={summary.to_process} slug={slug} />
+      <LowStockPanel lowStock={summary.low_stock} slug={slug} />
 
       <section aria-labelledby="titre-produits" className="col-span-full grid grid-cols-subgrid gap-y-2.5 lg:col-span-6">
         <h2 id="titre-produits" className="col-span-full px-1 text-sm text-texte-2">
@@ -82,7 +103,7 @@ export async function Dashboard({ slug, period }: { slug: string; period: (typeo
               <TwoTone value={formatNumber(kpis.revenue.value)} unit=" F" className="text-[clamp(40px,6vw,66px)]" />
               <Delta kpi={kpis.revenue} />
             </div>
-            <RevenueChart series={revenue_series} />
+            <RevenueChart series={revenue_series} previous={previous_series} />
           </div>
           <div className="grid content-start gap-2.5 sm:grid-cols-3 lg:grid-cols-1">
             <StatCard label="Commandes" kpi={kpis.orders} />
@@ -92,6 +113,12 @@ export async function Dashboard({ slug, period }: { slug: string; period: (typeo
         </div>
         <p className="px-1 text-xs text-texte-3">Les commandes annulées ne comptent ni dans le chiffre d’affaires ni dans le nombre de commandes.</p>
       </section>
+
+      <StatusesPanel statuses={summary.statuses} periodLabel={period.label} />
+      <PaymentsPanel payments={summary.payment_methods} revenue={kpis.revenue.value} />
+      <PlacesPanel places={summary.places} revenue={kpis.revenue.value} />
+      <HoursPanel grid={summary.order_hours} />
+      <CustomersPanel customers={summary.customers} top={summary.top_customers} />
 
       <section aria-labelledby="titre-commandes" className="vitre col-span-full rounded-[24px] px-[18px] pt-4 pb-3">
         <h2 id="titre-commandes" className="pb-1 text-sm text-texte-2">
@@ -121,6 +148,7 @@ export function DashboardSkeleton() {
   return (
     <>
       <div aria-hidden className="col-span-full h-[70px]" />
+      <div aria-hidden className="vitre col-span-full h-[86px] animate-pulse rounded-[24px]" />
       {[0, 1, 2].map((i) => (
         <div key={i} aria-hidden className="carte col-span-4 h-[250px] animate-pulse rounded-carte md:col-span-4 lg:col-span-2" />
       ))}

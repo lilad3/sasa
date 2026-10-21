@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Logo } from "@/components/ui/logo";
 import { logout } from "@/features/auth/actions";
 import { ROLE_LABEL } from "@/lib/format";
-import { getMe, getMyShops } from "@/lib/server/session";
+import { getMe, getMyShops, getUnreadTeamNotes } from "@/lib/server/session";
 
 import { NavLinks } from "./nav-links";
 
@@ -13,17 +13,16 @@ import { NavLinks } from "./nav-links";
  * membre donne 404, comme côté API (on n'apprend pas qu'elle existe).
  */
 export async function Sidebar({ slug }: { slug: string }) {
-  const [shops, me] = await Promise.all([getMyShops(), getMe()]);
+  const [shops, me, unread] = await Promise.all([getMyShops(), getMe(), getUnreadTeamNotes(slug)]);
   if (!shops.ok || !me.ok) throw new Error("Impossible de charger votre compte.");
   const current = shops.data.find((shop) => shop.slug === slug);
   if (!current) notFound();
 
-  const canSeeRevenue = current.permissions.includes("dashboard.view");
-
   return (
     <aside
       aria-label="Espace marchand"
-      className="vitre col-span-4 flex items-center gap-2.5 overflow-x-auto rounded-[20px] p-2 md:col-span-8 lg:col-span-2 lg:row-span-3 lg:flex-col lg:items-stretch lg:gap-3.5 lg:overflow-visible lg:rounded-[24px] lg:px-2.5 lg:py-3.5"
+      // Compacte (la hauteur de son contenu) et collée : elle reste à portée pendant qu'on fait défiler la page.
+      className="vitre sticky top-3 z-10 col-span-4 flex items-center gap-2.5 overflow-x-auto rounded-[20px] p-2 md:top-[18px] md:col-span-8 lg:top-5 lg:col-span-2 lg:max-h-[calc(100dvh-2.5rem)] lg:flex-col lg:items-stretch lg:gap-3.5 lg:self-start lg:overflow-x-hidden lg:overflow-y-auto lg:rounded-[24px] lg:px-2.5 lg:py-3.5"
     >
       <Link href={`/app/${slug}`} className="shrink-0 px-1.5 lg:px-2 lg:pt-1.5">
         <Logo />
@@ -45,7 +44,7 @@ export async function Sidebar({ slug }: { slug: string }) {
         </nav>
       ) : null}
 
-      <NavLinks slug={slug} canSeeRevenue={canSeeRevenue} />
+      <NavLinks slug={slug} permissions={current.permissions} unreadNotes={unread.ok ? unread.data.length : 0} />
 
       <div className="ml-auto flex shrink-0 items-center gap-2 lg:mt-auto lg:ml-0 lg:flex-col lg:items-stretch">
         <div className="hidden rounded-2xl border border-trait bg-encre/50 px-3 py-2.5 lg:block">
@@ -55,6 +54,12 @@ export async function Sidebar({ slug }: { slug: string }) {
           <p className="text-xs text-texte-3">
             {ROLE_LABEL[current.role]} · {current.name}
           </p>
+          {me.data.mfa_enabled ? null : (
+            <Link href={`/app/${slug}/securite`} className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-ocre hover:underline">
+              <span aria-hidden className="size-1.5 rounded-full bg-ocre" />
+              Activer la double authentification
+            </Link>
+          )}
         </div>
         <form action={logout}>
           <button
@@ -74,5 +79,5 @@ export async function Sidebar({ slug }: { slug: string }) {
 }
 
 export function SidebarSkeleton() {
-  return <div aria-hidden className="vitre col-span-4 h-[52px] rounded-[20px] md:col-span-8 lg:col-span-2 lg:row-span-3 lg:h-auto lg:min-h-[640px] lg:rounded-[24px]" />;
+  return <div aria-hidden className="vitre col-span-4 h-[52px] rounded-[20px] md:col-span-8 lg:col-span-2 lg:h-[420px] lg:self-start lg:rounded-[24px]" />;
 }

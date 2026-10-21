@@ -5,7 +5,22 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
 
-import type { DashboardSummary, Me, Paginated, Order, Period, Problem, ShopMembership } from "@/lib/types";
+import type {
+  DashboardSummary,
+  Me,
+  Member,
+  Order,
+  OrderCounts,
+  OrderDetail,
+  OrderStatus,
+  Paginated,
+  Period,
+  Problem,
+  SecurityEvent,
+  Session,
+  ShopMembership,
+  TeamNote,
+} from "@/lib/types";
 import { type ApiResult, callApi, clientIpFrom, type RequestContext } from "./api";
 import { COOKIE } from "./cookies";
 
@@ -32,6 +47,8 @@ const SESSION_GONE: Record<string, string> = {
 
 function handleAuthProblem(problem: Problem): never | void {
   if (problem.code === "token_expired") redirect("/session/renouveler");
+  // Compte créé par un patron, encore sur son mot de passe provisoire : rien d'autre avant de l'avoir remplacé.
+  if (problem.code === "password_change_required") redirect("/premiere-connexion");
   const reason = SESSION_GONE[problem.code];
   if (reason) redirect(`/session/fin?raison=${reason}`);
 }
@@ -40,7 +57,7 @@ function handleAuthProblem(problem: Problem): never | void {
  * Appel authentifié depuis un Server Component.
  * Les erreurs de session redirigent ; les autres (403, 404…) reviennent à l'appelant pour qu'il affiche le bon état.
  */
-async function authed<T>(path: string): Promise<ApiResult<T>> {
+export async function authed<T>(path: string): Promise<ApiResult<T>> {
   // Ces données n'existent qu'au moment de la requête : sans cette ligne, Next tenterait de
   // pré-rendre l'appel et refuserait l'identifiant aléatoire de requête (crypto.randomUUID).
   await connection();
@@ -64,6 +81,58 @@ export async function getDashboard(slug: string, period: Period) {
   return authed<DashboardSummary>(`shops/${encodeURIComponent(slug)}/dashboard?period=${period}`);
 }
 
-export async function getOrders(slug: string, page = 1) {
-  return authed<Paginated<Order>>(`shops/${encodeURIComponent(slug)}/orders?page=${page}&page_size=20`);
+export async function getOrders(slug: string, { page = 1, status, q }: { page?: number; status?: OrderStatus; q?: string } = {}) {
+  const query = new URLSearchParams({ page: String(page), page_size: "20" });
+  if (status) query.set("status", status);
+  if (q) query.set("q", q);
+  return authed<Paginated<Order>>(`shops/${encodeURIComponent(slug)}/orders?${query}`);
+}
+
+export async function getOrderCounts(slug: string) {
+  return authed<OrderCounts>(`shops/${encodeURIComponent(slug)}/orders/counts`);
+}
+
+export async function getOrder(slug: string, id: string) {
+  return authed<OrderDetail>(`shops/${encodeURIComponent(slug)}/orders/${encodeURIComponent(id)}`);
+}
+
+export async function getMembers(slug: string) {
+  return authed<Member[]>(`shops/${encodeURIComponent(slug)}/members`);
+}
+
+export async function getTeamNotes(slug: string) {
+  return authed<TeamNote[]>(`shops/${encodeURIComponent(slug)}/notes`);
+}
+
+// La barre latérale (pastille) et le bandeau du haut lisent les mêmes messages non lus : un seul appel.
+export const getUnreadTeamNotes = cache(async (slug: string) => authed<TeamNote[]>(`shops/${encodeURIComponent(slug)}/notes?unread=1`));
+
+export async function getSessions() {
+  return authed<Session[]>("me/sessions");
+}
+
+export async function getSecurityEvents(page = 1) {
+  return authed<Paginated<SecurityEvent>>(`me/security-events?page=${page}&page_size=8`);
+}
+
+/**
+ * Appel authentifié depuis une Server Action (POST, PATCH, DELETE).
+ * Le proxy a déjà renouvelé l'accès : il passe aussi sur les envois de formulaire de /app.
+ * Une session morte renvoie au login, comme pour les pages ; les autres erreurs reviennent au formulaire.
+ */
+/** Téléchargement depuis une Server Action (export CSV) : le contenu brut, ou l'erreur de l'API. */
+export async function authedText(path: string): Promise<ApiResult<string>> {
+  const access = (await cookies()).get(COOKIE.access)?.value;
+  if (!access) redirect("/connexion");
+  const result = await callApi<string>(path, { access, context: await requestContext(), as: "text" });
+  if (!result.ok) handleAuthProblem(result.problem);
+  return result;
+}
+
+export async function authedMutation<T>(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown): Promise<ApiResult<T>> {
+  const access = (await cookies()).get(COOKIE.access)?.value;
+  if (!access) redirect("/connexion");
+  const result = await callApi<T>(path, { method, body, access, context: await requestContext() });
+  if (!result.ok) handleAuthProblem(result.problem);
+  return result;
 }

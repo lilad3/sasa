@@ -35,7 +35,10 @@ function describe(problem: Problem): FormError {
 }
 
 function landingFor(shops: ShopMembership[]) {
-  return shops[0] ? `/app/${shops[0].slug}` : "/app";
+  const first = shops[0];
+  if (!first) return "/app";
+  // Le vendeur n'a pas accès au chiffre d'affaires : il arrive directement sur les commandes.
+  return first.permissions.includes("dashboard.view") ? `/app/${first.slug}` : `/app/${first.slug}/commandes`;
 }
 
 const LoginSchema = z.object({
@@ -82,6 +85,8 @@ export async function login(_previous: AuthFormState, formData: FormData): Promi
   }
 
   setSessionCookies(jar, result.data, shared);
+  // Compte créé par un patron : il choisit d'abord son propre mot de passe.
+  if (result.data.user.must_change_password) redirect("/premiere-connexion");
   redirect(next ?? landingFor(result.data.shops));
 }
 

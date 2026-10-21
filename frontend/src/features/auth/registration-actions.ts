@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { type FormError, messageFor } from "@/lib/messages";
+import { type FormError, messageFor, PASSWORD_RULES } from "@/lib/messages";
 import { callApi } from "@/lib/server/api";
 import { deviceIdFor, rememberDevice, setSessionCookies } from "@/lib/server/cookies";
 import { requestContext } from "@/lib/server/session";
@@ -22,15 +22,6 @@ const SignupSchema = z.object({
   last_name: z.string().trim().min(1, "Indiquez votre nom.").max(80),
   shop_name: z.string().trim().min(2, "Le nom de la boutique doit contenir au moins 2 caractères.").max(60),
 });
-
-const PASSWORD_RULES: Record<string, string> = {
-  password_too_short: "Au moins 10 caractères.",
-  password_too_long: "128 caractères au maximum.",
-  password_too_common: "Ce mot de passe fait partie des plus courants : choisissez-en un autre.",
-  password_too_similar: "Trop proche de votre e-mail, de votre nom ou du nom de votre boutique.",
-  password_entirely_numeric: "Il ne peut pas contenir uniquement des chiffres.",
-  password_local_pattern: "Évitez un mot évident suivi de chiffres.",
-};
 
 export async function requestSignup(_previous: RegistrationState, formData: FormData): Promise<RegistrationState> {
   const parsed = SignupSchema.safeParse({
