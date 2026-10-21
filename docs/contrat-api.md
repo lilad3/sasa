@@ -218,6 +218,18 @@ Chaque événement porte une gravité (info, à surveiller, critique), le compte
 
 Entrer dans l'admin exige le mot de passe **et** un code 2FA. Exporter le journal ou vérifier son intégrité est lui-même journalisé. Le marchand, lui, voit seulement ses propres événements de sécurité des 90 derniers jours (`GET /me/security-events`).
 
+**Le propriétaire, pour sa boutique** (Paramètres > Journal, avec la carte « Sécurité de la boutique ») :
+- `GET /shops/{slug}/activity` : les événements de **sa** boutique sur 90 jours, toujours filtrés par `shop_id`. Avec `?type=sensible` (par défaut), seulement la catégorie Sécurité : équipe, clés, exports, robots. Avec `?type=tout`, aussi les commandes, le catalogue et les messages.
+- Chaque ligne nomme l'auteur et son rôle actuel (`null` s'il a quitté la boutique), ainsi que la cible.
+- Les détails sortent par **liste blanche**, type par type (`rows`, `previous_role`, `new_status`…). Rien d'autre que ces clés ne quitte le journal.
+- L'IP et l'appareil ne sont montrés que pour les actions de l'équipe, jamais pour celles des clients ou des robots : le marchand n'en a pas besoin.
+- `GET /shops/{slug}/security-overview` donne des faits, sans aucun secret. Le front en tire ses verdicts.
+  - Qui a la 2FA dans l'équipe, et les mots de passe provisoires expirés.
+  - Les clés API endormies : jamais utilisées après 7 jours, ou inutilisées depuis 30 jours. Et celles qui expirent sous 14 jours.
+  - Les essais refusés sur les comptes de l'équipe en 7 jours (connexion, 2FA, confirmation, verrouillage, vol de session).
+  - Le dernier export des ventes.
+- Ces deux routes sont réservées au propriétaire (`shop.manage`) : `403` pour le gérant et le vendeur.
+
 **Pourquoi on peut s'y fier.**
 - **En ajout seul, à deux niveaux.** L'ORM refuse toute modification ou suppression, et des triggers SQLite refusent `UPDATE` et `DELETE` même en SQL brut. Personne, pas même un superutilisateur, ne peut retoucher l'historique depuis l'application.
 - **Chaîné par HMAC.** Chaque ligne contient l'empreinte de la précédente, signée avec `AUDIT_HMAC_KEY`, une clé qui n'est pas dans la base. Si quelqu'un modifie ou supprime une ligne directement dans le fichier, « Vérifier l'intégrité » indique la première ligne touchée.
@@ -528,6 +540,8 @@ type SecurityEvent = {
 | ✓ | `GET /orders/export?from=&to=` | propriétaire, gérant + confirmation renforcée | CSV `;` avec BOM, formules neutralisées, un an au plus, journalisé (`orders_exported`) |
 | ✓ | `GET /plans` · `POST /plan` | propriétaire (+ confirmation renforcée pour changer) | `{ current, plans, usage }` ; `409 plan_too_small` si l'usage dépasse le plan visé |
 | ✓ | `GET` · `POST /api-keys` · `DELETE /api-keys/{id}` | propriétaire (+ confirmation renforcée et plan Pro+ pour créer) | La clé complète n'apparaît que dans la réponse du `POST` ; alerte e-mail à la création |
+| ✓ | `GET /activity?type=sensible\|tout&page=` | propriétaire | Journal de la boutique, 90 jours, paginé (§2.10) |
+| ✓ | `GET /security-overview` | propriétaire | Faits de sécurité : 2FA de l'équipe, clés endormies, essais refusés, dernier export (§2.10) |
 | ✓ | `GET` · `PATCH /settings` | propriétaire | Profil de la vitrine, couleur (Pro+), mode vacances (`vacation_active`, `vacation_message`, `vacation_until`) |
 | ✓ | `GET` · `POST /members` · `PATCH` · `DELETE /members/{user_id}` · `POST /members/{user_id}/temporary-password` | voir : tous · gérer : propriétaire (+ confirmation renforcée) | §2.15 |
 | ✓ | `GET /notes?unread=1` · `POST /notes` · `POST /notes/{id}/read` · `DELETE /notes/{id}` | lire : tous · écrire : propriétaire, gérant | Le mot du patron ; `DELETE` retire la note (auteur ou propriétaire) sans l'effacer de l'historique |
@@ -704,6 +718,8 @@ Chaque protection a un test qui la démontre. Les cases cochées sont couvertes 
 - [x] Les mots de passe `abidjan2026` et `akwaba123` sont refusés.
 - [x] Inscription en une étape : le compte, la boutique et la session sont créés sans e-mail ; une adresse prise renvoie `409 email_taken` ; un mot de passe faible ne consomme pas d'essai ; la 6e inscription de l'heure depuis une IP renvoie `429`.
 - [x] Inscription avec e-mail : un mot de passe envoyé à l'étape 1 n'est jamais gardé dans le jeton du lien.
+- [x] Journal de la boutique : le propriétaire ne voit que sa boutique ; le gérant et le vendeur reçoivent `403` ; les détails passent par liste blanche ; l'IP d'un client n'est jamais montrée ; rien au-delà de 90 jours.
+- [x] Santé de la sécurité : la 2FA de l'équipe, les clés endormies ou bientôt expirées, les essais refusés sur les comptes de l'équipe (et pas ceux d'une autre boutique) et le dernier export sont justes.
 - [x] Avec `DEBUG=0`, une erreur 500 ne contient ni trace ni détail interne.
 - [x] `/api/v1/` sans secret BFF renvoie `403`.
 - [x] Codes 2FA : un `mfa_token` meurt après 3 codes faux, et un mot de passe connu ne permet pas de deviner les codes à l'infini (verrou commun).

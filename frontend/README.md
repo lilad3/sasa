@@ -25,12 +25,12 @@ Avant de pousser : `npm run lint` et `npm run build` (le build vérifie aussi le
 | `/boutique/[slug]` | Les clients d'une boutique, sans compte | Vitrine, panier, commande (exemple : `/boutique/maison-adjoua`) |
 | `/boutique/[slug]/suivi` | Les clients, sans compte | Suivi d'une commande avec sa référence et les 4 derniers chiffres du téléphone |
 | `/connexion`, `/inscription`, `/mot-de-passe-oublie`… | Marchands | Authentification (2FA, appareil partagé, déverrouillage). `/inscription` demande à Django son mode : en une étape avec le mot de passe, ou avec lien par e-mail |
-| `/app/[shop]` | Marchands connectés | Dashboard des ventes : à traiter, chiffre d'affaires, suivi, paiements, lieux, heures, clients (propriétaire et gérant) |
+| `/app/[shop]` | Marchands connectés | Dashboard des ventes : à traiter, chiffre d'affaires, suivi, paiements, lieux, heures, clients (propriétaire et gérant). Sur toutes les pages de `/app`, un bandeau annonce les nouvelles commandes (relevé toutes les 30 s, `app/app/layout.tsx`) |
 | `/app/[shop]/commandes` | Tous les rôles | Liste filtrable par statut, recherche ; `/commandes/[id]` : fiche et traitement de la commande |
 | `/app/[shop]/securite` | Tous les rôles | Double authentification, mot de passe, appareils connectés, journal de sécurité |
 | `/app/[shop]/messages` | Tous les rôles | Le mot du patron : le propriétaire et les gérants écrivent à l'équipe, chacun confirme « C'est noté » |
 | `/app/[shop]/produits` | Tous les rôles (modification : propriétaire et gérant) | Catalogue, alertes de stock, fiche produit, import CSV (Pro et plus) |
-| `/app/[shop]/parametres` | Propriétaire | Onglets Boutique (vitrine, couleur, mode congé), Équipe (comptes et mots de passe provisoires), Plan, Clés API |
+| `/app/[shop]/parametres` | Propriétaire | Onglets Boutique (vitrine, couleur, mode congé), Équipe (comptes et mots de passe provisoires), Plan, Clés API, Journal (carte « Sécurité de la boutique » et qui a fait quoi, 90 jours) |
 | `/premiere-connexion` | Comptes créés par un patron | Remplacer le mot de passe provisoire avant d'entrer |
 
 ## Organisation du code
@@ -60,9 +60,8 @@ Chaque couleur a un rôle, pour qu'aucune ne recouvre tout (jetons dans `src/app
 |---|---|
 | `nuit`, `nuit-2` | Fonds sombres (espace marchand, sections sombres) |
 | `orange` | La lumière des pages claires (fond animé, voir plus bas), le logo, le graphique des ventes |
-| `indigo` | La lueur des boutons, l'information : statuts, liens secondaires, séries de graphiques |
+| `indigo` | La lueur des boutons, l'information (statuts, liens secondaires, séries de graphiques) et ce qui monte ou réussit (hausse, message lu, mot de passe solide) |
 | `ocre` | La mise en avant et les alertes. Toujours avec un texte `encre` |
-| `vert` | Uniquement ce qui monte ou réussit (hausse, livré, mot de passe solide) |
 | `corail` | Les erreurs |
 | `lagune` | Une couleur de plus pour distinguer des séries |
 | `creme`, `sable` | Le texte sur fond sombre |

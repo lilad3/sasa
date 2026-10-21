@@ -69,6 +69,9 @@ Les comptes de démo ont un mot de passe public : ils ne peuvent ni changer de m
 | Suivre sa commande | Lien « Suivre ma commande » après l'achat | Référence + 4 derniers chiffres du téléphone ; la page n'affiche ni adresse ni numéro, et 5 essais par heure et par référence au plus |
 | Mettre la boutique en congé | Paramètres > Boutique | La vitrine affiche le message du marchand et Django refuse les commandes (`409 shop_on_vacation`) |
 | Fermer une session à distance | Sécurité > Appareils connectés | L'appareil est coupé tout de suite, sans attendre l'expiration du token |
+| La sécurité de la boutique | Paramètres > Journal avec `adjoua@akwaba.test` | Une carte dit ce qui est en ordre et ce qui ne l'est pas : 2FA de chacun, clés API endormies, essais refusés sur les comptes de l'équipe, dernier export |
+| Qui a fait quoi | Exportez les ventes avec `fatou@akwaba.test`, puis Paramètres > Journal avec `adjoua@akwaba.test` | « Fatou Diabaté a exporté 121 commandes… », avec l'appareil et l'heure. Le journal ne se modifie pas, et ne montre jamais l'IP d'un client |
+| Une commande pendant qu'on regarde | Espace marchand ouvert, et une commande passée en vitrine depuis un autre navigateur | Un bandeau apparaît en moins de 30 s, avec « (1) » dans le titre de l'onglet ; le son est facultatif |
 | Le journal d'audit | `http://127.0.0.1:8000/admin/` avec `admin@akwaba.test` et un code 2FA | Lecture seule, même pour un superutilisateur ; « Vérifier l'intégrité » détecte une ligne retouchée dans la base |
 
 ## Comment c'est protégé
