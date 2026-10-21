@@ -42,31 +42,34 @@ export function StatCard({ label, kpi, money }: { label: string; kpi: Kpi; money
   );
 }
 
-// Une couleur par rang : les produits se distinguent sans dépendre du vert.
-const SWATCHES = ["bg-indigo", "bg-orange text-encre", "bg-ocre text-encre", "bg-corail", "bg-lagune"];
+type TopProduct = { id: string; name: string; units: number; revenue: number };
 
-export function ProductCard({ rank, name, units, revenue, total }: { rank: number; name: string; units: number; revenue: number; total: number }) {
-  const [value, unit] = compactFcfa(revenue);
-  const share = total > 0 ? Math.round((revenue / total) * 100) : 0;
+/** Produits phares en liste classée : une ligne par produit, la barre donne sa part du chiffre d'affaires. */
+export function TopProducts({ products, total }: { products: TopProduct[]; total: number }) {
   return (
-    <article className="carte flex min-w-0 flex-col gap-2 rounded-carte p-3.5">
-      <div className="flex items-center gap-2.5">
-        <span aria-hidden className={cn("grid size-[34px] shrink-0 place-items-center rounded-[10px] text-sm font-bold text-creme", SWATCHES[rank % SWATCHES.length])}>
-          {name.trim().charAt(0).toUpperCase()}
-        </span>
-        <span className="text-[11.5px] text-texte-3">N° {rank + 1} des ventes</span>
-      </div>
-      <h3 className="line-clamp-2 min-h-[2.6em] text-[14px] leading-snug font-semibold">{name}</h3>
-      <span className="text-xs text-texte-3">Chiffre d’affaires</span>
-      <TwoTone value={value} unit={unit} className="text-[clamp(24px,2.6vw,32px)]" />
-      <span className="text-xs text-texte-2">{formatNumber(units)} vendus</span>
-      <div className="mt-auto flex flex-col gap-1.5 pt-2">
-        <div className="h-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
-          <div className="h-full rounded-full bg-orange-clair shadow-[0_0_10px_rgb(255_155_82/0.7)]" style={{ width: `${Math.max(share, 2)}%` }} />
-        </div>
-        <span className="text-[11.5px] text-texte-3">{share} % du chiffre d’affaires</span>
-      </div>
-    </article>
+    <ol className="flex flex-col">
+      {products.map((product, rank) => {
+        const [value, unit] = compactFcfa(product.revenue);
+        const share = total > 0 ? Math.round((product.revenue / total) * 100) : 0;
+        return (
+          <li key={product.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-4 gap-y-2 border-b border-trait-doux py-3 first:pt-1 last:border-0 last:pb-1">
+            <span className="min-w-0">
+              <span className="block truncate text-[14px] font-semibold">{product.name}</span>
+              <span className="text-xs text-texte-3">
+                N° {rank + 1} · {formatNumber(product.units)} vendu{product.units > 1 ? "s" : ""}
+              </span>
+            </span>
+            <TwoTone value={value} unit={unit} className="text-right text-[22px]" />
+            <span className="col-span-full flex items-center gap-2.5">
+              <span className="h-1 flex-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
+                <span className="block h-full rounded-full bg-orange-clair shadow-[0_0_10px_rgb(255_155_82/0.7)]" style={{ width: `${Math.max(share, 2)}%` }} />
+              </span>
+              <span className="w-[11ch] text-right text-[11.5px] text-texte-3 tabular-nums">{share} % du CA</span>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -80,28 +83,34 @@ const PERMISSION_TEXT: Record<string, string> = {
   "shop.manage": "gérer la boutique, le plan et les clés API",
 };
 
-export function RoleCard({ membership }: { membership: ShopMembership }) {
+/**
+ * Le rôle dans la boutique, en étiquette dans l'en-tête. Elle s'ouvre (sans JavaScript, <details>)
+ * sur la liste des droits du rôle.
+ */
+export function RoleBadge({ membership }: { membership: ShopMembership }) {
   const rights = membership.permissions.map((p) => PERMISSION_TEXT[p]).filter(Boolean);
   return (
-    <aside
-      aria-label="Votre rôle dans la boutique"
-      className="relative flex flex-col gap-3 overflow-hidden rounded-[24px] border border-sable/30 bg-[radial-gradient(70%_60%_at_85%_0%,rgb(74_87_214/0.55),transparent_70%),radial-gradient(60%_60%_at_0%_100%,rgb(255_122_31/0.32),transparent_70%),linear-gradient(165deg,rgb(38_30_24/0.94),rgb(16_13_11/0.95))] p-[22px] before:pointer-events-none before:absolute before:inset-0 before:bg-[repeating-linear-gradient(90deg,rgb(255_255_255/0.06)_0_1px,transparent_1px_26px)]"
-    >
-      <div className="relative flex items-center justify-between">
-        <span className="large text-base font-extrabold">{membership.name}</span>
-        <span className="rounded-full bg-sable/20 px-2.5 py-0.5 text-xs font-semibold text-sable capitalize">plan {membership.plan}</span>
+    <details className="group relative">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-trait bg-encre/50 px-3 py-1 text-[12.5px] font-semibold text-texte-2 hover:text-texte [&::-webkit-details-marker]:hidden">
+        {ROLE_LABEL[membership.role]}
+        <span className="font-normal text-texte-3 capitalize">· plan {membership.plan}</span>
+        <svg viewBox="0 0 24 24" className="size-3.5 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </summary>
+      <div className="absolute top-[calc(100%+8px)] left-0 z-20 flex w-[min(320px,80vw)] flex-col gap-2.5 rounded-[18px] border border-trait bg-nuit-2/95 p-4 shadow-[0_18px_40px_rgb(0_0_0/0.5)] backdrop-blur-xl">
+        <p className="text-[13px] font-semibold">Ce que votre rôle permet dans {membership.name}</p>
+        <ul className="flex flex-col gap-1.5 text-[13px] text-texte-2">
+          {rights.map((text) => (
+            <li key={text} className="flex gap-2">
+              <span aria-hidden className="mt-[7px] size-1.5 shrink-0 rounded-full bg-ocre" />
+              Vous pouvez {text}.
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-texte-3">Ces droits sont vérifiés par le serveur à chaque action.</p>
       </div>
-      <h2 className="relative mt-3 text-[clamp(20px,2vw,26px)] font-medium tracking-tight">Votre rôle : {ROLE_LABEL[membership.role]}</h2>
-      <ul className="relative flex flex-col gap-1.5 text-[13.5px] text-texte-2">
-        {rights.map((text) => (
-          <li key={text} className="flex gap-2">
-            <span aria-hidden className="mt-[7px] size-1.5 shrink-0 rounded-full bg-ocre" />
-            Vous pouvez {text}.
-          </li>
-        ))}
-      </ul>
-      <p className="relative mt-auto text-xs text-texte-3">Ces droits sont vérifiés par le serveur à chaque action.</p>
-    </aside>
+    </details>
   );
 }
 

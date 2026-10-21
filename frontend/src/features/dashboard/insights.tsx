@@ -10,7 +10,7 @@ function percent(part: number, whole: number) {
   return whole > 0 ? Math.round((part / whole) * 100) : 0;
 }
 
-/* ---------- À traiter : le travail du jour, toutes dates confondues ---------- */
+/* ---------- Le comptoir : le travail du jour (commandes ouvertes, toutes dates confondues, et stock au seuil) ---------- */
 
 const TO_PROCESS: { status: "pending" | "confirmed" | "shipped"; label: string; hint: string }[] = [
   { status: "pending", label: "À confirmer", hint: "appelez le client" },
@@ -18,41 +18,89 @@ const TO_PROCESS: { status: "pending" | "confirmed" | "shipped"; label: string; 
   { status: "shipped", label: "En livraison", hint: "à marquer livrées" },
 ];
 
-export function ToProcess({ counts, slug }: { counts: DashboardSummary["to_process"]; slug: string }) {
+/**
+ * Colonne « À faire », à droite des chiffres sur ordinateur, et collée à l'écran : le travail reste à portée
+ * pendant qu'on parcourt les analyses. Sur téléphone et tablette, elle passe en tête de page.
+ */
+export function Comptoir({ counts, lowStock, slug }: { counts: DashboardSummary["to_process"]; lowStock: DashboardSummary["low_stock"]; slug: string }) {
   const total = counts.pending + counts.confirmed + counts.shipped;
+  const more = lowStock.count - lowStock.items.length;
   return (
-    <section
-      aria-labelledby="titre-a-traiter"
-      className="vitre col-span-full grid gap-2 rounded-[24px] p-2.5 sm:grid-cols-3 lg:grid-cols-[minmax(0,0.85fr)_repeat(3,minmax(0,1fr))]"
+    <aside
+      aria-label="À faire"
+      className="vitre col-span-full flex flex-col gap-3 rounded-[24px] p-2.5 lg:sticky lg:top-5 lg:order-last lg:col-span-3 lg:max-h-[calc(100dvh-2.5rem)] lg:self-start lg:overflow-y-auto"
     >
-      <div className="flex flex-col justify-center px-2.5 py-1.5 sm:col-span-3 lg:col-span-1">
-        <h2 id="titre-a-traiter" className="text-sm font-semibold">
-          À traiter
-        </h2>
-        <p className="text-[12.5px] text-texte-3">
-          {total === 0 ? "Rien en attente. Tout est à jour." : `${formatNumber(total)} commande${total > 1 ? "s attendent" : " attend"} une action`}
-        </p>
-      </div>
-      {TO_PROCESS.map((item) => {
-        const count = counts[item.status];
-        return (
+      <section aria-labelledby="titre-a-traiter" className="flex flex-col gap-2">
+        <div className="px-2 pt-1.5">
+          <h2 id="titre-a-traiter" className="text-sm font-semibold">
+            À traiter
+          </h2>
+          <p className="text-[12.5px] text-texte-3">
+            {total === 0 ? "Rien en attente. Tout est à jour." : `${formatNumber(total)} commande${total > 1 ? "s attendent" : " attend"} une action`}
+          </p>
+        </div>
+        <ul className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+          {TO_PROCESS.map((item) => {
+            const count = counts[item.status];
+            return (
+              <li key={item.status}>
+                <Link
+                  href={`/app/${slug}/commandes?statut=${item.status}`}
+                  className="carte flex items-center justify-between gap-3 rounded-[18px] px-3.5 py-3 transition-colors hover:border-trait hover:bg-white/[0.04]"
+                >
+                  <span className="flex flex-col gap-0.5">
+                    <span className={cn("inline-flex items-center gap-2 text-[13.5px] font-semibold", STATUS_TONE[item.status])}>
+                      <span aria-hidden className="h-3.5 w-1 rounded-sm bg-current" />
+                      <span className="text-texte">{item.label}</span>
+                    </span>
+                    <span className="pl-3 text-xs text-texte-3">{item.hint}</span>
+                  </span>
+                  <span className={cn("chiffres text-[34px]", count === 0 && "text-texte-3")}>{formatNumber(count)}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {lowStock.count > 0 ? (
+        <section aria-labelledby="titre-stock" className="flex flex-col gap-2 border-t border-trait-doux px-1 pt-3">
+          <div className="px-1">
+            <h2 id="titre-stock" className="inline-flex items-center gap-2 text-sm font-semibold">
+              <span aria-hidden className="h-3.5 w-1 rounded-sm bg-ocre" />
+              Bientôt en rupture
+            </h2>
+            <p className="text-[12.5px] text-texte-3">
+              {lowStock.count} produit{lowStock.count > 1 ? "s" : ""} à réapprovisionner
+            </p>
+          </div>
+          <ul className="flex flex-col gap-1.5">
+            {lowStock.items.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={`/app/${slug}/produits/${item.id}`}
+                  className="carte flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 rounded-[14px] px-3 py-2 text-[13.5px] transition-colors hover:border-trait hover:bg-white/[0.05]"
+                >
+                  <span className="min-w-0 font-semibold">{item.name}</span>
+                  <span className="flex items-baseline gap-2">
+                    <span className={cn("tabular-nums", item.stock === 0 ? "text-danger-clair" : "text-ocre")}>
+                      {item.stock === 0 ? "épuisé" : `${formatNumber(item.stock)} restant${item.stock > 1 ? "s" : ""}`}
+                    </span>
+                    <span className="text-xs text-texte-3">seuil {formatNumber(item.threshold)}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
           <Link
-            key={item.status}
-            href={`/app/${slug}/commandes?statut=${item.status}`}
-            className="carte group flex items-center justify-between gap-3 rounded-[18px] px-3.5 py-3 transition-colors hover:border-trait hover:bg-white/[0.04]"
+            href={`/app/${slug}/produits?stock=low`}
+            className="self-start px-1 pb-1 text-[13px] font-semibold text-sable underline decoration-sable/40 underline-offset-[3px] hover:decoration-sable"
           >
-            <span className="flex flex-col gap-0.5">
-              <span className={cn("inline-flex items-center gap-2 text-[13.5px] font-semibold", STATUS_TONE[item.status])}>
-                <span aria-hidden className="h-3.5 w-1 rounded-sm bg-current" />
-                <span className="text-texte">{item.label}</span>
-              </span>
-              <span className="pl-3 text-xs text-texte-3">{item.hint}</span>
-            </span>
-            <span className={cn("chiffres text-[34px]", count === 0 && "text-texte-3")}>{formatNumber(count)}</span>
+            {more > 0 ? `Voir les ${lowStock.count}` : "Voir le stock"}
           </Link>
-        );
-      })}
-    </section>
+        </section>
+      ) : null}
+    </aside>
   );
 }
 
@@ -71,7 +119,7 @@ export function StatusesPanel({ statuses, periodLabel }: { statuses: DashboardSu
   const cancelled = percent(statuses.cancelled, total);
 
   return (
-    <section aria-labelledby="titre-suivi" className="vitre col-span-full flex flex-col gap-4 rounded-[24px] p-[18px] lg:col-span-6">
+    <section aria-labelledby="titre-suivi" className="vitre col-span-full flex flex-col gap-4 rounded-[24px] p-[18px]">
       <h2 id="titre-suivi" className="text-sm text-texte-2">
         Suivi des commandes · {periodLabel}
       </h2>
@@ -124,7 +172,7 @@ export function PaymentsPanel({ payments, revenue }: { payments: DashboardSummar
   const highest = Math.max(...shares.map((item) => item.share), 1);
 
   return (
-    <section aria-labelledby="titre-paiements" className="vitre col-span-full flex flex-col gap-4 rounded-[24px] p-[18px] lg:col-span-4">
+    <section aria-labelledby="titre-paiements" className="vitre col-span-full flex flex-col gap-4 rounded-[24px] p-[18px] lg:col-span-3">
       <h2 id="titre-paiements" className="text-sm text-texte-2">
         Moyens de paiement
       </h2>
@@ -132,17 +180,20 @@ export function PaymentsPanel({ payments, revenue }: { payments: DashboardSummar
         <TwoTone value={String(mobileShare)} unit=" %" className="text-[clamp(36px,4vw,48px)]" />
         <p className="mt-1.5 text-[12.5px] text-texte-2">du chiffre d’affaires payé par mobile money, le reste en espèces à la livraison</p>
       </div>
-      <ul className="mt-auto grid grid-cols-5 items-end gap-2" aria-label="Part du chiffre d’affaires par moyen de paiement">
+      {/* Les barres prennent toute la hauteur libre : à côté d'une longue liste de produits, le panneau ne garde pas de trou. */}
+      <ul className="grid min-h-[140px] flex-1 grid-cols-5 gap-2" aria-label="Part du chiffre d’affaires par moyen de paiement">
         {shares.map((item) => (
           <li key={item.method} className="flex flex-col items-center gap-1.5">
-            <span className="text-xs font-semibold tabular-nums">{item.share} %</span>
-            <span aria-hidden className="flex h-[96px] w-full items-end justify-center">
+            {/* Le pourcentage reste posé sur sa barre, quelle que soit la hauteur du panneau. */}
+            <span className="flex min-h-[120px] w-full flex-1 flex-col items-center justify-end gap-1.5">
+              <span className="text-xs font-semibold tabular-nums">{item.share} %</span>
               <span
+                aria-hidden
                 className={cn(
                   "w-full max-w-[24px] rounded-t-[4px]",
                   item.share > 0 ? "bg-indigo shadow-[0_0_14px_rgb(74_87_214/0.55)]" : "bg-white/10",
                 )}
-                style={{ height: `${Math.max((item.share / highest) * 100, 3)}%` }}
+                style={{ height: `${Math.max((item.share / highest) * 82, 3)}%` }}
               />
             </span>
             <span className="text-center text-[11.5px] leading-tight text-texte-2" title={PAYMENT_LABEL[item.method]}>
@@ -167,7 +218,7 @@ export function PlacesPanel({ places, revenue }: { places: DashboardSummary["pla
   const highest = Math.max(...shown.map((place) => place.revenue), 1);
 
   return (
-    <section aria-labelledby="titre-lieux" className="vitre col-span-full flex flex-col gap-3.5 rounded-[24px] p-[18px] lg:col-span-4">
+    <section aria-labelledby="titre-lieux" className="vitre col-span-full flex flex-col gap-3.5 rounded-[24px] p-[18px] lg:col-span-3">
       <h2 id="titre-lieux" className="text-sm text-texte-2">
         Où vous vendez
       </h2>
@@ -233,7 +284,7 @@ export function HoursPanel({ grid }: { grid: number[][] }) {
   }
 
   return (
-    <section aria-labelledby="titre-heures" className="vitre col-span-full flex flex-col gap-4 rounded-[24px] p-[18px] lg:col-span-6">
+    <section aria-labelledby="titre-heures" className="vitre col-span-full flex flex-col gap-4 rounded-[24px] p-[18px] lg:col-span-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="titre-heures" className="text-sm text-texte-2">
@@ -340,48 +391,6 @@ export function CustomersPanel({ customers, top }: { customers: DashboardSummary
           </ol>
         )}
       </div>
-    </section>
-  );
-}
-
-/* ---------- Bientôt en rupture : le stock arrivé au seuil choisi pour chaque produit ---------- */
-
-export function LowStockPanel({ lowStock, slug }: { lowStock: DashboardSummary["low_stock"]; slug: string }) {
-  if (lowStock.count === 0) return null;
-  const more = lowStock.count - lowStock.items.length;
-  return (
-    <section aria-labelledby="titre-stock" className="vitre col-span-full flex flex-col gap-3 rounded-[24px] px-[18px] py-3.5 lg:flex-row lg:items-center lg:gap-5">
-      <div className="shrink-0 lg:w-[170px]">
-        <h2 id="titre-stock" className="inline-flex items-center gap-2 text-sm font-semibold">
-          <span aria-hidden className="h-3.5 w-1 rounded-sm bg-ocre" />
-          Bientôt en rupture
-        </h2>
-        <p className="text-[12.5px] text-texte-3">
-          {lowStock.count} produit{lowStock.count > 1 ? "s" : ""} à réapprovisionner
-        </p>
-      </div>
-      <ul className="flex flex-wrap gap-2">
-        {lowStock.items.map((item) => (
-          <li key={item.id}>
-            <Link
-              href={`/app/${slug}/produits/${item.id}`}
-              className="carte flex items-baseline gap-2 rounded-[14px] px-3 py-2 text-[13.5px] transition-colors hover:border-trait hover:bg-white/[0.05]"
-            >
-              <span className="font-semibold">{item.name}</span>
-              <span className={cn("tabular-nums", item.stock === 0 ? "text-danger-clair" : "text-ocre")}>
-                {item.stock === 0 ? "épuisé" : `${formatNumber(item.stock)} restant${item.stock > 1 ? "s" : ""}`}
-              </span>
-              <span className="text-xs text-texte-3">seuil {formatNumber(item.threshold)}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <Link
-        href={`/app/${slug}/produits?stock=low`}
-        className="shrink-0 text-[13px] font-semibold text-sable underline decoration-sable/40 underline-offset-[3px] hover:decoration-sable lg:ml-auto"
-      >
-        {more > 0 ? `Voir les ${lowStock.count}` : "Voir le stock"}
-      </Link>
     </section>
   );
 }

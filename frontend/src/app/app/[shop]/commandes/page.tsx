@@ -4,8 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { OrderRows, STATUS_TONE } from "@/features/dashboard/parts";
+import { STATUS_TONE } from "@/features/dashboard/parts";
 import { ExportPanel } from "@/features/orders/export-panel";
+import { OrderLedger } from "@/features/orders/ledger";
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
 import { getMe, getMyShops, getOrderCounts, getOrders } from "@/lib/server/session";
@@ -71,24 +72,27 @@ async function OrdersFromRoute({ params, searchParams }: Pick<PageProps<"/app/[s
           <p className="text-[12.5px] text-texte-2">{formatNumber(total)} commandes au total</p>
           <h1 className="mt-1.5 text-[clamp(24px,2.6vw,30px)] font-medium tracking-tight">Commandes</h1>
         </div>
-        <Form action={`/app/${shop}/commandes`} role="search" className="flex w-full gap-2 sm:w-auto">
-          {filters.status ? <input type="hidden" name="statut" value={filters.status} /> : null}
-          <label htmlFor="recherche" className="sr-only">
-            Chercher une commande
-          </label>
-          <input
-            id="recherche"
-            name="q"
-            type="search"
-            defaultValue={filters.q}
-            maxLength={60}
-            placeholder="Référence, nom ou téléphone"
-            className="min-w-0 flex-1 rounded-full border border-white/15 bg-encre/45 px-4 py-2.5 text-sm text-texte outline-none placeholder:text-texte-3 focus-visible:border-orange sm:w-[280px]"
-          />
-          <button type="submit" className="bouton-nuit rounded-full px-5 py-2.5 text-sm font-bold">
-            Chercher
-          </button>
-        </Form>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <Form action={`/app/${shop}/commandes`} role="search" className="flex w-full gap-2 sm:w-auto">
+            {filters.status ? <input type="hidden" name="statut" value={filters.status} /> : null}
+            <label htmlFor="recherche" className="sr-only">
+              Chercher une commande
+            </label>
+            <input
+              id="recherche"
+              name="q"
+              type="search"
+              defaultValue={filters.q}
+              maxLength={60}
+              placeholder="Référence, nom ou téléphone"
+              className="min-w-0 flex-1 rounded-full border border-white/15 bg-encre/45 px-4 py-2.5 text-sm text-texte outline-none placeholder:text-texte-3 focus-visible:border-orange sm:w-[280px]"
+            />
+            <button type="submit" className="bouton-nuit rounded-full px-5 py-2.5 text-sm font-bold">
+              Chercher
+            </button>
+          </Form>
+          {canExport && me.ok ? <ExportPanel slug={shop} mfaEnabled={me.data.mfa_enabled} /> : null}
+        </div>
       </header>
 
       <nav aria-label="Filtrer par statut" className="col-span-full flex gap-1 overflow-x-auto rounded-[16px] border border-trait-doux bg-encre/50 p-1">
@@ -105,18 +109,17 @@ async function OrdersFromRoute({ params, searchParams }: Pick<PageProps<"/app/[s
         ))}
       </nav>
 
-      {canExport && me.ok ? <ExportPanel slug={shop} mfaEnabled={me.data.mfa_enabled} /> : null}
-
       <section aria-label="Liste des commandes" className="vitre col-span-full rounded-[24px] px-[18px] pt-3 pb-4">
         {filters.q ? (
           <p className="pb-2 text-[13px] text-texte-2">
             {formatNumber(count)} résultat{count > 1 ? "s" : ""} pour « {filters.q} »
           </p>
         ) : null}
-        <OrderRows
+        <OrderLedger
           orders={results}
           slug={shop}
-          showAllLink={false}
+          continuesBefore={filters.page > 1}
+          continuesAfter={filters.page < pages}
           empty={
             filtered ? (
               <>

@@ -44,21 +44,34 @@ async function SecurityFromRoute({ params, searchParams }: Pick<PageProps<"/app/
         </p>
       ) : null}
 
-      <MfaPanel enabled={me.data.mfa_enabled} demo={me.data.is_demo} />
-      <PasswordForm demo={me.data.is_demo} />
-      <SessionList sessions={sessions.data} />
-      <SecurityJournal events={events.data} slug={shop} />
+      {/* Deux colonnes indépendantes : chaque carte garde sa hauteur, aucune ne s'étire pour suivre sa voisine. */}
+      <div className={COLUMN_LEFT}>
+        <MfaPanel enabled={me.data.mfa_enabled} demo={me.data.is_demo} />
+        <SessionList sessions={sessions.data} />
+      </div>
+      <div className={COLUMN_RIGHT}>
+        <PasswordForm demo={me.data.is_demo} />
+        <SecurityJournal events={events.data} slug={shop} />
+      </div>
     </>
   );
 }
+
+const COLUMN = "cascade col-span-full grid grid-cols-subgrid content-start gap-y-2.5 md:gap-y-3 lg:gap-y-3.5";
+const COLUMN_LEFT = `${COLUMN} lg:col-span-6`;
+const COLUMN_RIGHT = `${COLUMN} lg:col-span-4`;
 
 function SecuritySkeleton() {
   return (
     <>
       <div aria-hidden className="col-span-full h-[70px]" />
-      <div aria-hidden className="vitre col-span-full h-[260px] animate-pulse rounded-[24px] lg:col-span-6" />
-      <div aria-hidden className="vitre col-span-full h-[260px] animate-pulse rounded-[24px] lg:col-span-4" />
-      <div aria-hidden className="vitre col-span-full h-[220px] animate-pulse rounded-[24px]" />
+      <div aria-hidden className={COLUMN_LEFT}>
+        <div className="vitre col-span-full h-[200px] animate-pulse rounded-[24px]" />
+        <div className="vitre col-span-full h-[320px] animate-pulse rounded-[24px]" />
+      </div>
+      <div aria-hidden className={COLUMN_RIGHT}>
+        <div className="vitre col-span-full h-[440px] animate-pulse rounded-[24px]" />
+      </div>
     </>
   );
 }
