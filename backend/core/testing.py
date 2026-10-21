@@ -77,20 +77,18 @@ def make_shop(slug, name=None):
     return Shop.objects.create(slug=slug, name=name or slug.replace("-", " ").title())
 
 
-def make_order(shop, *, total=10_000, status="pending", age=None, phone="+2250707000001", product=None, quantity=1):
+def make_order(shop, *, total=10_000, status="pending", age=None, phone="+2250707000001", product=None, quantity=1, **fields):
     from shops.models import Order, OrderItem
 
+    defaults = {"payment_method": "wave", "customer_name": "Aya Koné", "customer_city": "Abidjan", "customer_commune": "Cocody"}
     order = Order.objects.create(
         shop=shop,
         status=status,
-        payment_method="wave",
-        customer_name="Aya Koné",
         customer_phone=phone,
-        customer_city="Abidjan",
-        customer_commune="Cocody",
         subtotal=total,
         total=total,
         created_at=timezone.now() - (age or timedelta()),
+        **{**defaults, **fields},
     )
     if product is not None:
         OrderItem.objects.create(

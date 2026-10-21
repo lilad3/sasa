@@ -1,4 +1,5 @@
 // Textes affichés selon le code d'erreur de l'API. Le front choisit ses propres mots ; `detail` de Django n'est qu'un secours.
+import type { Problem } from "./types";
 
 export type FormError = {
   code: string;
@@ -21,6 +22,25 @@ const MESSAGES: Record<string, string> = {
   network_error: "Le serveur ne répond pas. Vérifiez votre connexion, puis réessayez.",
   bff_required: "Le serveur est mal configuré : contactez l'exploitant de la plateforme.",
   server_error: "Une erreur inattendue est survenue. Réessayez dans un instant.",
+  // Espace marchand
+  invalid_transition: "Cette commande a changé de statut entre-temps. La page est à jour : vérifiez avant de continuer.",
+  not_found: "Introuvable : cet élément n'existe plus ou n'est pas dans cette boutique.",
+  shop_not_empty: "Cette boutique a déjà de vraies commandes : les données de démo ne sont pas ajoutées.",
+  reauth_required: "Confirmez votre identité pour continuer.",
+  invalid_password: "Mot de passe incorrect.",
+  mfa_already_enabled: "La double authentification est déjà active. La page est à jour.",
+  mfa_not_enabled: "La double authentification n'est pas active. La page est à jour.",
+  mfa_setup_required: "L'activation a expiré : recommencez depuis le début.",
+  temporary_password_expired: "Ce mot de passe provisoire a expiré. Demandez-en un nouveau au propriétaire de la boutique.",
+  password_change_required: "Choisissez votre mot de passe avant de continuer.",
+  plan_limit_reached: "Votre plan actuel ne le permet pas : passez au plan supérieur dans Paramètres.",
+  plan_too_small: "Ce plan est trop petit pour votre boutique actuelle.",
+  account_exists: "Cette adresse a déjà un compte Akwaba : utilisez une autre adresse pour cette personne.",
+  password_already_chosen: "Cette personne a déjà choisi son mot de passe : elle peut le réinitialiser par e-mail.",
+  too_many_api_keys: "Trop de clés actives : révoquez-en une avant d'en créer une autre.",
+  shop_on_vacation: "La boutique est en congé : elle ne prend pas de commande pour le moment.",
+  file_too_large: "Fichier trop lourd : 512 Ko au maximum, soit environ 1 000 produits.",
+  unsupported_file: "Envoyez un fichier .csv (dans Excel : Fichier, Enregistrer sous, CSV).",
   // Boutique publique
   out_of_stock: "Un article de votre panier n’a plus assez de stock : la quantité a été ajustée.",
   price_changed: "Le total a changé depuis l’affichage de votre panier. Vérifiez le nouveau montant, puis confirmez.",
@@ -30,6 +50,27 @@ const MESSAGES: Record<string, string> = {
 export function messageFor(code: string, fallback?: string) {
   return MESSAGES[code] ?? fallback ?? MESSAGES.server_error;
 }
+
+/** Erreur globale d'un formulaire, à partir d'une erreur de l'API. */
+export function describeProblem(problem: Problem): FormError {
+  return {
+    code: problem.code,
+    message: messageFor(problem.code, problem.detail),
+    retryAfter: problem.retry_after,
+    attemptsRemaining: problem.attempts_remaining,
+    requestId: problem.status >= 500 ? problem.request_id : undefined,
+  };
+}
+
+// Codes renvoyés par Django dans errors.password (contrat §3.2).
+export const PASSWORD_RULES: Record<string, string> = {
+  password_too_short: "Au moins 10 caractères.",
+  password_too_long: "128 caractères au maximum.",
+  password_too_common: "Ce mot de passe fait partie des plus courants : choisissez-en un autre.",
+  password_too_similar: "Trop proche de votre e-mail, de votre nom ou du nom de votre boutique.",
+  password_entirely_numeric: "Il ne peut pas contenir uniquement des chiffres.",
+  password_local_pattern: "Évitez un mot évident (abidjan, akwaba, babi…) suivi de chiffres.",
+};
 
 /** Raisons affichées en haut du formulaire de connexion (?raison=…). */
 export const LOGIN_REASONS: Record<string, string> = {

@@ -66,6 +66,30 @@
   -webkit-backdrop-filter: blur(20px) saturate(1.3);
   backdrop-filter: blur(20px) saturate(1.3);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07);
+
+  /*
+   * Le bord capte la lumière du décor. Dans l'espace marchand, FondNuit décrit dans --lumiere où passent
+   * la traînée orange, la lueur indigo et le trait de lumière, en dégradés fixés à l'écran : le bord
+   * s'allume exactement là où la lumière passe derrière la vitre. Ailleurs, la variable est absente.
+   * Pas besoin de position: relative : backdrop-filter fait déjà de la vitre le bloc conteneur du pseudo-élément.
+   */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background-image: var(--lumiere, none);
+    background-attachment: fixed;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
 }
 
 /* Panneau neutre et sombre pour les écrans d'authentification. */
@@ -293,9 +317,15 @@
   }
 }
 
+/*
+ * Pas de rebond au bout de la page (pavé tactile, téléphone) : sinon toute la page glisse
+ * et laisse voir le vide autour du décor, comme si le site flottait dans la fenêtre.
+ * La propriété doit être sur <html> : c'est la seule que le navigateur applique à la fenêtre.
+ */
 html {
   background: var(--color-nuit);
   color-scheme: dark;
+  overscroll-behavior: none;
 }
 
 /*
@@ -321,6 +351,67 @@ body {
   outline-offset: 3px;
 }
 
+/*
+ * Arrivée sur une page de l'espace marchand : les blocs se posent l'un après l'autre dans le décor.
+ * Seulement l'opacité et un léger déplacement : un flou animé serait recalculé sous chaque vitre.
+ * Remplissage « backwards » : une fois posé, le bloc ne garde aucun transform, qui ferait de lui
+ * le bloc conteneur de ses enfants en position fixed.
+ * Dans la couche « components » : une animation Tailwind (animate-pulse des squelettes) passe devant.
+ */
+@layer components {
+  .cascade > * {
+    animation: bloc-pose 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .cascade > :nth-child(2) {
+    animation-delay: 0.05s;
+  }
+  .cascade > :nth-child(3) {
+    animation-delay: 0.1s;
+  }
+  .cascade > :nth-child(4) {
+    animation-delay: 0.15s;
+  }
+  .cascade > :nth-child(5) {
+    animation-delay: 0.2s;
+  }
+  .cascade > :nth-child(6) {
+    animation-delay: 0.25s;
+  }
+  .cascade > :nth-child(n + 7) {
+    animation-delay: 0.3s;
+  }
+}
+
+@keyframes bloc-pose {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* La courbe des ventes se dessine de gauche à droite (rectangle de découpe qui s'élargit), puis le point du jour s'allume. */
+.courbe-trace {
+  transform-origin: 0 0;
+  animation: courbe-trace 1.3s cubic-bezier(0.35, 0.6, 0.2, 1) 0.2s backwards;
+}
+
+.courbe-point {
+  animation: courbe-point 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) 1.25s backwards;
+}
+
+@keyframes courbe-trace {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes courbe-point {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -328,5 +419,12 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* Les délais resteraient, avec des éléments invisibles pendant ce temps. */
+  .cascade > *,
+  .courbe-trace,
+  .courbe-point {
+    animation: none;
   }
 }

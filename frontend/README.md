@@ -24,7 +24,11 @@ Avant de pousser : `npm run lint` et `npm run build` (le build vérifie aussi le
 | `/` | Visiteurs, futurs marchands, partenaires | Landing : animation d'ouverture, fonctionnalités, sécurité, partenaires et API, tarifs, FAQ |
 | `/boutique/[slug]` | Les clients d'une boutique, sans compte | Vitrine, panier, commande (exemple : `/boutique/maison-adjoua`) |
 | `/connexion`, `/inscription`, `/mot-de-passe-oublie`… | Marchands | Authentification (2FA, appareil partagé, déverrouillage) |
-| `/app/[shop]` | Marchands connectés | Dashboard des ventes et commandes, selon le rôle |
+| `/app/[shop]` | Marchands connectés | Dashboard des ventes : à traiter, chiffre d'affaires, suivi, paiements, lieux, heures, clients (propriétaire et gérant) |
+| `/app/[shop]/commandes` | Tous les rôles | Liste filtrable par statut, recherche ; `/commandes/[id]` : fiche et traitement de la commande |
+| `/app/[shop]/securite` | Tous les rôles | Double authentification, mot de passe, appareils connectés, journal de sécurité |
+| `/app/[shop]/messages` | Tous les rôles | Le mot du patron : le propriétaire et les gérants écrivent à l'équipe, chacun confirme « C'est noté » |
+| `/premiere-connexion` | Comptes créés par un patron | Remplacer le mot de passe provisoire avant d'entrer |
 
 ## Organisation du code
 

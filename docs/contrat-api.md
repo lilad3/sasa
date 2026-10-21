@@ -150,7 +150,8 @@ Actions concernées :
 - régénérer les codes de secours ;
 - changer le mot de passe depuis le compte (le mot de passe actuel fait office de confirmation) ;
 - changer de plan ;
-- supprimer la boutique.
+- ajouter quelqu'un à l'équipe, changer son rôle, lui redonner un mot de passe provisoire ;
+- supprimer la boutique (pas encore d'écran).
 
 Pourquoi : un cookie volé ou un ordinateur laissé ouvert ne suffit pas pour vider les données de ventes ou ouvrir un accès permanent par clé API.
 
@@ -165,7 +166,10 @@ Les droits sont vérifiés par Django. Le front masque ce qui est interdit, mais
 | Lire le catalogue | ✓ | ✓ | ✓ |
 | Créer et modifier des produits, importer un CSV | ✓ | ✓ | — |
 | Exporter les ventes | ✓ | ✓ | — |
-| Clés API, plan, données de démo, suppression de la boutique | ✓ | — | — |
+| Écrire le mot du patron (consignes à l'équipe) | ✓ | ✓ | — |
+| Lire ses consignes et confirmer « C'est noté » | ✓ | ✓ | ✓ |
+| Voir l'équipe (sans les e-mails, sauf pour le propriétaire) | ✓ | ✓ | ✓ |
+| Équipe, paramètres de la boutique, clés API, plan, données de démo | ✓ | — | — |
 
 `GET /me/shops` renvoie le rôle **et** la liste `permissions` de chaque boutique. Le front s'en sert pour l'affichage, jamais comme garantie.
 
@@ -184,8 +188,8 @@ Les droits sont vérifiés par Django. Le front masque ce qui est interdit, mais
 
 | Catégorie | Événements |
 |---|---|
-| Sécurité | `login_succeeded` · `login_failed` · `account_locked` · `account_unlocked` · `new_device` · `refresh_reuse_detected` · `logged_out` · `session_revoked` · `password_changed` · `password_reset` · `mfa_enabled` · `mfa_disabled` · `mfa_failed` · `recovery_code_used` · `recovery_codes_regenerated` · `reauth_succeeded` · `reauth_failed` · `signup_completed` |
-| Activité des boutiques | `shop_created` · `order_status_changed` (avec l'ancien et le nouveau statut) · `demo_data_generated` |
+| Sécurité | `login_succeeded` · `login_failed` · `account_locked` · `account_unlocked` · `new_device` · `refresh_reuse_detected` · `logged_out` · `session_revoked` · `password_changed` · `password_reset` · `mfa_enabled` · `mfa_disabled` · `mfa_failed` · `recovery_code_used` · `recovery_codes_regenerated` · `reauth_succeeded` · `reauth_failed` · `signup_completed` · `checkout_bot_blocked` · `member_added` · `member_role_changed` · `member_removed` · `member_password_reset` · `api_key_created` · `api_key_revoked` · `orders_exported` |
+| Activité des boutiques | `shop_created` · `order_status_changed` (avec l'ancien et le nouveau statut) · `demo_data_generated` · `order_placed` · `products_imported` · `plan_changed` · `shop_updated` · `team_note_sent` |
 | Administration | `admin_login_succeeded` · `admin_login_failed` · `audit_exported` · `audit_verified` |
 
 Chaque événement porte une gravité (info, à surveiller, critique), le compte, la boutique, la cible (par exemple la référence de la commande), l'IP réelle, l'appareil et le `request_id`, qui permet de le retrouver dans les logs du serveur. Les tentatives sur des e-mails inconnus sont aussi gardées, avec l'adresse saisie : c'est ce qui rend visibles les attaques par listes d'identifiants.
@@ -203,7 +207,7 @@ Entrer dans l'admin exige le mot de passe **et** un code 2FA. Exporter le journa
 - **Chaîné par HMAC.** Chaque ligne contient l'empreinte de la précédente, signée avec `AUDIT_HMAC_KEY`, une clé qui n'est pas dans la base. Si quelqu'un modifie ou supprime une ligne directement dans le fichier, « Vérifier l'intégrité » indique la première ligne touchée.
 - **Pas de clé étrangère.** Supprimer un compte ou une boutique ne réécrit jamais l'historique : l'e-mail et la boutique sont copiés dans l'événement.
 
-**Alertes e-mail au titulaire du compte** : `new_device` · `account_locked` (avec le lien de déblocage) · `refresh_reuse_detected` · `password_changed` · `password_reset` · `mfa_disabled` · `recovery_code_used` · `api_key_created` (P3).
+**Alertes e-mail au titulaire du compte** : `new_device` · `account_locked` (avec le lien de déblocage) · `refresh_reuse_detected` · `password_changed` · `password_reset` · `mfa_disabled` · `recovery_code_used` · `api_key_created`.
 
 **Nouvel appareil.**
 - Next envoie l'identifiant de son cookie appareil dans `X-Device-Id`, et Django n'en garde qu'une empreinte.
@@ -266,7 +270,19 @@ Pensé pour le cybercafé, le téléphone prêté et la tablette du comptoir. Il
 - Sessions de l'admin : cookie `akwaba_admin`, 2 h au maximum, `SameSite=Strict`, supprimé à la fermeture du navigateur.
 - Les compteurs de limitation vivent dans un cache Django **en base** (`createcachetable`), partagé entre les processus. Avec `LocMemCache`, chaque processus aurait ses propres compteurs, et la limite serait contournée.
 
-### 2.15 Comptes de démo
+### 2.15 Comptes créés par le propriétaire (sur mesure)
+
+Le propriétaire ajoute un gérant ou un vendeur depuis Paramètres > Équipe :
+- c'est une action grave (accès aux commandes et aux téléphones des clients) : confirmation renforcée, journal (`member_added`), 20 créations par heure et par boutique au plus ;
+- le serveur génère un **mot de passe provisoire** (3 blocs de 4 caractères sans 0/O ni 1/I/L, ≈ 59 bits), affiché **une seule fois** au propriétaire, stocké haché comme tout mot de passe ;
+- il **expire après 72 h** : passé ce délai, le login renvoie `401 temporary_password_expired` et le propriétaire en régénère un (`member_password_reset`, sessions de la personne fermées) ;
+- tant qu'il n'est pas remplacé, le compte ne peut **rien faire d'autre** que lire son profil et choisir son mot de passe : toute autre route répond `403 password_change_required` (permission DRF globale `PasswordChosen`), et le front redirige vers `/premiere-connexion` ;
+- une adresse qui a déjà un compte est refusée (`409 account_exists`) : on n'ajoute jamais un compte existant à une boutique sans son accord ;
+- retirer quelqu'un coupe son accès tout de suite (l'appartenance est revérifiée à chaque requête). S'il n'a plus aucune boutique, son compte est désactivé et ses sessions fermées.
+
+Limites du plan (`shops/plans.py`) : Gratuit 25 produits et 1 personne ; Pro 500 produits, 5 personnes, import CSV, clés API, couleur de vitrine ; Business sans limite de produits, 20 personnes. Les commandes des clients ne sont jamais refusées pour une raison de plan.
+
+### 2.16 Comptes de démo
 
 Ils sont créés par `python manage.py seed_demo` et listés dans le README.
 - **Maison Adjoua** (plan Pro) : une propriétaire, une gérante et un vendeur, pour voir les trois rôles.
@@ -321,7 +337,11 @@ Les erreurs sont inspirées de la RFC 9457 et envoyées avec `Content-Type: appl
 | 401 | `session_revoked` · `session_expired` | Effacer les cookies, `/login?raison=…` |
 | 403 | `reauth_required` | Fenêtre de confirmation, puis rejouer l'action |
 | 403 | `permission_denied` | Le rôle ne permet pas l'action |
-| 403 | `plan_limit_reached` | Proposer le plan supérieur (`limit` fourni) |
+| 401 | `temporary_password_expired` | Mot de passe provisoire périmé : en demander un nouveau au propriétaire |
+| 401 | `api_key_invalid` | Clé API inconnue, falsifiée, expirée ou révoquée (API publique) |
+| 403 | `plan_limit_reached` | Proposer le plan supérieur (`limit` ou `feature` fourni) |
+| 403 | `password_change_required` | Compte sur mot de passe provisoire : `/premiere-connexion` |
+| 403 | `scope_missing` | La clé API n'a pas ce droit (API publique) |
 | 403 | `demo_restricted` | Expliquer que c'est un compte de démo |
 | 403 | `bff_required` | Ne doit jamais arriver depuis le front |
 | 404 | `not_found` | Page introuvable |
@@ -331,6 +351,11 @@ Les erreurs sont inspirées de la RFC 9457 et envoyées avec `Content-Type: appl
 | 409 | `out_of_stock` | Lignes concernées dans `errors` |
 | 409 | `price_changed` | Afficher le nouveau total, redemander la confirmation |
 | 409 | `idempotency_conflict` | Ne doit jamais arriver depuis le front |
+| 409 | `account_exists` | Adresse déjà utilisée par un compte Akwaba : en choisir une autre |
+| 409 | `password_already_chosen` | La personne a déjà son mot de passe : elle passe par « Mot de passe oublié » |
+| 409 | `plan_too_small` | Passage à un plan inférieur impossible (produits, équipe ou clés en trop, détail fourni) |
+| 409 | `too_many_api_keys` | 10 clés actives au maximum |
+| 409 | `shop_on_vacation` | Vitrine en congé : la commande n'est pas prise |
 | 413 | `file_too_large` | Import CSV refusé |
 | 415 | `unsupported_file` | Import CSV refusé |
 | 423 | `account_locked` | Compte à rebours depuis `retry_after` |
@@ -352,6 +377,10 @@ Les codes de mot de passe dans `errors.password` sont : `password_too_short` · 
 | `POST /auth/unlock` | 10 / h | IP |
 | `POST /auth/token/refresh` | 30 / min | session |
 | `POST /storefront/{slug}/orders` | 10 / h | IP |
+| `POST /storefront/{slug}/track` | 20 / h · 5 / h | IP · référence |
+| `POST /shops/{slug}/members` | 20 / h | boutique |
+| `POST /shops/{slug}/notes` | 30 / h | auteur |
+| `POST /shops/{slug}/orders/{id}/notes` | 60 / h | auteur |
 | `/api/public/v1/*` | 120 / min | clé API |
 | Reste de `/api/v1/` | 300 / min | utilisateur |
 
@@ -469,19 +498,38 @@ type SecurityEvent = {
 |---|---|---|---|
 | P1 | `GET /dashboard?period=7d\|30d\|90d` | propriétaire, gérant | `DashboardSummary` |
 | P1 | `GET /orders?status=&q=&page=` | tous | `Order[]` paginé |
+| P1 | `GET /orders/counts` | tous | `Record<OrderStatus, number>` : nombre de commandes par statut, toutes dates confondues (onglets de la liste) |
 | P1 | `GET /orders/{id}` | tous | `Order` |
 | P1 | `PATCH /orders/{id}` | tous | `{ status }`, transitions contrôlées |
 | P1 | `POST /demo-data` | propriétaire | Génère 180 jours de données (deux fois 90 j, pour que le filtre 90d ait une période de comparaison). Relancer remplace les données de démo sans les empiler · `409 shop_not_empty` si la boutique a déjà des commandes réelles |
-| P3 | `GET /products` · `POST /products` | lecture : tous · écriture : propriétaire, gérant | Catalogue |
-| P3 | `GET` · `PATCH` · `DELETE /products/{id}` | idem | |
-| P3 | `POST /products/import` | propriétaire, gérant | multipart `file` + `dry_run` → `ImportReport` |
-| P3 | `GET /orders/export?from=&to=` | propriétaire, gérant + confirmation renforcée | CSV neutralisé |
-| P3 | `GET /plans` · `POST /plan` | propriétaire + confirmation renforcée | Plans simulés, limites appliquées par le serveur |
-| P3 | `GET` · `POST` · `DELETE /api-keys` | propriétaire + confirmation renforcée (création) | La clé complète n'apparaît que dans la réponse du `POST` |
+| ✓ | `GET /orders/{id}` · `POST /orders/{id}/notes` | lecture : tous · note : tous | La fiche renvoie `OrderDetail` (avec `notes`) ; une note interne n'est jamais visible du client |
+| ✓ | `GET /products?q=&category=&stock=low\|out&page=` · `POST /products` | lecture : tous · écriture : propriétaire, gérant | Catalogue ; `403 plan_limit_reached` au-delà du plan |
+| ✓ | `GET /products/overview` | tous | `{ count, active, limit, low_stock, out_of_stock, categories, csv_import }` |
+| ✓ | `GET` · `PATCH` · `DELETE /products/{id}` | idem | Supprimer un produit ne change pas les commandes passées (nom et prix copiés) |
+| ✓ | `POST /products/import` | propriétaire, gérant (plan Pro+) | multipart `file` + `dry_run` → `ImportReport`. CSV Excel (`;` ou `,`, UTF-8 ou Windows-1252), 512 Ko et 1 000 lignes au plus, **tout ou rien** |
+| ✓ | `GET /orders/export?from=&to=` | propriétaire, gérant + confirmation renforcée | CSV `;` avec BOM, formules neutralisées, un an au plus, journalisé (`orders_exported`) |
+| ✓ | `GET /plans` · `POST /plan` | propriétaire (+ confirmation renforcée pour changer) | `{ current, plans, usage }` ; `409 plan_too_small` si l'usage dépasse le plan visé |
+| ✓ | `GET` · `POST /api-keys` · `DELETE /api-keys/{id}` | propriétaire (+ confirmation renforcée et plan Pro+ pour créer) | La clé complète n'apparaît que dans la réponse du `POST` ; alerte e-mail à la création |
+| ✓ | `GET` · `PATCH /settings` | propriétaire | Profil de la vitrine, couleur (Pro+), mode vacances (`vacation_active`, `vacation_message`, `vacation_until`) |
+| ✓ | `GET` · `POST /members` · `PATCH` · `DELETE /members/{user_id}` · `POST /members/{user_id}/temporary-password` | voir : tous · gérer : propriétaire (+ confirmation renforcée) | §2.15 |
+| ✓ | `GET /notes?unread=1` · `POST /notes` · `POST /notes/{id}/read` · `DELETE /notes/{id}` | lire : tous · écrire : propriétaire, gérant | Le mot du patron ; `DELETE` retire la note (auteur ou propriétaire) sans l'effacer de l'historique |
 
 Transitions autorisées pour une commande : `pending → confirmed → shipped → delivered`, et `pending` ou `confirmed → cancelled`. Toute autre transition renvoie `409 invalid_transition`.
 
 ```ts
+type TeamNote = {
+  id: string;
+  body: string;                // texte brut, 1 000 caractères au plus
+  urgent: boolean;
+  author: { name: string; role: Role; is_you: boolean };
+  audience: { type: "all" | "managers" | "sellers" | "member"; label: string };
+  created_at: string;
+  withdrawn: boolean;
+  for_you: boolean;            // la note m'est adressée
+  read_at: string | null;      // mon accusé de lecture
+  receipts?: { name: string; read_at: string | null }[];   // propriétaire et gérants seulement
+};
+
 type Kpi = { value: number; previous: number };   // la variation se calcule côté front
 
 type DashboardSummary = {
@@ -489,8 +537,16 @@ type DashboardSummary = {
   currency: "XOF";
   kpis: { revenue: Kpi; orders: Kpi; average_basket: Kpi; customers: Kpi };
   revenue_series: { date: string; revenue: number; orders: number }[];
+  previous_series: { date: string; revenue: number; orders: number }[];  // même longueur : le jour i de la période précédente
   top_products: { id: string; name: string; units: number; revenue: number }[];
   recent_orders: Order[];      // 5 dernières
+  to_process: { pending: number; confirmed: number; shipped: number };  // commandes ouvertes, toutes dates confondues
+  statuses: Record<OrderStatus, number>;   // commandes passées sur la période, annulées comprises
+  payment_methods: { method: PaymentMethod; orders: number; revenue: number }[];
+  places: { city: string; commune: string; orders: number; revenue: number }[];
+  order_hours: number[][];     // 7 lignes (lundi d'abord) × 24 heures, heure d'Abidjan
+  customers: { new: number; returning: number };   // client reconnu à son téléphone ; « returning » = déjà venu avant la période
+  top_customers: { name: string; city: string; commune: string; orders: number; revenue: number }[];  // 5 premiers, sans téléphone
 };
 
 type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
@@ -539,7 +595,8 @@ Ces routes n'acceptent aucun token (un visiteur connecté ou non voit la même v
 |---|---|---|
 | ✓ | `GET /storefront/{slug}` | `Storefront` : nom, description, ville, couleur d'accent, zones de livraison, moyens de paiement |
 | ✓ | `GET /storefront/{slug}/products` · `GET /storefront/{slug}/products/{product_slug}` | `PublicProduct[]`, produits actifs uniquement, triés par rayon puis par nom |
-| ✓ | `POST /storefront/{slug}/orders` | En-tête `Idempotency-Key` (UUID) obligatoire → `201 { reference, total, status }` |
+| ✓ | `POST /storefront/{slug}/orders` | En-tête `Idempotency-Key` (UUID) obligatoire → `201 { reference, total, status }` · `409 shop_on_vacation` en congé |
+| ✓ | `POST /storefront/{slug}/track` | `{ reference, phone_last4 }` → statut, date, total, articles, commune. Ni adresse ni téléphone en retour ; même `404` pour une référence inconnue et un numéro faux ; 5 essais par heure et par référence |
 
 ```ts
 type Accent = "orange" | "indigo" | "ocre" | "lagune" | "corail"; // liste fermée : jamais de code couleur libre
@@ -595,8 +652,10 @@ En-tête `Authorization: Bearer akw_live_…`. La clé désigne la boutique : pa
 
 | | Méthode et route | Scope |
 |---|---|---|
-| P3 | `GET /products` | `catalog:read` |
-| P3 | `GET /orders` | `orders:read` |
+| ✓ | `GET /products` | `catalog:read` |
+| ✓ | `GET /orders?status=` | `orders:read` |
+
+La clé est vérifiée à temps constant (une empreinte factice est comparée quand l'identifiant n'existe pas). Une session marchand (JWT) n'ouvre pas cette API, et une clé n'ouvre pas `/api/v1/`.
 
 ---
 
@@ -613,12 +672,17 @@ Chaque protection a un test qui la démontre. Les cases cochées sont couvertes 
 - [x] Un code TOTP ne passe pas deux fois. Un code de secours ne sert qu'une fois.
 - [x] Un vendeur reçoit `403` sur le dashboard. Une ressource d'une autre boutique renvoie `404`.
 - [x] Désactiver la 2FA sans confirmation renforcée renvoie `403 reauth_required` (même mécanisme que pour les clés API du P3).
-- [ ] Créer une clé API sans confirmation renforcée renvoie `403 reauth_required` (P3).
+- [x] Créer une clé API sans confirmation renforcée renvoie `403 reauth_required`. Une clé révoquée ou falsifiée renvoie `401`, une clé sans le bon droit `403 scope_missing`.
 - [x] La base ne contient aucun secret TOTP ni code de secours en clair.
-- [ ] La base ne contient aucune clé API en clair (P3).
-- [ ] Un prix envoyé par le client est ignoré. La même `Idempotency-Key` ne crée qu'une commande.
+- [x] La base ne contient aucune clé API en clair.
+- [x] Un prix envoyé par le client est ignoré. La même `Idempotency-Key` ne crée qu'une commande.
 - [ ] Deux commandes simultanées sur le dernier article : une seule passe.
-- [ ] Une cellule `=CMD()` sort neutralisée dans l'export CSV.
+- [x] Une cellule `=CMD()` sort neutralisée dans l'export CSV ; l'export exige une confirmation renforcée et il est journalisé.
+- [x] Un compte sur mot de passe provisoire ne peut que choisir son mot de passe (`403 password_change_required` partout ailleurs) ; le provisoire expire après 72 h.
+- [x] Ajouter quelqu'un à l'équipe exige une confirmation renforcée ; un gérant ne peut pas le faire ; le propriétaire ne peut être ni modifié ni retiré.
+- [x] Mot du patron : un vendeur ne peut ni écrire ni accuser réception d'une note qui ne lui est pas adressée.
+- [x] Suivi client : même réponse pour une référence inconnue et un numéro faux, et 5 essais par heure et par référence.
+- [x] Import CSV : une ligne fausse et rien n'est importé ; mauvais type `415`, fichier trop lourd `413`, plan Gratuit `403`.
 - [x] Les mots de passe `abidjan2026` et `akwaba123` sont refusés.
 - [x] Avec `DEBUG=0`, une erreur 500 ne contient ni trace ni détail interne.
 - [x] `/api/v1/` sans secret BFF renvoie `403`.

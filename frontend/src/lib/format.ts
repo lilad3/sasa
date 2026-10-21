@@ -51,6 +51,22 @@ export function formatToday(date = new Date()) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** « +225 07 08 09 10 11 » : un numéro ivoirien se lit par paires. */
+export function formatPhone(phone: string) {
+  const match = /^\+225(\d{10})$/.exec(phone);
+  if (!match) return phone;
+  return `+225 ${match[1].replace(/(\d{2})(?=\d)/g, "$1 ")}`;
+}
+
+/** « il y a 5 min », « il y a 3 h », puis la date. */
+export function formatSince(iso: string, now = Date.now()) {
+  const minutes = Math.round((now - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return "à l’instant";
+  if (minutes < 60) return `il y a ${minutes} min`;
+  if (minutes < 24 * 60) return `il y a ${Math.round(minutes / 60)} h`;
+  return `le ${formatDateTime(iso)}`;
+}
+
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   pending: "En attente",
   confirmed: "Confirmée",

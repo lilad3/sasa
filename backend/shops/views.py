@@ -1,18 +1,29 @@
+from datetime import date, datetime, time, timedelta
+
 from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail, NotFound, ValidationError
 from rest_framework.response import Response
 
+from accounts.sessions import require_reauth
 from audit.services import record
 from core.exceptions import ProblemError
 from core.pagination import PagePagination
+from core.ratelimit import enforce
+from core.spreadsheet import excel_csv
 
-from .dashboard import PERIODS, dashboard_summary
+from .dashboard import PERIODS, dashboard_summary, order_counts
 from .demo import generate_demo_data
-from .models import Order, OrderStatus
+from .models import Order, OrderNote, OrderStatus, PaymentMethod
 from .permissions import ShopScopedView
-from .serializers import OrderSerializer, OrderStatusSerializer
+from .serializers import OrderDetailSerializer, OrderNoteSerializer, OrderSerializer, OrderStatusSerializer
+from .team import full_name
+
+EXPORT_MAX_DAYS = 366
+ORDER_NOTE_LIMIT = (60, 3600)  # par compte
 
 
 class DashboardView(ShopScopedView):
@@ -47,11 +58,20 @@ class OrderListView(ShopScopedView):
         return paginator.get_paginated_response(OrderSerializer(page, many=True).data)
 
 
+class OrderCountsView(ShopScopedView):
+    """Nombre de commandes par statut : les onglets de la liste et le travail à faire, pour tous les rôles."""
+
+    permission_by_method = {"GET": "orders.view"}
+
+    def get(self, request, slug):
+        return Response(order_counts(self.shop))
+
+
 class OrderDetailView(ShopScopedView):
     permission_by_method = {"GET": "orders.view", "PATCH": "orders.manage"}
 
     def get(self, request, slug, order_id):
-        return Response(OrderSerializer(self._order(order_id)).data)
+        return Response(OrderDetailSerializer(self._order(order_id)).data)
 
     def patch(self, request, slug, order_id):
         serializer = OrderStatusSerializer(data=request.data)
@@ -79,14 +99,97 @@ class OrderDetailView(ShopScopedView):
                     previous_status=previous_status,
                     new_status=new_status,
                 )
-        return Response(OrderSerializer(order).data)
+        return Response(OrderDetailSerializer(order).data)
 
     def _order(self, order_id):
-        # Une commande d'une autre boutique donne 404, comme une commande inexistante.
-        order = Order.objects.for_shop(self.shop).prefetch_related("items").filter(pk=order_id).first()
-        if order is None:
-            raise NotFound("Commande introuvable.")
-        return order
+        return shop_order(self.shop, order_id)
+
+
+def shop_order(shop, order_id):
+    # Une commande d'une autre boutique donne 404, comme une commande inexistante.
+    order = Order.objects.for_shop(shop).prefetch_related("items", "notes").filter(pk=order_id).first()
+    if order is None:
+        raise NotFound("Commande introuvable.")
+    return order
+
+
+class OrderNoteView(ShopScopedView):
+    """Note interne sur une commande. On n'en supprime pas : c'est le fil de ce qui s'est passé."""
+
+    permission_by_method = {"POST": "orders.manage"}
+
+    def post(self, request, slug, order_id):
+        enforce("order_note", str(request.user.pk), ORDER_NOTE_LIMIT)
+        order = shop_order(self.shop, order_id)
+        serializer = OrderNoteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        note = OrderNote.objects.create(
+            order=order, author=request.user, author_name=full_name(request.user), body=serializer.validated_data["body"]
+        )
+        return Response(OrderNoteSerializer(note).data, status=status.HTTP_201_CREATED)
+
+
+class OrderExportView(ShopScopedView):
+    """
+    Export des ventes en CSV pour Excel. Toute la clientèle et ses téléphones sortent d'un coup :
+    confirmation renforcée, journal, et formules neutralisées (« =CMD() » reste du texte).
+    """
+
+    permission_by_method = {"GET": "orders.export"}
+
+    def get(self, request, slug):
+        first, last = _export_range(request.query_params)
+        require_reauth(request)
+        tz = timezone.get_current_timezone()
+        orders = (
+            Order.objects.for_shop(self.shop)
+            .filter(
+                created_at__gte=datetime.combine(first, time.min, tzinfo=tz),
+                created_at__lt=datetime.combine(last + timedelta(days=1), time.min, tzinfo=tz),
+            )
+            .prefetch_related("items")
+            .order_by("created_at")
+        )
+        payments = dict(PaymentMethod.choices)
+        statuses = dict(OrderStatus.choices)
+        rows = [
+            [
+                order.reference,
+                timezone.localtime(order.created_at).strftime("%d/%m/%Y %H:%M"),
+                statuses[order.status],
+                order.customer_name,
+                order.customer_phone,
+                order.customer_city,
+                order.customer_commune,
+                order.customer_landmark,
+                payments[order.payment_method],
+                " | ".join(f"{item.quantity} × {item.name}" for item in order.items.all()),
+                order.subtotal,
+                order.delivery_fee,
+                order.total,
+            ]
+            for order in orders
+        ]
+        header = ["Référence", "Date", "Statut", "Client", "Téléphone", "Ville", "Commune", "Repère", "Paiement",
+                  "Articles", "Sous-total (F)", "Livraison (F)", "Total (F)"]
+        record("orders_exported", request, actor=request.user, shop=self.shop, rows=len(rows), first=str(first), last=str(last))
+        response = HttpResponse(excel_csv(header, rows), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="akwaba-{self.shop.slug}-{first}-{last}.csv"'
+        return response
+
+
+def _export_range(params):
+    today = timezone.localdate()
+    try:
+        first = date.fromisoformat(params.get("from") or (today - timedelta(days=29)).isoformat())
+        last = date.fromisoformat(params.get("to") or today.isoformat())
+    except ValueError:
+        raise ValidationError({"from": [ErrorDetail("Dates attendues au format AAAA-MM-JJ.", code="invalid_date")]}) from None
+    if first > last:
+        raise ValidationError({"from": [ErrorDetail("La date de début est après la date de fin.", code="invalid_range")]})
+    if (last - first).days >= EXPORT_MAX_DAYS:
+        raise ValidationError({"from": [ErrorDetail("Un an au maximum par export.", code="range_too_long")]})
+    return first, last
 
 
 class DemoDataView(ShopScopedView):
