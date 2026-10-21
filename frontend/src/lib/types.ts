@@ -269,3 +269,41 @@ export type ApiKey = {
   revoked_at: string | null;
   active: boolean;
 };
+
+/* ---------- Journal de la boutique et santé de la sécurité (propriétaire) ---------- */
+
+export type ShopActivityEvent = {
+  id: string;
+  type: string;
+  label: string;
+  severity: "info" | "warning" | "critical";
+  created_at: string;
+  /** null : un client ou un robot, en vitrine. `role` null : la personne a quitté la boutique. */
+  actor: { name: string; role: Role | null; is_you: boolean } | null;
+  target: { type: string; label: string } | null;
+  /** Liste blanche par type d'événement (rows, previous_role, new_status…). */
+  details: Record<string, unknown>;
+  device_label: string;
+  ip: string | null;
+};
+
+export type SecurityOverview = {
+  team: {
+    user_id: string;
+    name: string;
+    role: Role;
+    is_you: boolean;
+    mfa_enabled: boolean;
+    pending: boolean;
+    temporary_password_expired: boolean;
+  }[];
+  api_keys: {
+    active: number;
+    dormant: { id: string; name: string; last_used_at: string | null; created_at: string }[];
+    expiring_soon: { id: string; name: string; expires_at: string }[];
+  };
+  /** Tentatives sur les comptes de l'équipe, 7 derniers jours. */
+  suspicious: { user_id: string; name: string; is_you: boolean; type: string; label: string; count: number; last_at: string }[];
+  last_export: { at: string; by: string; rows: number | null } | null;
+  sensitive_events_7d: number;
+};

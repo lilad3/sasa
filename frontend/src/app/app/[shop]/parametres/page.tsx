@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { AddMemberForm } from "@/features/settings/add-member-form";
 import { ApiKeyForm, SCOPE_LABEL } from "@/features/settings/api-key-form";
-import { getApiKeys, getPlans, getShopSettings } from "@/features/settings/data";
+import { type ActivityKind, getApiKeys, getPlans, getShopActivity, getShopSettings } from "@/features/settings/data";
+import { ShopJournal } from "@/features/settings/journal";
+import { SecurityCard, SecurityCardSkeleton } from "@/features/settings/security-card";
 import { MemberRow } from "@/features/settings/member-row";
 import { PlanPicker } from "@/features/settings/plan-picker";
 import { ProfileForm } from "@/features/settings/profile-form";
@@ -23,6 +25,7 @@ const TABS = [
   { id: "equipe", label: "Équipe" },
   { id: "plan", label: "Plan" },
   { id: "cles", label: "Clés API" },
+  { id: "journal", label: "Journal" },
 ] as const;
 
 type Tab = (typeof TABS)[number]["id"];
@@ -90,6 +93,13 @@ async function SettingsFromRoute({ params, searchParams }: Pick<PageProps<"/app/
       {tab === "equipe" ? <TeamTab slug={shop} me={me.data} /> : null}
       {tab === "plan" ? <PlanTab slug={shop} me={me.data} /> : null}
       {tab === "cles" ? <KeysTab slug={shop} me={me.data} /> : null}
+      {tab === "journal" ? (
+        <JournalTab
+          slug={shop}
+          kind={query.type === "tout" ? "tout" : "sensible"}
+          page={Math.max(1, Number.parseInt(typeof query.page === "string" ? query.page : "1", 10) || 1)}
+        />
+      ) : null}
     </>
   );
 }
@@ -270,6 +280,23 @@ async function KeysTab({ slug, me }: { slug: string; me: Me }) {
           <p className="text-texte-3">Une clé révoquée ou expirée reçoit 401. Chaque création et chaque révocation est notée dans le journal de sécurité.</p>
         </section>
       </div>
+    </>
+  );
+}
+
+async function JournalTab({ slug, kind, page }: { slug: string; kind: ActivityKind; page: number }) {
+  const events = await getShopActivity(slug, kind, page);
+  // Une page du journal qui n'existe plus (adresse ancienne) : retour à la première.
+  if (!events.ok && events.problem.status === 404 && page > 1) redirect(`/app/${slug}/parametres?onglet=journal${kind === "tout" ? "&type=tout" : ""}`);
+  if (!events.ok) fail(events.problem.detail);
+  return (
+    <>
+      <div className="col-span-full self-start lg:col-span-4">
+        <Suspense fallback={<SecurityCardSkeleton />}>
+          <SecurityCard slug={slug} />
+        </Suspense>
+      </div>
+      <ShopJournal slug={slug} kind={kind} events={events.data} />
     </>
   );
 }
