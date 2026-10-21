@@ -12,6 +12,7 @@ import type { PaymentMethod, PlacedOrder, Storefront } from "@/lib/types";
 import { type CheckoutInput, placeOrder } from "./actions";
 import { subtotalOf } from "./basket";
 import { type Line, Price } from "./catalogue";
+import { ZonePicker } from "./zone-picker";
 
 // Champs en pêche translucide (plus de blanc). Indice gris-brun à 4,6:1, anneau de focus indigo.
 const INPUT =
@@ -152,14 +153,15 @@ export function Checkout({
             <input id={`${id}-tel`} className={INPUT} value={phone} onChange={(e) => edit("phone", setPhone)(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="07 07 12 34 56" aria-invalid={!!errors.phone || undefined} aria-describedby={`${id}-tel-aide${errors.phone ? ` ${id}-tel-erreur` : ""}`} maxLength={24} />
           </Labeled>
           <Labeled id={`${id}-zone`} label="Commune ou ville" error={errors.zone}>
-            <select id={`${id}-zone`} className={INPUT} value={zoneId} onChange={(e) => edit("zone", setZoneId)(e.target.value)} aria-invalid={!!errors.zone || undefined} aria-describedby={errors.zone ? `${id}-zone-erreur` : undefined}>
-              <option value="">Choisissez…</option>
-              {shop.delivery_zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.label} · livraison {formatFcfa(z.fee)}
-                </option>
-              ))}
-            </select>
+            <ZonePicker
+              id={`${id}-zone`}
+              zones={shop.delivery_zones}
+              value={zoneId}
+              onChange={edit("zone", setZoneId)}
+              className={INPUT}
+              invalid={!!errors.zone}
+              describedBy={errors.zone ? `${id}-zone-erreur` : undefined}
+            />
           </Labeled>
           <Labeled id={`${id}-repere`} label="Adresse ou repère" error={errors.landmark} hint="Facultatif. Par exemple : derrière la pharmacie des Deux-Plateaux.">
             <input id={`${id}-repere`} className={INPUT} value={landmark} onChange={(e) => edit("landmark", setLandmark)(e.target.value)} autoComplete="street-address" aria-invalid={!!errors.landmark || undefined} aria-describedby={`${id}-repere-aide${errors.landmark ? ` ${id}-repere-erreur` : ""}`} maxLength={160} />
@@ -257,7 +259,7 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
   const firstName = receipt.name.split(/\s+/)[0];
   return (
     <section aria-labelledby="confirmation-titre" className="verre-clair flex flex-col gap-5 rounded-[24px] p-6 md:p-8">
-      <span aria-hidden className="grid size-12 place-items-center rounded-full bg-[#e5f5dc] text-2xl text-[#2c6a14]">
+      <span aria-hidden className="grid size-12 place-items-center rounded-full bg-encre text-2xl text-creme">
         ✓
       </span>
       <div className="flex flex-col gap-2">
