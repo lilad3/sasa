@@ -10,6 +10,8 @@ export type Me = {
   last_name: string;
   mfa_enabled: boolean;
   is_demo: boolean;
+  /** Compte créé par un patron, encore sur son mot de passe provisoire. */
+  must_change_password: boolean;
   date_joined: string;
 };
 
@@ -65,13 +67,92 @@ export type Order = {
   created_at: string;
 };
 
+export type OrderCounts = Record<OrderStatus, number>;
+
+export type DayPoint = { date: string; revenue: number; orders: number };
+
 export type DashboardSummary = {
   period: { from: string; to: string; label: Period };
   currency: "XOF";
   kpis: { revenue: Kpi; orders: Kpi; average_basket: Kpi; customers: Kpi };
-  revenue_series: { date: string; revenue: number; orders: number }[];
+  revenue_series: DayPoint[];
+  /** Même longueur que revenue_series : le jour i de la période précédente. */
+  previous_series: DayPoint[];
   top_products: { id: string; name: string; units: number; revenue: number }[];
   recent_orders: Order[];
+  /** Commandes ouvertes, toutes dates confondues. */
+  to_process: Record<"pending" | "confirmed" | "shipped", number>;
+  /** Commandes passées sur la période, annulées comprises. */
+  statuses: OrderCounts;
+  payment_methods: { method: PaymentMethod; orders: number; revenue: number }[];
+  places: { city: string; commune: string; orders: number; revenue: number }[];
+  /** 7 lignes (lundi d'abord) de 24 heures. */
+  order_hours: number[][];
+  customers: { new: number; returning: number };
+  top_customers: { name: string; city: string; commune: string; orders: number; revenue: number }[];
+  /** Produits en vente arrivés à leur seuil d'alerte, les plus bas d'abord. */
+  low_stock: { count: number; items: { id: string; name: string; sku: string; stock: number; threshold: number }[] };
+};
+
+/* ---------- Sécurité du compte (contrat §4.2) ---------- */
+
+export type Session = {
+  id: string;
+  device_label: string;
+  ip: string;
+  shared_device: boolean;
+  current: boolean;
+  created_at: string;
+  last_seen_at: string;
+};
+
+export type SecurityEvent = {
+  id: string;
+  type: string;
+  label: string;
+  severity: "info" | "warning" | "critical";
+  ip: string;
+  device_label: string;
+  created_at: string;
+};
+
+export type MfaSetup = { otpauth_uri: string; secret: string; qr_svg: string };
+
+export type OrderNote = { id: string; author_name: string; body: string; created_at: string };
+
+/** La fiche d'une commande : la commande et les notes internes de l'équipe. */
+export type OrderDetail = Order & { notes: OrderNote[] };
+
+/* ---------- Équipe et mot du patron ---------- */
+
+export type Member = {
+  user_id: string;
+  name: string;
+  first_name: string;
+  last_name: string;
+  role: Role;
+  joined_at: string;
+  pending: boolean;
+  temporary_password_expires_at: string | null;
+  email?: string;
+  is_you: boolean;
+};
+
+export type NoteAudience = "all" | "managers" | "sellers" | "member";
+
+export type TeamNote = {
+  id: string;
+  body: string;
+  urgent: boolean;
+  author: { name: string; role: Role; is_you: boolean };
+  audience: { type: NoteAudience; label: string };
+  created_at: string;
+  withdrawn: boolean;
+  /** La note m'est adressée ; read_at est mon accusé de lecture. */
+  for_you: boolean;
+  read_at: string | null;
+  /** Seulement pour le propriétaire et les gérants. */
+  receipts?: { name: string; read_at: string | null }[];
 };
 
 export type Paginated<T> = { results: T[]; count: number; page: number; pages: number };
@@ -88,6 +169,8 @@ export type Problem = {
   request_id?: string;
   /** Total recalculé par le serveur, sur `price_changed`. */
   total?: number;
+  /** Limite du plan, sur `plan_limit_reached`. */
+  limit?: number;
 };
 
 /* ---------- Boutique publique (contrat §4.4) ---------- */

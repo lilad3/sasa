@@ -20,12 +20,13 @@ class ShopAccessTests(ApiTestCase):
     def test_seller_can_process_orders(self):
         self.authenticate(self.seller)
         self.assertEqual(self.client.get("/api/v1/shops/maison-test/orders").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/shops/maison-test/orders/counts").json()["pending"], 1)
         response = self.client.patch(f"/api/v1/shops/maison-test/orders/{self.order.pk}", {"status": "confirmed"})
         self.assertEqual(response.json()["status"], "confirmed")
 
     def test_other_shop_is_invisible(self):
         self.authenticate(self.stranger)
-        for path in ["dashboard", "orders", f"orders/{self.order.pk}"]:
+        for path in ["dashboard", "orders", "orders/counts", f"orders/{self.order.pk}"]:
             with self.subTest(path=path):
                 self.assertProblem(self.client.get(f"/api/v1/shops/maison-test/{path}"), 404, "not_found")
 

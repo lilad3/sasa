@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+from django.utils import timezone
+
 from core.testing import ApiTestCase, make_member, make_order, make_shop
 from shops.models import Order, Product
 
@@ -27,6 +29,51 @@ class DashboardTests(ApiTestCase):
         self.assertEqual(body["revenue_series"][-1]["revenue"], 10_000)
         self.assertEqual(body["top_products"][0], {"id": str(self.karite.pk), "name": "Karité", "units": 4, "revenue": 10_000})
         self.assertEqual(len(body["recent_orders"]), 4)
+
+    def test_breakdowns_by_payment_place_status_and_hour(self):
+        make_order(self.shop, total=12_000, status="delivered", payment_method="orange_money", customer_commune="Yopougon")
+        make_order(self.shop, total=8_000)
+        make_order(self.shop, total=3_000, status="confirmed")
+        make_order(self.shop, total=50_000, status="cancelled", payment_method="cash_on_delivery")
+
+        body = self.client.get("/api/v1/shops/maison-test/dashboard?period=7d").json()
+
+        self.assertEqual(
+            body["payment_methods"],
+            [{"method": "orange_money", "orders": 1, "revenue": 12_000}, {"method": "wave", "orders": 2, "revenue": 11_000}],
+        )
+        self.assertEqual([(place["commune"], place["revenue"]) for place in body["places"]], [("Yopougon", 12_000), ("Cocody", 11_000)])
+        # Les statuts portent sur toutes les commandes passées, annulées comprises : c'est le taux d'annulation.
+        self.assertEqual(body["statuses"], {"pending": 1, "confirmed": 1, "shipped": 0, "delivered": 1, "cancelled": 1})
+        now = timezone.localtime()
+        self.assertEqual(len(body["order_hours"]), 7)
+        self.assertEqual(sum(map(sum, body["order_hours"])), 3)
+        self.assertEqual(body["order_hours"][now.isoweekday() - 1][now.hour], 3)
+
+    def test_work_to_do_counts_open_orders_whatever_their_date(self):
+        make_order(self.shop, age=timedelta(days=40))
+        make_order(self.shop, status="confirmed")
+        make_order(self.shop, status="shipped", age=timedelta(days=3))
+        make_order(self.shop, status="delivered")
+
+        body = self.client.get("/api/v1/shops/maison-test/dashboard?period=7d").json()
+
+        self.assertEqual(body["to_process"], {"pending": 1, "confirmed": 1, "shipped": 1})
+
+    def test_customers_are_new_or_returning_and_top_customers_hide_the_phone(self):
+        make_order(self.shop, phone="+2250700000001", age=timedelta(days=20))
+        make_order(self.shop, phone="+2250700000001", total=30_000)
+        make_order(self.shop, phone="+2250700000002", customer_name="Koffi Yao", total=5_000)
+        # Une commande annulée ne fait pas d'Awa une cliente déjà venue.
+        make_order(self.shop, phone="+2250700000003", status="cancelled", age=timedelta(days=20))
+        make_order(self.shop, phone="+2250700000003", customer_name="Awa Traoré", total=2_000)
+
+        body = self.client.get("/api/v1/shops/maison-test/dashboard?period=7d").json()
+
+        self.assertEqual(body["customers"], {"new": 2, "returning": 1})
+        self.assertEqual([customer["name"] for customer in body["top_customers"]], ["Aya Koné", "Koffi Yao", "Awa Traoré"])
+        self.assertEqual(set(body["top_customers"][0]), {"name", "city", "commune", "orders", "revenue"})
+        self.assertEqual(len(body["previous_series"]), 7)
 
     def test_unknown_period_is_a_validation_error(self):
         response = self.client.get("/api/v1/shops/maison-test/dashboard?period=1y")
@@ -66,6 +113,15 @@ class OrderTests(ApiTestCase):
         self.assertEqual(pending["count"], 3)
         page = self.client.get("/api/v1/shops/maison-test/orders?page_size=2&page=2").json()
         self.assertEqual((page["page"], page["pages"], len(page["results"])), (2, 2, 2))
+
+    def test_counts_by_status_cover_every_status(self):
+        make_order(self.shop)
+        make_order(self.shop, age=timedelta(days=200))
+        make_order(self.shop, status="delivered")
+
+        body = self.client.get("/api/v1/shops/maison-test/orders/counts").json()
+
+        self.assertEqual(body, {"pending": 2, "confirmed": 0, "shipped": 0, "delivered": 1, "cancelled": 0})
 
 
 class DemoDataTests(ApiTestCase):

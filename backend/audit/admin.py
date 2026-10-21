@@ -10,6 +10,8 @@ from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
+from core.spreadsheet import csv_safe
+
 from .actions import Severity
 from .models import AuditEvent
 from .services import record, verify_chain
@@ -20,7 +22,6 @@ SEVERITY_CLASSES = {
     Severity.WARNING: "akw-sev--watch",
     Severity.CRITICAL: "akw-sev--critical",
 }
-FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 EXPORT_COLUMNS = [
     ("Date", lambda e: timezone.localtime(e.created_at).strftime("%d/%m/%Y %H:%M:%S")),
     ("Gravité", lambda e: e.get_severity_display()),
@@ -34,12 +35,6 @@ EXPORT_COLUMNS = [
     ("Détails", lambda e: e.metadata),
     ("Identifiant de requête", lambda e: e.request_id),
 ]
-
-
-def csv_safe(value):
-    """Une cellule qui commence par = + - @ serait exécutée comme une formule par Excel."""
-    text = "" if value is None else str(value)
-    return f"'{text}" if text.startswith(FORMULA_PREFIXES) else text
 
 
 class ShopFilter(admin.SimpleListFilter):

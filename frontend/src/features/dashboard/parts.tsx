@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 import { compactFcfa, formatDateTime, formatFcfa, formatNumber, formatVariation, PAYMENT_LABEL, ROLE_LABEL, STATUS_LABEL, variation } from "@/lib/format";
@@ -104,7 +105,7 @@ export function RoleCard({ membership }: { membership: ShopMembership }) {
   );
 }
 
-const STATUS_TONE: Record<OrderStatus, string> = {
+export const STATUS_TONE: Record<OrderStatus, string> = {
   pending: "text-alerte",
   confirmed: "text-indigo-clair",
   shipped: "text-texte-2",
@@ -121,25 +122,33 @@ export function StatusPill({ status }: { status: OrderStatus }) {
   );
 }
 
-export function OrderRows({ orders, slug, showAllLink = true }: { orders: Order[]; slug: string; showAllLink?: boolean }) {
+type OrderRowsProps = { orders: Order[]; slug: string; showAllLink?: boolean; empty?: ReactNode };
+
+/** Liste de commandes : chaque ligne ouvre la fiche de la commande. */
+export function OrderRows({ orders, slug, showAllLink = true, empty = "Aucune commande pour l’instant." }: OrderRowsProps) {
   if (orders.length === 0) {
-    return <p className="rounded-[16px] border border-dashed border-trait p-4 text-sm text-texte-3">Aucune commande pour l’instant.</p>;
+    return <div className="rounded-[16px] border border-dashed border-trait p-4 text-sm text-texte-3">{empty}</div>;
   }
   return (
     <ul className="flex flex-col">
       {orders.map((order) => (
-        <li key={order.id} className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 border-b border-trait-doux py-3 last:border-0 md:grid-cols-[110px_1fr_140px_120px_130px]">
-          <span className="font-mono text-[13px]">{order.reference}</span>
-          <span className="min-w-0 truncate text-sm">
-            {order.customer.name}
-            <span className="text-texte-3"> · {order.customer.commune || order.customer.city}</span>
-          </span>
-          <span className="hidden text-[13px] text-texte-3 md:block">{formatDateTime(order.created_at)}</span>
-          <span className="text-right text-sm font-semibold tabular-nums md:text-left">{formatFcfa(order.total)}</span>
-          <span className="flex items-center justify-between gap-2 md:justify-start">
-            <StatusPill status={order.status} />
-            <span className="text-xs text-texte-3 md:hidden">{PAYMENT_LABEL[order.payment_method]}</span>
-          </span>
+        <li key={order.id} className="border-b border-trait-doux last:border-0">
+          <Link
+            href={`/app/${slug}/commandes/${order.id}`}
+            className="-mx-2 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 rounded-xl px-2 py-3 transition-colors hover:bg-white/[0.05] md:grid-cols-[110px_1fr_140px_120px_130px]"
+          >
+            <span className="font-mono text-[13px]">{order.reference}</span>
+            <span className="min-w-0 truncate text-sm">
+              {order.customer.name}
+              <span className="text-texte-3"> · {order.customer.commune || order.customer.city}</span>
+            </span>
+            <span className="hidden text-[13px] text-texte-3 md:block">{formatDateTime(order.created_at)}</span>
+            <span className="text-right text-sm font-semibold tabular-nums md:text-left">{formatFcfa(order.total)}</span>
+            <span className="flex items-center justify-between gap-2 md:justify-start">
+              <StatusPill status={order.status} />
+              <span className="text-xs text-texte-3 md:hidden">{PAYMENT_LABEL[order.payment_method]}</span>
+            </span>
+          </Link>
         </li>
       ))}
       {showAllLink ? (

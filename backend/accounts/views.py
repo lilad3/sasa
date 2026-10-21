@@ -183,6 +183,15 @@ class LoginView(PublicAuthView):
                 attempts_remaining=remaining if remaining <= policy.LOGIN_WARNING_FROM else None,
             )
 
+        expires = user.temporary_password_expires_at
+        if user.must_change_password and expires is not None and expires < timezone.now():
+            # Le mot de passe est juste : le dire ne renseigne personne. Il faut en demander un nouveau.
+            raise ProblemError(
+                401,
+                "temporary_password_expired",
+                "Ce mot de passe provisoire a expiré. Demandez-en un nouveau au propriétaire de la boutique.",
+            )
+
         if mfa.is_enabled(user):
             # Le compteur d'échecs n'est pas remis à zéro ici : connaître le mot de passe
             # ne doit pas permettre de deviner les codes 2FA à l'infini.
@@ -367,6 +376,8 @@ class ReauthView(APIView):
 
 
 class MeView(APIView):
+    allowed_with_temporary_password = True
+
     def get(self, request):
         return Response(MeSerializer(request.user).data)
 
@@ -378,12 +389,16 @@ class MeView(APIView):
 
 
 class MyShopsView(APIView):
+    allowed_with_temporary_password = True
+
     def get(self, request):
         return Response(memberships_for(request.user))
 
 
 class PasswordChangeView(APIView):
     """Le mot de passe actuel sert de confirmation. Les autres sessions sont fermées, pas celle-ci."""
+
+    allowed_with_temporary_password = True
 
     def post(self, request):
         if request.user.is_demo:
@@ -399,7 +414,10 @@ class PasswordChangeView(APIView):
 
         validate_new_password(data["password"], request.user)
         request.user.set_password(data["password"])
-        request.user.save(update_fields=["password"])
+        # Un mot de passe choisi par la personne elle-même remplace le provisoire : le compte est libéré.
+        request.user.must_change_password = False
+        request.user.temporary_password_expires_at = None
+        request.user.save(update_fields=["password", "must_change_password", "temporary_password_expires_at"])
         revoke_all(request.user, UserSession.RevokeReason.PASSWORD_CHANGED, keep=request.auth)
         record("password_changed", request, actor=request.user)
         emails.send_security_alert(request.user, "password_changed", request)

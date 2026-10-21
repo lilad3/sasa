@@ -1,11 +1,14 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from accounts import lockout, mfa
 from accounts.models import User
 from shops.demo import generate_demo_data
-from shops.models import Membership, Plan, Role, Shop
+from shops.models import Membership, Plan, Role, Shop, TeamNote, TeamNoteReceipt
 
 DEMO_PASSWORD = "Demo-Vitrine-2026"
 
@@ -41,6 +44,20 @@ DEMO_STOREFRONTS = {
     },
 }
 
+# Le mot du patron : (auteur, public, urgent, il y a combien d'heures, texte, qui l'a déjà lu)
+DEMO_NOTES = {
+    "maison-adjoua": [
+        ("fatou@akwaba.test", "sellers", False, 30,
+         "Quand un client ne répond pas, notez-le sur la commande. Je relance tous les soirs à 18 h.",
+         ["koffi@akwaba.test"]),
+        ("adjoua@akwaba.test", "sellers", False, 5,
+         "Le karité 500 g revient lundi. D'ici là, proposez le savon noir aux clientes qui le demandent.", []),
+        ("adjoua@akwaba.test", "all", True, 2,
+         "Pas de livraison à Yopougon jeudi : la voie express est en travaux. Appelez les clients concernés pour proposer vendredi.",
+         ["fatou@akwaba.test"]),
+    ],
+}
+
 # L'exploitant de la plateforme : il consulte le journal d'audit dans l'admin Django.
 DEMO_ADMIN = ("admin@akwaba.test", "Awa", "Koné")
 
@@ -65,6 +82,7 @@ class Command(BaseCommand):
                 user = self._demo_user(email, first_name, last_name, recovery)
                 Membership.objects.update_or_create(user=user, shop=shop, defaults={"role": role})
             summary = generate_demo_data(shop)
+            self._demo_notes(shop)
             self.stdout.write(f"{name} : {summary['products']} produits, {summary['orders']} commandes sur {summary['days']} jours")
 
         admin_user = self._demo_user(*DEMO_ADMIN, recovery)
@@ -78,6 +96,23 @@ class Command(BaseCommand):
         self.stdout.write("\nComptes avec 2FA (secret à saisir dans une application d'authentification) :")
         for email, secret in DEMO_TOTP_SECRETS.items():
             self.stdout.write(f"  {email:<24} {secret}   codes de secours : {', '.join(recovery[email][:3])}…")
+
+    def _demo_notes(self, shop):
+        TeamNote.objects.for_shop(shop).delete()
+        members = {m.user.email: m for m in Membership.objects.filter(shop=shop).select_related("user")}
+        now = timezone.now()
+        for author_email, audience, urgent, hours_ago, body, read_by in DEMO_NOTES.get(shop.slug, []):
+            author = members[author_email]
+            note = TeamNote.objects.create(
+                shop=shop, author=author.user, author_name=f"{author.user.first_name} {author.user.last_name}",
+                author_role=author.role, body=body, urgent=urgent, audience=audience,
+                created_at=now - timedelta(hours=hours_ago),
+            )
+            for email, member in members.items():
+                wanted = audience == "all" or (audience == "sellers" and member.role == Role.SELLER)
+                if wanted and email != author_email:
+                    read_at = now - timedelta(hours=hours_ago) + timedelta(minutes=40) if email in read_by else None
+                    TeamNoteReceipt.objects.create(note=note, user=member.user, read_at=read_at)
 
     def _demo_user(self, email, first_name, last_name, recovery):
         user = User.objects.filter(email=email).first() or User(email=email)

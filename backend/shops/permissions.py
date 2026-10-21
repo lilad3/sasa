@@ -10,13 +10,19 @@ from .models import Membership, Role
 
 ROLE_PERMISSIONS = {
     Role.OWNER: frozenset(
-        {"dashboard.view", "orders.view", "orders.manage", "orders.export", "products.view", "products.write", "shop.manage"}
+        {
+            "dashboard.view", "orders.view", "orders.manage", "orders.export", "products.view", "products.write",
+            "team.view", "notes.send", "shop.manage",
+        }
     ),
     Role.MANAGER: frozenset(
-        {"dashboard.view", "orders.view", "orders.manage", "orders.export", "products.view", "products.write"}
+        {
+            "dashboard.view", "orders.view", "orders.manage", "orders.export", "products.view", "products.write",
+            "team.view", "notes.send",
+        }
     ),
-    # Le vendeur traite les commandes, mais ne voit ni le chiffre d'affaires ni les exports.
-    Role.SELLER: frozenset({"orders.view", "orders.manage", "products.view"}),
+    # Le vendeur traite les commandes et lit les consignes, mais ne voit ni le chiffre d'affaires ni les exports.
+    Role.SELLER: frozenset({"orders.view", "orders.manage", "products.view", "team.view"}),
 }
 
 

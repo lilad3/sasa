@@ -43,6 +43,10 @@ class User(AbstractUser):
         default=False,
         help_text="Mot de passe, e-mail, 2FA et clés API ne peuvent pas être modifiés.",
     )
+    # Compte créé par le propriétaire d'une boutique : il ne peut rien faire d'autre que choisir
+    # son mot de passe tant qu'il a le provisoire, et le provisoire expire s'il ne sert pas.
+    must_change_password = models.BooleanField("mot de passe à choisir", default=False)
+    temporary_password_expires_at = models.DateTimeField("expiration du mot de passe provisoire", null=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -68,6 +72,7 @@ class UserSession(models.Model):
         PASSWORD_RESET = "password_reset", "Mot de passe réinitialisé"
         REFRESH_REUSE = "refresh_reuse", "Refresh token réutilisé (vol probable)"
         BY_USER = "revoked_by_user", "Fermée depuis la liste des sessions"
+        ACCESS_REMOVED = "access_removed", "Retiré de sa boutique ou nouveau mot de passe provisoire"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")

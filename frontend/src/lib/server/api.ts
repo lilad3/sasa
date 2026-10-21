@@ -22,6 +22,8 @@ type CallOptions = {
   access?: string;
   context: RequestContext;
   idempotencyKey?: string;
+  /** "text" : la réponse réussie est rendue telle quelle (export CSV). Les erreurs restent du JSON. */
+  as?: "json" | "text";
 };
 
 const SAFE_ID = /^[A-Za-z0-9_-]{8,64}$/;
@@ -54,7 +56,9 @@ export async function callApi<T>(path: string, options: CallOptions): Promise<Ap
     "X-Akwaba-Bff": secret,
     "X-Request-ID": newRequestId(),
   });
-  if (options.body !== undefined) headers.set("Content-Type", "application/json");
+  // Un FormData part en multipart (import CSV) : fetch pose lui-même le Content-Type et sa frontière.
+  const multipart = options.body instanceof FormData;
+  if (options.body !== undefined && !multipart) headers.set("Content-Type", "application/json");
   if (options.access) headers.set("Authorization", `Bearer ${options.access}`);
   if (options.context.ip) headers.set("X-Client-IP", options.context.ip);
   if (options.context.userAgent) headers.set("X-Client-UA", options.context.userAgent.slice(0, 300));
@@ -66,7 +70,7 @@ export async function callApi<T>(path: string, options: CallOptions): Promise<Ap
     response = await fetch(`${apiUrl}/api/v1/${path}`, {
       method: options.method ?? "GET",
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.body === undefined ? undefined : multipart ? (options.body as FormData) : JSON.stringify(options.body),
       cache: "no-store",
       redirect: "manual",
       signal: AbortSignal.timeout(10_000),
@@ -78,6 +82,7 @@ export async function callApi<T>(path: string, options: CallOptions): Promise<Ap
   if (response.status === 204) return { ok: true, status: 204, data: undefined as T };
 
   const text = await response.text();
+  if (response.ok && options.as === "text") return { ok: true, status: response.status, data: text as T };
   let json: unknown = null;
   try {
     json = text ? JSON.parse(text) : null;
@@ -100,6 +105,7 @@ function toProblem(status: number, json: unknown): Problem {
     attempts_remaining: typeof body.attempts_remaining === "number" ? body.attempts_remaining : undefined,
     request_id: typeof body.request_id === "string" ? body.request_id : undefined,
     total: typeof body.total === "number" ? body.total : undefined,
+    limit: typeof body.limit === "number" ? body.limit : undefined,
   };
 }
 

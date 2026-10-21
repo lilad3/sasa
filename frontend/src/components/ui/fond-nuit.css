@@ -1,0 +1,48 @@
+/*
+ * Décor vivant de l'espace marchand : la lumière de decor.jpg bouge derrière le verre cannelé.
+ *
+ * Une couche fixée à l'écran : le contenu défile par-dessus, le décor ne bouge pas avec la page.
+ * Hauteur en lvh : sur téléphone, la barre d'adresse qui se replie ne redimensionne pas le canvas.
+ * Tant que WebGL n'a pas dessiné sa première image (ou s'il est absent, ou si l'utilisateur a demandé
+ * moins d'animations), l'image fixe decor.jpg tient lieu de décor.
+ */
+
+.fond-nuit {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -10;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  overflow: hidden;
+  pointer-events: none;
+  background: url("/decor.jpg") center top / cover no-repeat, var(--color-nuit);
+}
+
+.fond-nuit > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Le canvas apparaît en fondu sur l'image fixe, qui lui ressemble : le passage ne se remarque presque pas. */
+.fond-nuit-canvas {
+  display: block;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+
+.fond-nuit-canvas[data-vivant] {
+  opacity: 1;
+}
+
+/*
+ * Le voile de lecture, un peu plus léger que celui du <body> (0,62 → 0,86) pour laisser passer la lumière.
+ * Mesuré sur 140 s d'animation : le texte (texte, texte-2) garde au moins 5,4:1 dans 99 % des cas,
+ * posé sur le décor comme dans une vitre.
+ */
+.fond-nuit-voile {
+  background: linear-gradient(180deg, rgb(14 12 10 / 0.56), rgb(14 12 10 / 0.84));
+}

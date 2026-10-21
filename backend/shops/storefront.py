@@ -15,15 +15,20 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from audit.services import record
+from core.exceptions import ProblemError
 from core.ratelimit import enforce
 
 from .checkout import fake_response, place_order
 from .delivery import ZONES, find_zone
-from .models import PaymentMethod, Product, Shop
+from .models import Order, PaymentMethod, Product, Shop
 
 ORDER_LIMIT = (10, 3600)  # 10 commandes par heure et par IP (§3.3)
-LOW_STOCK = 5
+# Suivi de commande : 4 chiffres de téléphone, c'est 10 000 possibilités. La limite par
+# référence rend l'essai systématique impossible, celle par IP freine le balayage des références.
+TRACK_IP_LIMIT = (20, 3600)
+TRACK_ORDER_LIMIT = (5, 3600)
 MAX_QUANTITY = 99
+REFERENCE_CHARS = re.compile(r"[^A-Za-z0-9]")
 
 # Mobiles 01, 05, 07 et fixes 21, 25, 27, suivis de 8 chiffres (§2.13).
 PHONE = re.compile(r"^(01|05|07|21|25|27)\d{8}$")
@@ -106,7 +111,7 @@ def public_product(product):
         "image_url": product.image_url or None,
         # Pas le stock exact : seulement ce qui sert à l'acheteur.
         "in_stock": product.stock > 0,
-        "low_stock": 0 < product.stock <= LOW_STOCK,
+        "low_stock": 0 < product.stock <= product.low_stock_threshold,
         "max_quantity": min(product.stock, MAX_QUANTITY),
     }
 
@@ -129,6 +134,11 @@ class StorefrontDetailView(StorefrontView):
                 "city": shop.city,
                 "accent": shop.accent,
                 "currency": "XOF",
+                "vacation": {
+                    "active": shop.on_vacation(),
+                    "message": shop.vacation_message if shop.on_vacation() else "",
+                    "until": shop.vacation_until if shop.on_vacation() else None,
+                },
                 "product_count": Product.objects.for_shop(shop).filter(is_active=True).count(),
                 "delivery_zones": [
                     {"id": zone.id, "city": zone.city, "commune": zone.commune, "label": zone.label, "fee": zone.fee}
@@ -159,6 +169,8 @@ class StorefrontOrderView(StorefrontView):
     def post(self, request, slug):
         enforce("storefront_order", request.client_ip or "-", ORDER_LIMIT)
         shop = storefront_shop(slug)
+        if shop.on_vacation():
+            raise ProblemError(409, "shop_on_vacation", "La boutique est en congé : elle ne prend pas de commande pour le moment.")
         key = _idempotency_key(request)
 
         serializer = CheckoutSerializer(data=request.data)
@@ -181,6 +193,49 @@ class StorefrontOrderView(StorefrontView):
                 payment_method=order.payment_method,
             )
         return Response(response, status=status.HTTP_201_CREATED)
+
+
+class TrackSerializer(serializers.Serializer):
+    reference = serializers.CharField(max_length=12)
+    phone_last4 = serializers.RegexField(r"^\d{4}$", error_messages={"invalid": "Les 4 derniers chiffres du numéro."})
+
+    def validate_reference(self, value):
+        chars = REFERENCE_CHARS.sub("", value).upper()
+        if len(chars) != 6:
+            raise serializers.ValidationError("Référence à 6 caractères attendue, par exemple K7F-92Q.", code="invalid_reference")
+        return f"{chars[:3]}-{chars[3:]}"
+
+
+class StorefrontTrackView(StorefrontView):
+    """
+    Le client suit sa commande avec sa référence et les 4 derniers chiffres de son téléphone.
+    Il ne voit que l'état de la commande : ni son adresse, ni son numéro, ni ceux d'un autre.
+    """
+
+    def post(self, request, slug):
+        enforce("track_order:ip", request.client_ip or "-", TRACK_IP_LIMIT)
+        shop = storefront_shop(slug)
+        serializer = TrackSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reference = serializer.validated_data["reference"]
+        enforce("track_order:ref", f"{shop.pk}:{reference}", TRACK_ORDER_LIMIT)
+
+        order = Order.objects.for_shop(shop).filter(reference=reference).prefetch_related("items").first()
+        # Même réponse pour une référence inconnue et un numéro qui ne correspond pas.
+        if order is None or not order.customer_phone.endswith(serializer.validated_data["phone_last4"]):
+            raise NotFound("Aucune commande ne correspond à cette référence et à ce numéro.")
+        return Response(
+            {
+                "reference": order.reference,
+                "status": order.status,
+                "created_at": order.created_at,
+                "updated_at": order.updated_at,
+                "total": order.total,
+                "payment_method": order.payment_method,
+                "items": [{"name": item.name, "quantity": item.quantity} for item in order.items.all()],
+                "delivery": {"city": order.customer_city, "commune": order.customer_commune},
+            }
+        )
 
 
 def _idempotency_key(request):
