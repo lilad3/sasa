@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition } from "react";
 
@@ -115,7 +116,8 @@ export function Checkout({
       }
       setErrors(fieldErrors);
       if (result.code === "out_of_stock" && result.available) onStockShortage(result.available);
-      if (["out_of_stock", "price_changed", "validation_error"].includes(result.code)) router.refresh();
+      // La boutique a pu changer entre l'affichage et l'envoi (stock, prix, mise en congé) : on recharge ses données.
+      if (["out_of_stock", "price_changed", "validation_error", "shop_on_vacation"].includes(result.code)) router.refresh();
       setNotice(
         result.code === "too_many_requests" && result.retryAfter
           ? `Trop de commandes depuis cette connexion. Réessayez dans ${formatWait(result.retryAfter)}.`
@@ -281,9 +283,15 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
           <dd className="text-xs text-encre-doux">Livraison : {receipt.zone}</dd>
         </div>
       </dl>
-      <button type="button" onClick={onContinue} className="bouton-nuit self-start rounded-full px-5 py-3 font-bold">
-        Continuer mes achats
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={onContinue} className="bouton-nuit rounded-full px-5 py-3 font-bold">
+          Continuer mes achats
+        </button>
+        <Link href={`/boutique/${shop.slug}/suivi?ref=${encodeURIComponent(receipt.order.reference)}`} className="bouton-verre rounded-full px-5 py-3 font-semibold">
+          Suivre ma commande
+        </Link>
+      </div>
+      <p className="text-xs text-encre-doux">Pour la suivre plus tard, il suffit de la référence et des 4 derniers chiffres de votre numéro.</p>
     </section>
   );
 }
