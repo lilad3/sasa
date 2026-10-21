@@ -17,7 +17,9 @@ cp .env.example .env          # puis remplir les secrets (voir les commentaires 
 .venv/Scripts/python manage.py runserver
 ```
 
-En développement, les e-mails (lien d'inscription, réinitialisation du mot de passe) s'affichent dans le terminal de `runserver`.
+En développement, les e-mails (réinitialisation du mot de passe, déblocage, alertes) s'affichent dans le terminal de `runserver`.
+
+L'inscription se fait en une étape, sans e-mail, tant que `SIGNUP_EMAIL_VERIFICATION=0` (la valeur par défaut). Avec `SIGNUP_EMAIL_VERIFICATION=1`, elle repasse en deux temps : un lien de confirmation part par e-mail, et le mot de passe se choisit après (contrat §2.5). Le front lit ce réglage tout seul : rien à changer de son côté.
 
 ## Comptes de démo
 

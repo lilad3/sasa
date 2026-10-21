@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect } from "react";
+import { type FormEvent, startTransition, useActionState, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { formatWait } from "@/lib/messages";
 
 import { FormAlert } from "./form-alert";
+import { PasswordMeter } from "./password-meter";
 import {
   type RegistrationState,
   completeSignup,
@@ -16,8 +18,21 @@ import {
 
 const initial: RegistrationState = {};
 
-export function SignupRequestForm() {
+/**
+ * Inscription. Avec `emailVerification`, un lien part par e-mail et le mot de passe se choisit ensuite ;
+ * sans, le mot de passe est demandé ici et la boutique est créée tout de suite.
+ * Envoi par onSubmit : React viderait sinon les champs après une erreur.
+ */
+export function SignupRequestForm({ emailVerification }: { emailVerification: boolean }) {
   const [state, formAction, pending] = useActionState(requestSignup, initial);
+  const [password, setPassword] = useState("");
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    startTransition(() => formAction(data));
+  }
+
   if (state.done) {
     return (
       <div className="flex flex-col gap-4">
@@ -27,13 +42,37 @@ export function SignupRequestForm() {
     );
   }
   return (
-    <form action={formAction} noValidate className="flex flex-col gap-4">
-      {state.error ? <FormAlert tone="danger">{state.error.message}</FormAlert> : null}
+    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+      {state.error ? (
+        <FormAlert tone="danger">
+          <p>{state.error.message}</p>
+          {state.error.retryAfter ? <p className="mt-1 font-semibold">Réessayez dans {formatWait(state.error.retryAfter)}.</p> : null}
+        </FormAlert>
+      ) : null}
       <Field id="email" name="email" type="email" label="Adresse e-mail" autoComplete="email" inputMode="email" error={state.fields?.email} required />
       <Field id="first_name" name="first_name" label="Prénom" autoComplete="given-name" error={state.fields?.first_name} required />
       <Field id="last_name" name="last_name" label="Nom" autoComplete="family-name" error={state.fields?.last_name} required />
       <Field id="shop_name" name="shop_name" label="Nom de la boutique" autoComplete="organization" error={state.fields?.shop_name} required />
-      <Button type="submit" pending={pending} pendingLabel="Envoi…" className="w-full py-3.5">Recevoir le lien d&apos;inscription</Button>
+      {emailVerification ? null : (
+        <div className="flex flex-col gap-2">
+          <Field
+            id="password"
+            name="password"
+            type="password"
+            label="Mot de passe"
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            hint="Au moins 10 caractères. Une phrase de quelques mots est plus facile à retenir."
+            error={state.fields?.password}
+            required
+          />
+          <PasswordMeter password={password} />
+        </div>
+      )}
+      <Button type="submit" pending={pending} pendingLabel={emailVerification ? "Envoi…" : "Création…"} className="w-full py-3.5">
+        {emailVerification ? "Recevoir le lien d’inscription" : "Créer ma boutique"}
+      </Button>
       <Link href="/connexion" className="text-sm text-texte-3 hover:text-texte">Déjà inscrit ? Se connecter</Link>
     </form>
   );

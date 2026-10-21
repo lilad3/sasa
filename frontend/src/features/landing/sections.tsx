@@ -179,7 +179,7 @@ export function Features() {
 /* ---------- 2. Comment ça marche ---------- */
 
 const STEPS = [
-  { title: "Créez votre boutique", text: "Votre e-mail, le nom de la boutique, et c’est parti. Le lien de confirmation arrive en une minute.", tone: "bg-encre text-creme" },
+  { title: "Créez votre boutique", text: "Votre e-mail, le nom de la boutique, un mot de passe, et c’est parti : la boutique est prête en une minute.", tone: "bg-encre text-creme" },
   { title: "Partagez le lien", text: "Sur WhatsApp, Instagram ou TikTok : vos clients ouvrent la vitrine et commandent directement.", tone: "bg-indigo text-creme" },
   { title: "Suivez chaque franc", text: "Commandes, chiffre d’affaires et meilleurs produits, sur ordinateur comme sur téléphone.", tone: "bg-[#237264] text-creme" },
 ];

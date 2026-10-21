@@ -21,36 +21,57 @@ const SignupSchema = z.object({
   first_name: z.string().trim().min(1, "Indiquez votre prénom.").max(80),
   last_name: z.string().trim().min(1, "Indiquez votre nom.").max(80),
   shop_name: z.string().trim().min(2, "Le nom de la boutique doit contenir au moins 2 caractères.").max(60),
+  // Seulement dans l'inscription en une étape (sans e-mail) : le formulaire avec lien n'a pas ce champ.
+  password: z.string().min(10, PASSWORD_RULES.password_too_short).max(128, PASSWORD_RULES.password_too_long).optional(),
 });
 
+type SignupField = keyof NonNullable<RegistrationState["fields"]>;
+const SIGNUP_FIELDS: SignupField[] = ["email", "first_name", "last_name", "shop_name", "password"];
+
+/**
+ * Inscription. Django répond 202 quand il envoie un lien de confirmation (mode e-mail),
+ * ou 201 avec la session quand le compte est créé tout de suite (mode en une étape).
+ */
 export async function requestSignup(_previous: RegistrationState, formData: FormData): Promise<RegistrationState> {
+  const password = formData.get("password");
   const parsed = SignupSchema.safeParse({
     email: formData.get("email") ?? "",
     first_name: formData.get("first_name") ?? "",
     last_name: formData.get("last_name") ?? "",
     shop_name: formData.get("shop_name") ?? "",
+    password: typeof password === "string" ? password : undefined,
   });
   if (!parsed.success) {
     const fields = z.flattenError(parsed.error).fieldErrors;
-    return {
-      fields: {
-        email: fields.email?.[0],
-        first_name: fields.first_name?.[0],
-        last_name: fields.last_name?.[0],
-        shop_name: fields.shop_name?.[0],
-      },
-    };
+    return { fields: Object.fromEntries(SIGNUP_FIELDS.map((field) => [field, fields[field]?.[0]])) };
   }
 
-  const result = await callApi("auth/signup", {
+  const jar = await cookies();
+  const deviceId = deviceIdFor(jar, false);
+  const result = await callApi<AuthResult>("auth/signup", {
     method: "POST",
     body: parsed.data,
-    context: await requestContext(),
+    context: { ...(await requestContext()), deviceId },
   });
   if (!result.ok) {
-    return { error: { code: result.problem.code, message: messageFor(result.problem.code, result.problem.detail), retryAfter: result.problem.retry_after } };
+    const { problem } = result;
+    if (problem.code === "email_taken") return { fields: { email: messageFor("email_taken") } };
+    if (problem.errors) {
+      const fields: RegistrationState["fields"] = {};
+      for (const field of SIGNUP_FIELDS) {
+        const errors = problem.errors[field];
+        if (errors?.length) fields[field] = errors.map((error) => (field === "password" ? (PASSWORD_RULES[error.code] ?? error.message) : error.message)).join(" ");
+      }
+      if (Object.keys(fields).length) return { fields };
+    }
+    return { error: { code: problem.code, message: messageFor(problem.code, problem.detail), retryAfter: problem.retry_after } };
   }
-  return { done: true };
+  // 202 : un lien est parti par e-mail, le compte n'existe pas encore.
+  if (result.status !== 201) return { done: true };
+
+  rememberDevice(jar, deviceId, false);
+  setSessionCookies(jar, result.data, false);
+  redirect(result.data.shops[0] ? `/app/${result.data.shops[0].slug}` : "/app");
 }
 
 const CompletionSchema = z.object({

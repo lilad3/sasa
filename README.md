@@ -36,7 +36,7 @@ cp .env.example .env.local      # BFF_SHARED_SECRET = la même valeur que dans b
 npm run dev                     # http://localhost:3000
 ```
 
-En développement, les e-mails (confirmation d'inscription, mot de passe oublié, alertes de sécurité) s'affichent dans le terminal de Django.
+L'inscription se fait en une étape, sans e-mail de confirmation (réglage `SIGNUP_EMAIL_VERIFICATION=0` dans `backend/.env`, voir plus bas). Les autres e-mails (mot de passe oublié, déblocage du compte, alertes de sécurité) s'affichent dans le terminal de Django en développement.
 
 ## Comptes de démo
 
@@ -56,6 +56,7 @@ Les comptes de démo ont un mot de passe public : ils ne peuvent ni changer de m
 
 | Ce que vous essayez | Où | Ce qui doit se passer |
 |---|---|---|
+| Créer une boutique | `/inscription` | Un mot de passe faible (`abidjan2026`) est refusé sans vider le formulaire ; une adresse déjà prise est signalée ; sinon, la boutique est créée et vous êtes connecté |
 | Un mauvais mot de passe, puis un e-mail qui n'existe pas | `/connexion` | Le même message, le même statut : impossible de savoir si le compte existe. Au 5e échec, le compte est verrouillé et un lien de déblocage part par e-mail |
 | La 2FA | `/connexion` avec `ibrahim@akwaba.test` | Un code est demandé après le mot de passe ; le même code ne passe pas deux fois |
 | Un vendeur qui cherche le chiffre d'affaires | `koffi@akwaba.test`, puis `/app/maison-adjoua` | Django refuse (403) : la page explique que le chiffre d'affaires est réservé, et le menu ne la propose pas |
@@ -82,7 +83,7 @@ Le navigateur ne parle jamais à Django. Les jetons vivent dans des cookies `Htt
 | Menace | Parade |
 |---|---|
 | Mot de passe deviné, credential stuffing | Argon2id, verrou par e-mail, limite par IP réelle, liste noire locale (`abidjan2026`, `akwaba123`…) |
-| Énumération des comptes | Réponses et temps identiques, que le compte existe ou non |
+| Énumération des comptes | À la connexion et pour le mot de passe oublié : réponses et temps identiques, que le compte existe ou non. L'inscription en une étape, elle, le dit : voir les limites connues |
 | Vol de jeton | Cookies `HttpOnly`, refresh qui tourne à chaque usage, réutilisation détectée et session coupée |
 | Session impossible à couper (défaut classique du JWT) | Session serveur vérifiée à chaque requête : révocation immédiate |
 | Session volée utilisée pour une action grave | Confirmation renforcée de 10 min : équipe, plan, clés API, export, 2FA |
@@ -103,6 +104,7 @@ cd frontend && npm run lint && npm run build          # le build vérifie aussi 
 
 ## Limites connues
 
+- **Inscription sans e-mail de confirmation.** Sans nom de domaine, Akwaba ne peut pas encore envoyer d'e-mails qui arrivent vraiment. L'inscription se fait donc en une étape : elle révèle qu'une adresse a déjà un compte (freiné à 5 essais par heure et par IP), et personne ne prouve qu'il contrôle la boîte mail. Le mode en deux temps, avec lien de confirmation, est écrit et testé : il revient avec `SIGNUP_EMAIL_VERIFICATION=1` dès qu'un serveur d'e-mails est branché (contrat §2.5).
 - **Paiement simulé.** Les plans et les moyens de paiement Mobile Money sont affichés et leurs limites appliquées, mais aucun paiement n'est encaissé.
 - **CSP.** Les en-têtes interdisent l'affichage dans un cadre, les `<base>` et les `<object>` étrangers, mais il n'y a pas encore de `script-src` avec nonce : c'est la prochaine protection à ajouter côté Next.
 - **Dernier article.** Deux commandes simultanées sur le dernier article sont départagées par une mise à jour conditionnelle du stock en base (`stock >= quantité`), mais aucun test ne simule encore la concurrence.

@@ -114,17 +114,33 @@ En développement (`http://localhost`), les noms perdent le préfixe `__Host-`.
 - **Les codes 2FA faux comptent dans le même verrou**, et un mot de passe juste ne remet pas le compteur à zéro tant que la 2FA n'est pas passée. Sinon, connaître le mot de passe permettrait d'enchaîner les `mfa_token` pour deviner les codes à l'infini.
 - La connexion à l'admin Django partage ce verrou et cette limite par IP.
 
-### 2.5 Inscription en deux temps (sur mesure)
+### 2.5 Inscription : en une étape, ou en deux temps avec e-mail (sur mesure)
 
-1. `POST /auth/signup` avec l'e-mail, le nom et le nom de boutique. Réponse : **toujours `202`**, que l'e-mail soit libre ou non.
+Le réglage `SIGNUP_EMAIL_VERIFICATION` de `backend/.env` choisit le mode. Le front le lit avec `GET /auth/signup` (`{ "email_verification": true|false }`) et affiche le bon formulaire : c'est Django seul qui décide.
+
+**En une étape (`SIGNUP_EMAIL_VERIFICATION=0`, le réglage actuel).** Akwaba n'a pas encore de nom de domaine pour envoyer des e-mails qui arrivent vraiment.
+1. `POST /auth/signup` avec l'e-mail, le nom, le nom de boutique **et le mot de passe**.
+2. Le mot de passe est vérifié d'abord (règles du §2.2). Un mot de passe trop faible ne consomme pas d'essai.
+3. Ensuite seulement viennent les limites : 5 inscriptions par heure et par IP, 3 par adresse.
+4. Si l'adresse est libre : le compte et la boutique sont créés, la personne est connectée (`201 AuthResult`). Sinon : `409 email_taken`.
+
+Ce que ce mode coûte, et comment c'est compensé :
+
+| Risque | Pourquoi | Parade |
+|---|---|---|
+| Savoir si une adresse a un compte | Sans e-mail, on ne peut pas répondre pareil dans les deux cas | Les limites ci-dessus rendent le balayage lent. La connexion et « mot de passe oublié » restent muettes |
+| Pré-détournement : un attaquant inscrit l'adresse d'une victime | Personne ne prouve qu'il contrôle la boîte mail | La victime récupère le compte par « Mot de passe oublié ». La réinitialisation ferme toutes les sessions, celles de l'attaquant comprises |
+
+**En deux temps (`SIGNUP_EMAIL_VERIFICATION=1`, dès qu'il y a un serveur d'e-mails).**
+1. `POST /auth/signup` avec l'e-mail, le nom et le nom de boutique. Réponse : **toujours `202`**, que l'e-mail soit libre ou non. Un mot de passe envoyé à cette étape est ignoré : il ne finit jamais dans le jeton du lien.
 2. Un e-mail part avec un lien valable 24 h :
    - si l'adresse est libre, le lien permet de terminer l'inscription ;
    - si elle est déjà utilisée, l'e-mail propose plutôt de se connecter ou de réinitialiser le mot de passe.
 3. `POST /auth/signup/complete` avec le jeton du lien et le mot de passe. Le compte et la boutique sont créés, et l'utilisateur est connecté.
 
-Pourquoi :
+Pourquoi ce mode est le plus sûr :
 - L'inscription ne révèle pas quels e-mails ont un compte.
-- Le mot de passe est choisi par la personne qui contrôle la boîte mail. Cela supprime le **pré-détournement de compte**, où un attaquant inscrit l'e-mail d'une victime avec son propre mot de passe.
+- Le mot de passe est choisi par la personne qui contrôle la boîte mail. Cela supprime le **pré-détournement de compte**.
 - Aucun compte « fantôme » non vérifié n'est stocké : les données en attente vivent dans le jeton signé.
 
 En développement, les e-mails s'affichent dans le terminal de Django.
@@ -352,6 +368,7 @@ Les erreurs sont inspirées de la RFC 9457 et envoyées avec `Content-Type: appl
 | 409 | `price_changed` | Afficher le nouveau total, redemander la confirmation |
 | 409 | `idempotency_conflict` | Ne doit jamais arriver depuis le front |
 | 409 | `account_exists` | Adresse déjà utilisée par un compte Akwaba : en choisir une autre |
+| 409 | `email_taken` | Inscription en une étape : l'adresse a déjà un compte, proposer de se connecter ou « Mot de passe oublié » |
 | 409 | `password_already_chosen` | La personne a déjà son mot de passe : elle passe par « Mot de passe oublié » |
 | 409 | `plan_too_small` | Passage à un plan inférieur impossible (produits, équipe ou clés en trop, détail fourni) |
 | 409 | `too_many_api_keys` | 10 clés actives au maximum |
@@ -370,7 +387,7 @@ Les codes de mot de passe dans `errors.password` sont : `password_too_short` · 
 |---|---|---|
 | `POST /auth/login` | 5 échecs → verrou 15 min · 20 / 10 min | e-mail · IP |
 | `POST /auth/login/2fa` | 3 essais par `mfa_token` · verrou commun avec le login · 20 / 10 min | jeton · e-mail · IP |
-| `POST /auth/signup` | 3 / h · 5 / h | e-mail · IP |
+| `POST /auth/signup` | 3 / h · 5 / h (en une étape : comptés une fois le mot de passe accepté) | e-mail · IP |
 | `POST /auth/password/forgot` | 3 / h · 10 / h | e-mail · IP |
 | `POST /auth/reauth` | 5 / 15 min | session |
 | `POST /me/2fa/confirm` | 5 / 15 min | session |
@@ -394,7 +411,8 @@ Priorité : **P1** = indispensable pour la note · **P2** = protections sur mesu
 
 | | Méthode et route | Corps | Succès |
 |---|---|---|---|
-| P1 | `POST /signup` | `{ email, first_name, last_name, shop_name }` | `202` toujours |
+| P1 | `GET /signup` | — | `200 { email_verification }` : le mode d'inscription (§2.5) |
+| P1 | `POST /signup` | `{ email, first_name, last_name, shop_name }`, plus `password` en une étape | Avec e-mail : `202` toujours. En une étape : `201` `AuthResult`, ou `409 email_taken` |
 | P1 | `POST /signup/complete` | `{ token, password }` | `201` `AuthResult` |
 | P1 | `POST /login` | `{ email, password, shared_device }` | `200` `AuthResult` ou `MfaChallenge` |
 | P2 | `POST /login/2fa` | `{ mfa_token, code }` (TOTP ou code de secours) | `200` `AuthResult` |
@@ -684,6 +702,8 @@ Chaque protection a un test qui la démontre. Les cases cochées sont couvertes 
 - [x] Suivi client : même réponse pour une référence inconnue et un numéro faux, et 5 essais par heure et par référence.
 - [x] Import CSV : une ligne fausse et rien n'est importé ; mauvais type `415`, fichier trop lourd `413`, plan Gratuit `403`.
 - [x] Les mots de passe `abidjan2026` et `akwaba123` sont refusés.
+- [x] Inscription en une étape : le compte, la boutique et la session sont créés sans e-mail ; une adresse prise renvoie `409 email_taken` ; un mot de passe faible ne consomme pas d'essai ; la 6e inscription de l'heure depuis une IP renvoie `429`.
+- [x] Inscription avec e-mail : un mot de passe envoyé à l'étape 1 n'est jamais gardé dans le jeton du lien.
 - [x] Avec `DEBUG=0`, une erreur 500 ne contient ni trace ni détail interne.
 - [x] `/api/v1/` sans secret BFF renvoie `403`.
 - [x] Codes 2FA : un `mfa_token` meurt après 3 codes faux, et un mot de passe connu ne permet pas de deviner les codes à l'infini (verrou commun).
