@@ -186,6 +186,8 @@ export type Storefront = {
   city: string;
   accent: Accent;
   currency: "XOF";
+  /** En congé : la vitrine reste visible, mais Django refuse les commandes (409 shop_on_vacation). */
+  vacation: { active: boolean; message: string; until: string | null };
   product_count: number;
   delivery_zones: DeliveryZone[];
   payment_methods: { id: PaymentMethod; label: string }[];
@@ -205,3 +207,65 @@ export type PublicProduct = {
 };
 
 export type PlacedOrder = { reference: string; total: number; status: OrderStatus };
+
+/** Suivi d'une commande par le client : l'état seulement, ni adresse ni téléphone (contrat §4.4). */
+export type TrackedOrder = {
+  reference: string;
+  status: OrderStatus;
+  created_at: string;
+  updated_at: string;
+  total: number;
+  payment_method: PaymentMethod;
+  items: { name: string; quantity: number }[];
+  delivery: { city: string; commune: string };
+};
+
+/* ---------- Paramètres de la boutique (propriétaire) ---------- */
+
+export type ShopSettings = {
+  slug: string;
+  name: string;
+  description: string;
+  city: string;
+  accent: Accent;
+  plan: Plan;
+  /** Le plan permet de choisir la couleur de la vitrine (Pro et plus). */
+  custom_accent: boolean;
+  /** `on_vacation` : actif et la date de retour n'est pas passée. */
+  vacation: { active: boolean; message: string; until: string | null; on_vacation: boolean };
+};
+
+export type PlanSpec = {
+  id: Plan;
+  name: string;
+  price: number;
+  /** null : sans limite. */
+  products: number | null;
+  members: number | null;
+  monthly_orders: number | null;
+  api_keys: boolean;
+  csv_import: boolean;
+  custom_accent: boolean;
+};
+
+export type PlansOverview = {
+  current: Plan;
+  plans: PlanSpec[];
+  usage: { products: number; members: number; orders_this_month: number; active_api_keys: number };
+};
+
+export type ApiScope = "catalog:read" | "orders:read";
+
+export type ApiKey = {
+  id: string;
+  name: string;
+  /** Début de la clé, pour la reconnaître : akw_live_XXXXXXXX_ */
+  prefix: string;
+  scopes: ApiScope[];
+  created_at: string;
+  expires_at: string | null;
+  last_used_at: string | null;
+  last_used_ip: string | null;
+  revoked_at: string | null;
+  active: boolean;
+};
