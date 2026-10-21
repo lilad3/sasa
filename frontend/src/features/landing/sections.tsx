@@ -125,7 +125,7 @@ export function Features() {
             <p className="flex items-baseline gap-2">
               <span className="chiffres text-[clamp(2rem,3.6vw,2.6rem)]">4 812 500</span>
               <span className="text-encre-doux">F</span>
-              <span className="ml-auto rounded-full bg-[#e5f5dc] px-2 py-0.5 text-xs font-semibold text-[#2c6a14]">+12,4 %</span>
+              <span className="ml-auto rounded-full bg-[#dfe2ff] px-2 py-0.5 text-xs font-semibold text-[#2f3aa8]">+12,4 %</span>
             </p>
             <p className="text-sm text-encre-doux">Chiffre d’affaires du mois, mis à jour à chaque commande.</p>
             <div className="-mx-5 -mb-5 mt-auto">

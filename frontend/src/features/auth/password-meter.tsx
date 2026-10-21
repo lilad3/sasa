@@ -13,7 +13,7 @@ export function PasswordMeter({ password }: { password: string }) {
     <>
       <div aria-hidden className="grid grid-cols-4 gap-1.5">
         {[1, 2, 3, 4].map((step) => (
-          <span key={step} className={`h-1 rounded-full ${meter.level >= step ? (meter.level >= 3 ? "bg-vert" : "bg-alerte") : "bg-white/10"}`} />
+          <span key={step} className={`h-1 rounded-full ${meter.level >= step ? (meter.level >= 3 ? "bg-indigo-clair" : "bg-alerte") : "bg-white/10"}`} />
         ))}
       </div>
       {meter.label ? <p className="text-[13px] text-texte-3">{meter.label}</p> : null}

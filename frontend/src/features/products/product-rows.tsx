@@ -22,7 +22,7 @@ export function ProductThumb({ product, className }: { product: Pick<Product, "n
 }
 
 /**
- * Niveau de stock. Rupture et stock bas passent par l'ocre (la couleur des alertes), jamais par le vert :
+ * Niveau de stock. Rupture et stock bas passent par l'ocre (la couleur des alertes) :
  * un stock confortable n'a pas besoin d'être signalé.
  */
 export function StockLevel({ stock, threshold }: { stock: number; threshold: number }) {

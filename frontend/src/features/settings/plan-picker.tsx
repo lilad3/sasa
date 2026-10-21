@@ -65,7 +65,7 @@ export function PlanPicker({ slug, overview, mfaEnabled }: { slug: string; overv
             <ul className="flex flex-1 flex-col gap-1.5 text-[13.5px] text-texte-2">
               {features(plan).map((feature) => (
                 <li key={feature} className="flex gap-2">
-                  <span aria-hidden className="text-vert">
+                  <span aria-hidden className="text-orange-clair">
                     ✓
                   </span>
                   {feature}

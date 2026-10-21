@@ -35,7 +35,7 @@ export function MfaPanel({ enabled, demo }: { enabled: boolean; demo: boolean })
         <h2 id="titre-2fa" className="text-sm text-texte-2">
           Double authentification
         </h2>
-        <span className={cn("inline-flex items-center gap-1.5 text-[13px] font-semibold", enabled ? "text-vert" : "text-alerte")}>
+        <span className={cn("inline-flex items-center gap-1.5 text-[13px] font-semibold", enabled ? "text-indigo-clair" : "text-alerte")}>
           <span aria-hidden className="h-3.5 w-1 rounded-sm bg-current" />
           {enabled ? "Active" : "Désactivée"}
         </span>
