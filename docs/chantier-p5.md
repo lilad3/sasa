@@ -15,7 +15,7 @@ Rappels communs (ceux de `chantier-p4.md`) :
 | 2. Produit à la une et photos | `claude/p5-une-photos` (sur le lot 1) | fait |
 | 3. Éditeur « Ma boutique » | `claude/p5-ma-boutique` | esquisse (maquette d'abord) |
 | 4. Export des clients et « Livrées à temps » | `claude/p5-export-delais` (sur le lot 2) | fait |
-| 5. Renouvellement des sessions | `claude/p5-sessions` | enquête |
+| 5. Renouvellement des sessions | `claude/p5-sessions` (sur le lot 4) | fait : course confirmée, 3 correctifs |
 
 ---
 
@@ -385,13 +385,56 @@ Branche `claude/p5-export-delais`, **empilée sur `claude/p5-une-photos`** (migr
 
 ---
 
-## Lots 3 à 5 : esquisses (détaillées avant chaque lot)
+## Lot 5 : renouvellement des sessions (enquête)
+
+Branche `claude/p5-sessions`, **empilée sur `claude/p5-export-delais`** (migration core 0001).
+
+### 5.1 La question, et la réponse : oui
+
+**Deux renouvellements simultanés avec le même refresh token arrivent tout le temps.** Quand l'access token (5 min) arrive à 30 s de sa fin, chaque requête du navigateur passe par `proxy.ts`, qui renouvelle avec le refresh du cookie : la navigation, les préchargements de liens, une Server Action, un deuxième onglet. Tant que le navigateur n'a pas reçu les nouveaux cookies, toutes ces requêtes portent le **même** refresh.
+
+Côté Django, la course elle-même est bien tenue : `rotate_refresh` fait tourner le refresh par une mise à jour conditionnelle (`WHERE refresh_jti = <ancien>`). Une seule requête gagne ; les autres passent par la fenêtre de grâce de 10 s. **Mais trois défauts restaient**, tous reproduits :
+
+| # | Défaut | Conséquence |
+|---|---|---|
+| 1 | Dans la fenêtre de grâce, la requête perdante ne recevait qu'un access token. Si la réponse **gagnante** se perd (requête annulée par le navigateur quand on change de page, réseau mobile coupé), le navigateur garde l'ancien refresh. | 5 minutes plus tard, l'ancien refresh revient hors de la fenêtre : Django y voit un **vol**, coupe la session et envoie l'e-mail « refresh réutilisé, vol probable ». Personne n'a rien volé. |
+| 2 | Le compteur des limites de débit (`core/ratelimit.incr`, sur le cache en base de Django) **lit puis réécrit** la valeur : il n'est pas atomique. | 40 renouvellements simultanés passaient tous, pour une limite de 30. Surtout, **toutes** les limites de l'API se contournaient en envoyant des requêtes en parallèle : verrou du login après 5 échecs, essais de code 2FA, suivi de commande (4 chiffres à deviner), vérification des codes de réduction. |
+| 3 | `proxy.ts` et `/session/renouveler` traitaient toute erreur autre que « réseau » comme une fin de session : un 429 ou un 5xx **effaçait les cookies**. | Une fois le défaut 2 corrigé, la limite de 30 par minute se met vraiment à jouer : 10 requêtes sur 40 renvoyaient au login. |
+
+### 5.2 Correctif 1 : la fenêtre de grâce rend le refresh courant
+
+Dans la fenêtre de grâce, Django renvoie maintenant **le refresh courant, réémis avec le même identifiant** (`jti`) que celui de la requête gagnante, en plus de l'access token. Quelle que soit la réponse qui arrive au navigateur, il repart avec un refresh valable.
+
+- La détection de vol ne change pas : l'ancien refresh présenté **après** les 10 s coupe toujours la session (test `test_old_refresh_after_the_grace_period_is_still_theft`).
+- Ce que ça coûte : quelqu'un qui aurait volé l'ancien refresh et s'en servirait dans les 10 s qui suivent la rotation légitime obtiendrait le refresh courant. Il le partagerait alors avec la vraie personne, et la rotation suivante révélerait la double utilisation. Avant, il obtenait déjà un access token de 5 minutes dans ce cas.
+- Limite qui reste : une réponse perdue **sans** autre requête dans les 10 s (une seule requête en vol, annulée) laisse encore l'ancien refresh au navigateur. Allonger la fenêtre réduirait ce cas, au prix d'une détection de vol plus lente : je l'ai laissée à 10 s, à décider.
+
+### 5.3 Correctif 2 : un compteur atomique
+
+`core.RateCounter` (migration core 0001) remplace le cache pour les compteurs. `incr` fait **une seule requête** `INSERT … ON CONFLICT (bucket) DO UPDATE SET count = count + 1 … RETURNING count` : SQLite 3.35+ et PostgreSQL l'exécutent de façon atomique. Un compteur expiré repart à 1 ; une fois sur 200, les compteurs expirés sont effacés. Le verrou du login (`lockout.py`) remet ses échecs à zéro par `reset()`. Les appelants (`hit`, `enforce`, `incr`) ne changent pas.
+
+### 5.4 Correctif 3 : une panne passagère ne déconnecte plus
+
+`lib/server/refresh.ts` (`sessionIsOver`) : seuls 400, 401 et 403 mettent fin à la session. Sur une panne passagère (réseau, 429, 5xx) :
+- `proxy.ts` laisse passer sans rien effacer ;
+- `/session/renouveler` répond une page 503 simple (« Votre session est intacte… », boutons « Réessayer » et « Se reconnecter », `Retry-After`), sans redirection : la page renverrait sinon vers la route, en boucle.
+
+### 5.5 Preuves
+
+| Scénario (à travers Next et Django) | Avant | Après |
+|---|---|---|
+| 2 renouvellements simultanés, réponse gagnante perdue, nouvel essai 12 s plus tard | renvoi au login « session fermée » + alerte de vol | page servie |
+| 40 renouvellements simultanés, même session | 40 acceptés par Django (limite 30 ignorée) | 30 acceptés, 10 refusés en 429 |
+| Même rafale, compteur réparé, ancien proxy / proxy corrigé | 10 renvois au login, 10 refresh effacés | 0 renvoi, 0 effacement |
+| `/session/renouveler` quand la limite est atteinte | déconnexion | 503, cookies intacts |
+
+Tests Django : `accounts/tests/test_refresh_race.py` rejoue la course (le perdant lit la session avant que le gagnant écrive ; la réponse gagnante perdue ; le vol au-delà de la grâce ; une session fermée) ; `core/test_ratelimit.py` vérifie le compteur. La concurrence réelle du compteur ne se teste pas dans la suite : la base de test en mémoire de SQLite refuse les écritures parallèles. Elle est prouvée par la rafale ci-dessus, sur le serveur de développement (base fichier).
+
+---
+
+## Lot 3 : esquisse (maquette d'abord)
 
 **Lot 3, éditeur « Ma boutique ».**
 - D'abord la maquette de 3 thèmes, à valider avant tout code.
 - Ensuite : un modèle `StorefrontVersion` (brouillon, versions publiées), une configuration JSON validée par un schéma fermé côté Django, et les limites par plan.
 - Une clé `pages` dans la configuration, pour plus tard (fiche produit, panier, suivi), refusée tant qu'elle n'est pas codée.
-
-**Lot 5, renouvellement des sessions.**
-- Lire `proxy.ts`, `lib/server/session.ts`, `app/session/renouveler/route.ts` et la fenêtre de grâce d'`accounts/sessions.py`.
-- Reproduire deux renouvellements simultanés avec le même refresh token, puis corriger avec un test qui rejoue la course. Si la course n'est pas possible, expliquer pourquoi.

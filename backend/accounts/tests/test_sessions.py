@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.utils import timezone
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from accounts.models import UserSession
 from audit.models import AuditEvent
@@ -34,13 +34,16 @@ class RefreshRotationTests(ApiTestCase):
         self.assertEqual(UserSession.objects.get().revoked_reason, "refresh_reuse")
         self.assertTrue(AuditEvent.objects.filter(action="refresh_reuse_detected").exists())
 
-    def test_parallel_refresh_within_grace_gets_access_only(self):
-        self.refresh(self.tokens["refresh"])
+    def test_parallel_refresh_within_grace_gets_the_current_refresh(self):
+        first = self.refresh(self.tokens["refresh"]).json()
         second = self.refresh(self.tokens["refresh"])
 
         self.assertEqual(second.status_code, 200)
         self.assertIn("access", second.json())
-        self.assertNotIn("refresh", second.json())
+        # Le même refresh courant que la requête gagnante (même identifiant) : voir test_refresh_race.py.
+        current = UserSession.objects.get().refresh_jti
+        self.assertEqual(RefreshToken(second.json()["refresh"])["jti"], current)
+        self.assertEqual(RefreshToken(first["refresh"])["jti"], current)
         self.assertIsNone(UserSession.objects.get().revoked_at)
 
 
