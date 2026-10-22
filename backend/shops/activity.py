@@ -44,6 +44,8 @@ DETAILS = {
     "loyalty_threshold_changed": ("previous", "threshold"),
     "shop_logo_changed": ("change",),
     "product_featured": ("change",),
+    "storefront_published": ("number", "theme"),
+    "storefront_restored": ("number",),
 }
 
 # Ce qui, sur le compte d'un membre de l'équipe, peut vouloir dire qu'on essaie d'y entrer.

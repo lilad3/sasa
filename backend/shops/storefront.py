@@ -23,6 +23,7 @@ from core.ratelimit import enforce
 
 from .checkout import fake_response, place_order, priced_lines
 from .delivery import ZONES, find_zone
+from .design_catalog import published_design
 from .discount_codes import CHECK_CODE_LIMIT, CHECK_IP_LIMIT, code_key, label, normalize_code, usable_discount
 from .models import Channel, Order, OrderItem, OrderStatus, PaymentMethod, Product, ProductPhoto, Shop, ShopLogo
 
@@ -150,6 +151,20 @@ def photos_payload(product):
     return [{"id": str(photo.pk), "version": photo.version} for photo in photos]
 
 
+def popular_products(shop, limit=3):
+    """Les plus vendus sur 30 jours, en vente et en stock (commandes annulées exclues) : « Les plus demandés »."""
+    on_sale = Product.objects.for_shop(shop).filter(is_active=True, stock__gt=0)
+    since = timezone.now() - timedelta(days=BEST_SELLER_DAYS)
+    rows = (
+        OrderItem.objects.filter(order__shop=shop, order__created_at__gte=since, product__in=on_sale)
+        .exclude(order__status=OrderStatus.CANCELLED)
+        .values("product_id")
+        .annotate(sold=Sum("quantity"))
+        .order_by("-sold", "product_id")[:limit]
+    )
+    return [str(row["product_id"]) for row in rows]
+
+
 def cover_product(shop):
     """
     Le produit de la couverture (docs/chantier-p5.md §2.4) : celui à la une s'il est en vente et en
@@ -212,6 +227,8 @@ class StorefrontDetailView(StorefrontView):
                 "accent": shop.accent,
                 "logo_version": ShopLogo.objects.filter(shop=shop).values_list("version", flat=True).first(),
                 "featured": cover_product(shop),
+                "popular": popular_products(shop),
+                "design": published_design(shop),
                 "currency": "XOF",
                 "vacation": {
                     "active": shop.on_vacation(),

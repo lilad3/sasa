@@ -434,84 +434,96 @@ Tests Django : `accounts/tests/test_refresh_race.py` rejoue la course (le perdan
 
 ---
 
-## Lot 3 : éditeur « Ma boutique » (maquette à valider, rien n'est codé)
+## Lot 3 : éditeur « Ma boutique » et thèmes par métier
 
-Branche `claude/p5-ma-boutique`, **empilée sur `claude/p5-sessions`**. Elle ne contient que ce contrat : aucun code de thème n'est écrit avant la validation de la maquette.
+Branche `claude/p5-ma-boutique`, **empilée sur `claude/p5-sessions`** (migrations shops 0008, audit 0009).
 
-**Maquette** : https://claude.ai/artifact/LxB5w9VNKdu6jxobkaYxU1 (page privée). Elle montre Maison Adjoua dans les 10 thèmes, avec ses vrais produits et ses vrais prix. Dans chaque écran, le réglage « accent » essaie les 5 couleurs et « rejouer » relance les animations. Les photos sont des illustrations de remplacement : le dossier de photos n'est pas dans le dépôt.
+**Historique.** La maquette (https://claude.ai/artifact/LxB5w9VNKdu6jxobkaYxU1) a d'abord montré 3 thèmes, puis 10 thèmes aux noms de villes. Le retour du 22 octobre l'a écartée : des noms qui ne disent rien, et des thèmes pensés comme des idées visuelles au lieu de répondre à un métier. **Décision : un thème par métier, livré par vagues**, en commençant par ceux qu'Akwaba sait déjà servir. Les animations de la maquette sont reprises là où elles servent le métier.
 
-### 3.1 Les dix thèmes (version 2, après le retour du 22 octobre)
+### 3.1 Vague 1 : cinq thèmes
 
-| # | Thème | Plan | Pour qui | Animation signature |
-|---|---|---|---|---|
-| 1 | **Plateau** (ex-Magazine) | Gratuit | une pièce signature | le nom monte lettre par lettre, la photo se lève comme un rideau puis zoome lentement, une pastille de prix entourée d'un texte qui tourne |
-| 2 | **Adjamé** (ex-Marché) | Gratuit | une épicerie, beaucoup d'articles | bandeau de livraison qui défile, étiquettes de prix qui tombent et rebondissent, barre de panier qui monte |
-| 3 | **Kita** | Pro | textile, fait main | la couverture se tisse (fils de chaîne puis de trame), les photos se dévoilent bande par bande |
-| 4 | **Korhogo** | Pro | artisans, créateurs | dessins au trait (oiseau, poisson, cadres) qui se tracent à l'encre, prix posé d'un coup de tampon |
-| 5 | **Assinie** | Pro | beauté et soins | soleil qui se lève, vagues qui roulent, produits qui flottent, nom qui sort du flou |
-| 6 | **Bassam** | Business | boutique d'objets | enseigne qui tombe et se balance, persiennes qui s'ouvrent sur les produits |
-| 7 | **Maquis** | Business | épicerie, cuisine | guirlande qui scintille, nom qui s'allume, carte écrite à la craie ligne après ligne, entourage tracé autour de la une |
-| 8 | **Décalé** | Business | mode, jeunesse | mots géants venus de côtés opposés, photos posées en collage, cartes décalées qui tombent en place |
-| 9 | **Comoé** (ex-Atelier) | Business | produits premium | grande image qui dérive, grain, mots qui sortent du flou, photos dévoilées comme un rideau |
-| 10 | **Sassandra** | Business | un arrivage à montrer | soleil sur l'horizon, pirogues qui tanguent, nom qui ondule, rangée de produits à faire défiler |
+| Thème | Plan | Pour qui | Ce qui le distingue |
+|---|---|---|---|
+| **Essentiel** | Gratuit | toute boutique (c'est la vitrine actuelle, et le thème par défaut) | couverture façon magazine, produit en avant, collection en cartes |
+| **Épicerie** | Gratuit | alimentation, produits du quotidien | bandeau du délai qui défile, recherche, rayons avec leur nombre, « les plus demandés », liste compacte avec la quantité sur place |
+| **Beauté** | Pro | cosmétiques, karité, soins | fond sable, soleil et vagues, produits qui flottent, la description mise en avant |
+| **Artisanat** | Pro | fait main, pièces uniques | toile écrue, dessins au trait qui se tracent, l'histoire de la boutique, « plus qu'une pièce » |
+| **Pièce phare** | Pro | peu de produits, ou un lancement | grande image pleine page qui dérive, mots qui sortent du flou, grandes fiches |
 
-Règles communes :
-- la palette (nuit, orange, indigo, ocre, corail, lagune, sans vert), Archivo et IBM Plex Mono, des icônes dessinées ;
-- le texte d'un bouton passe en encre ou en blanc selon la couleur, pour rester lisible ;
-- les animations n'utilisent que `transform`, `opacity`, `clip-path` et le tracé des traits : rien n'est recalculé en page, donc elles restent fluides sur un téléphone d'entrée de gamme ;
-- **`prefers-reduced-motion` coupe tout**. Un nom découpé en lettres garde son `aria-label` : un lecteur d'écran lit « Maison Adjoua », pas M-A-I-S-O-N.
+**Vague 2, à venir avec leurs fonctions** (aucun n'est codé) :
+
+| Thème | Il lui faut d'abord |
+|---|---|
+| Restaurant (ardoise et craie de la maquette « Maquis ») | options d'un plat, horaires, temps de préparation, livraison rapide |
+| Mode | tailles et couleurs (variantes) |
+| Sur commande | date de retrait, message du client |
+| Produits du terroir | origine, producteur, poids |
+| High-tech | caractéristiques, garantie |
 
 ### 3.2 La configuration (JSON fermé, validé par Django)
 
 ```json
-{
-  "version": 1,
-  "theme": "kita",
-  "accent": "corail",
-  "motion": "full",
-  "cover": "featured",
-  "sections": ["livraison", "une", "collection", "suivi"],
-  "texts": { "tagline": "Le meilleur d'ici, livré en 24 h dans le Grand Abidjan.", "story": "" }
-}
+{ "version": 1, "theme": "epicerie", "motion": "full", "cover": "featured",
+  "sections": ["livraison", "demandes", "collection", "suivi"],
+  "texts": { "tagline": "Le meilleur d'ici, livré en 24 h.", "story": "" } }
 ```
 
-- `theme` : l'un des 10 identifiants (`plateau`, `adjame`, `kita`, `korhogo`, `assinie`, `bassam`, `maquis`, `decale`, `comoe`, `sassandra`).
-- `accent` : l'une des 5 couleurs.
-- `motion` : `full` (tout), `soft` (les entrées seulement, rien en boucle) ou `none` (vitrine immobile). Il est ouvert à tous les plans, et `prefers-reduced-motion` passe toujours avant.
-- `cover` : `featured` ou `name`.
-- `sections` : un ordre choisi dans une liste fermée (`livraison`, `une`, `demandes`, `collection`, `histoire`, `suivi`), sans doublon. `collection` est obligatoire.
+- `theme` : `essentiel`, `epicerie`, `beaute`, `artisanat` ou `piece-phare`.
+- `motion` : `full`, `soft` ou `none`. Avec `soft`, les entrées restent mais rien ne bouge en boucle ; avec `none`, tout est immobile. `prefers-reduced-motion` passe toujours avant.
+- `cover` : `featured` (le produit à la une, sinon le plus vendu) ou `name` (le nom seul).
+- `sections` : un ordre choisi parmi `livraison`, `demandes`, `collection`, `histoire` et `suivi`, sans doublon. `collection` est obligatoire.
 - `texts.tagline` : 80 caractères au plus. `texts.story` : 400 au plus. Les deux passent par `plain_text`.
-- **Toute clé inconnue est refusée** (400). Le front choisit dans des listes fermées : aucune valeur n'entre telle quelle dans une balise, un style ou un script. `pages` reste refusée tant qu'elle n'est pas codée.
+- **Une clé inconnue est refusée** (400), au premier niveau comme dans `texts`.
+- **La couleur reste dans Paramètres** (`Shop.accent`, déjà limitée par plan) : il n'y a qu'une seule source, l'éditeur la montre et y renvoie.
 
 ### 3.3 Brouillon, publication, versions
 
-- `StorefrontVersion` : boutique, numéro, configuration, état (`draft`, `published`, `archived`), qui, quand. Un seul brouillon et une seule version en ligne par boutique (contraintes uniques conditionnelles).
-- Routes (droit `storefront.edit`) :
-  - `GET/PUT shops/{slug}/storefront/draft` ;
-  - `POST …/publish` ;
-  - `GET …/versions` ;
-  - `POST …/versions/{n}/restore`, qui remet une ancienne version en brouillon.
-- La vitrine publique lit la version en ligne. Sans version, c'est Plateau en orange, la vitrine actuelle : rien ne change pour les boutiques existantes.
-- Journal : `storefront_published` (numéro, thème) et `storefront_restored`.
+`StorefrontVersion` : boutique, numéro, configuration, état (`draft`, `published`, `archived`), qui, quand. Un seul brouillon et une seule version en ligne par boutique (contraintes uniques conditionnelles).
 
-### 3.4 Limites par plan (décidées)
+| Route (droit `storefront.edit`) | Effet |
+|---|---|
+| `GET shops/{slug}/storefront` | brouillon, version en ligne, thèmes avec `allowed`, limites du plan |
+| `PUT …/storefront/draft` `{config}` | enregistre le brouillon (validé, plan vérifié) |
+| `DELETE …/storefront/draft` | abandonne le brouillon (idempotent) |
+| `POST …/storefront/publish` | le brouillon passe en ligne, l'ancienne version est archivée ; 409 `no_draft` sans brouillon |
+| `GET …/storefront/versions` | versions en ligne et archivées |
+| `POST …/storefront/versions/{n}/restore` | recopie la version `n` dans le brouillon |
+
+- Limite : 120 enregistrements par heure et par membre.
+- Pas de confirmation renforcée pour publier : une publication se défait en un clic, et elle est journalisée.
+- Journal : `storefront_published` (numéro, thème) et `storefront_restored` (numéro).
+- Vitrine publique : `GET storefront/{slug}` gagne `design` (la version en ligne, ou la configuration par défaut : Essentiel) et `popular` (les 3 produits les plus vendus sur 30 jours, en vente et en stock).
+
+### 3.4 Limites par plan
 
 | | Gratuit | Pro | Business |
 |---|---|---|---|
-| Thèmes | 2 (Plateau, Adjamé) | 5 (+ Kita, Korhogo, Assinie) | les 10 |
-| Couleur | orange | 5 au choix | 5 au choix |
-| Mouvement | au choix | au choix | au choix |
-| Sections | fixes | à choisir et ordonner | à choisir et ordonner |
+| Thèmes | Essentiel, Épicerie | les 5 de la vague 1 | les 5, puis la vague 2 |
+| Sections | celles du thème, dans son ordre | à choisir et ordonner | à choisir et ordonner |
 | Notre histoire | non | oui | oui |
+| Mouvement, couverture, accroche | oui | oui | oui |
 | Versions gardées | 1 | 5 | 20 |
 
-- Les thèmes d'un plan supérieur restent visibles **en aperçu**, pour donner envie, mais ne se publient pas : `plan_limit_reached`.
-- Un plan qui baisse garde la vitrine en ligne telle quelle. Le brouillon refuse ce que le nouveau plan ne permet pas.
+- Un thème non compris dans le plan s'essaie **en aperçu**, mais ne s'enregistre pas : 403 `plan_limit_reached`.
+- Un plan qui baisse garde la vitrine en ligne telle quelle.
 
-### 3.5 Décisions
+### 3.5 Front
 
-1. **10 thèmes, nouveaux noms** : faits dans la maquette, à valider.
-2. **Plans** : Gratuit 2, Pro 5, Business 10.
-3. **Pas de confirmation d'identité pour publier** : on ne redemande pas le mot de passe, car une publication se défait en un clic et elle est journalisée.
-4. **Téléphone du CSV** : « +225… », fait (lot 4, §4.6).
-5. **Fenêtre de grâce du renouvellement** : 10 s, gardée (lot 5, §5.2).
+- **Espace marchand** : une rubrique « Ma boutique » (`/app/{slug}/ma-boutique`, droit `storefront.edit`). On y trouve :
+  - le choix du thème, du mouvement et de la couverture ;
+  - les sections, avec leur ordre ;
+  - l'accroche et l'histoire ;
+  - les boutons « Enregistrer le brouillon », « Publier » et « Abandonner » ;
+  - les versions, avec « Reprendre celle-ci » ;
+  - **un aperçu en direct**, en téléphone ou en grand écran.
+- **Aperçu** : `/apercu/{slug}?c=…`, réservé à qui a `storefront.edit` sur la boutique. Il reçoit la configuration dans l'adresse, la revalide avec zod et n'enregistre rien. Les commandes y sont désactivées. C'est la seule page qui peut s'afficher dans un cadre, et seulement depuis Akwaba (`X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`). Elle est en `noindex`.
+- **Vitrine** : chaque thème a sa couverture, sa façon de montrer la collection et ses animations. Le panier, la commande et la confirmation sont communs.
+- **Animations** : seulement `transform`, `opacity`, `clip-path` et le tracé des traits. Les entrées se jouent quand l'élément arrive à l'écran ; les boucles sont coupées en `soft`. Un nom découpé en lettres garde son `aria-label`.
+
+### 3.6 Tests prévus
+
+- Validation stricte : clé inconnue, thème inconnu, section en double, `collection` absente, textes trop longs, HTML.
+- Plans : thème Pro, sections personnalisées et histoire refusés en Gratuit, puis acceptés en Pro.
+- Cycle complet : brouillon, publication, archivage, versions gardées selon le plan, reprise d'une version (le plan est vérifié), 409 sans brouillon.
+- Droits : vendeur 403, gérant 403 puis 200 avec `storefront.edit`, autre boutique 404.
+- Vitrine publique : `design` par défaut puis publié, `popular`.

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import activity, api_keys, catalog, customers, discounts, goals, logo, photos, presence, shop_settings, storefront, team, views
+from . import activity, api_keys, catalog, customers, design, discounts, goals, logo, photos, presence, shop_settings, storefront, team, views
 
 urlpatterns = [
     path("shops/<slug:slug>/dashboard", views.DashboardView.as_view()),
@@ -26,6 +26,11 @@ urlpatterns = [
     path("shops/<slug:slug>/team/presence", presence.TeamPresenceView.as_view()),
     path("shops/<slug:slug>/goal", goals.GoalView.as_view()),
     path("shops/<slug:slug>/logo", logo.ShopLogoView.as_view()),
+    path("shops/<slug:slug>/storefront", design.DesignView.as_view()),
+    path("shops/<slug:slug>/storefront/draft", design.DesignDraftView.as_view()),
+    path("shops/<slug:slug>/storefront/publish", design.DesignPublishView.as_view()),
+    path("shops/<slug:slug>/storefront/versions", design.DesignVersionsView.as_view()),
+    path("shops/<slug:slug>/storefront/versions/<int:number>/restore", design.DesignRestoreView.as_view()),
     # Clients : les routes nommées avant l'identifiant de fiche.
     path("shops/<slug:slug>/customers", customers.CustomerListView.as_view()),
     path("shops/<slug:slug>/customers/summary", customers.CustomerSummaryView.as_view()),

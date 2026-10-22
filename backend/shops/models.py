@@ -455,6 +455,39 @@ class ProductPhoto(models.Model):
         constraints = [models.UniqueConstraint(fields=["product", "position"], name="unique_photo_position")]
 
 
+class StorefrontVersion(models.Model):
+    """
+    Une version de la vitrine (docs/chantier-p5.md §3.3) : la configuration choisie dans « Ma boutique ».
+    Un seul brouillon et une seule version en ligne par boutique ; les anciennes sont archivées,
+    dans la limite du plan.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Brouillon"
+        PUBLISHED = "published", "En ligne"
+        ARCHIVED = "archived", "Archivée"
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="storefront_versions")
+    number = models.PositiveIntegerField()
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    config = models.JSONField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_by_name = models.CharField(max_length=150, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    published_by_name = models.CharField(max_length=150, blank=True)
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-number"]
+        constraints = [
+            models.UniqueConstraint(fields=["shop", "number"], name="unique_storefront_version_number"),
+            models.UniqueConstraint(fields=["shop"], condition=models.Q(status="draft"), name="one_storefront_draft"),
+            models.UniqueConstraint(fields=["shop"], condition=models.Q(status="published"), name="one_storefront_published"),
+        ]
+
+
 class IdempotencyRecord(models.Model):
     """
     Une commande déjà traitée pour une clé Idempotency-Key, gardée 24 h.
