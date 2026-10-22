@@ -11,13 +11,17 @@ from collections import Counter
 from datetime import timedelta
 
 from django.db.models import Sum
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ErrorDetail, NotFound, ValidationError
 from rest_framework.response import Response
 
+from accounts.sessions import require_reauth
 from audit.services import record
 from core.pagination import PagePagination
+from core.ratelimit import enforce
+from core.spreadsheet import excel_csv
 
 from .discounts import customer_discounts
 from .models import Customer, Order, OrderItem, OrderStatus
@@ -148,6 +152,59 @@ class CustomerListView(ShopScopedView):
         paginator = PagePagination()
         page = paginator.paginate_queryset(found, request, view=self)
         return paginator.get_paginated_response(page)
+
+
+FLAG_LABELS = {"new": "nouveau", "win_back": "à relancer", "at_risk": "à risque"}
+EXPORT_LIMIT = (10, 3600)  # par membre
+
+
+class CustomerExportView(ShopScopedView):
+    """
+    Export des clients en CSV pour Excel (docs/chantier-p5.md §4.1). Tous les téléphones sortent en
+    clair : droit à part (customers.export, que le propriétaire peut confier), confirmation
+    renforcée, limite de débit et journal.
+    """
+
+    permission_by_method = {"GET": "customers.export"}
+
+    def get(self, request, slug):
+        segment = request.query_params.get("segment", "all")
+        if segment not in SEGMENTS:
+            raise ValidationError({"segment": [ErrorDetail("Segment inconnu.", code="invalid_choice")]})
+        require_reauth(request)
+        enforce("customers_export:member", str(self.membership.pk), EXPORT_LIMIT)
+
+        customers, _, items = all_customers(self.shop)
+        found = [(item, customer) for item, customer in zip(items, customers, strict=True) if matches(item, customer, segment, "")]
+        found.sort(key=lambda pair: -pair[0]["spent"])
+
+        def day(moment):
+            return timezone.localtime(moment).strftime("%d/%m/%Y") if moment else ""
+
+        rows = [
+            [
+                item["name"],
+                customer.phone,
+                item["city"],
+                item["commune"],
+                item["orders"],
+                item["delivered"],
+                item["cancelled"],
+                item["spent"],
+                item["average_basket"],
+                day(item["first_order_at"]),
+                day(item["last_order_at"]),
+                "oui" if item["loyal"] else "non",
+                ", ".join(FLAG_LABELS[flag] for flag in item["flags"]),
+            ]
+            for item, customer in found
+        ]
+        header = ["Nom", "Téléphone", "Ville", "Commune", "Commandes", "Livrées", "Annulées", "Total dépensé (F)",
+                  "Panier moyen (F)", "Première commande", "Dernière commande", "Fidèle", "Repères"]
+        record("customers_exported", request, actor=request.user, shop=self.shop, rows=len(rows), segment=segment)
+        response = HttpResponse(excel_csv(header, rows), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="akwaba-{self.shop.slug}-clients-{timezone.localdate()}.csv"'
+        return response
 
 
 class CustomerSummaryView(ShopScopedView):

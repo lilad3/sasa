@@ -29,6 +29,7 @@ DETAILS = {
     "member_added": ("role",),
     "member_role_changed": ("previous_role", "new_role"),
     "orders_exported": ("rows", "first", "last"),
+    "customers_exported": ("rows", "segment"),
     "order_status_changed": ("previous_status", "new_status"),
     "order_placed": ("total", "payment_method", "discount_amount", "channel"),
     "plan_changed": ("previous_plan", "new_plan"),

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { NameVipForm, ThresholdForm } from "@/features/customers/forms";
+import { CustomerExportPanel } from "@/features/customers/export-panel";
 import { GiveDiscount } from "@/features/customers/discounts";
 import { CustomerTags, LoyalCard, Reliability } from "@/features/customers/parts";
 import { TwoTone } from "@/features/dashboard/parts";
@@ -111,6 +112,7 @@ async function CustomersFromRoute({ params, searchParams }: Pick<PageProps<"/app
             </button>
           </Form>
           {can("customers.vip") ? <NameVipForm slug={shop} /> : null}
+          {can("customers.export") ? <CustomerExportPanel slug={shop} mfaEnabled={me.ok && me.data.mfa_enabled} segment={filters.segment} /> : null}
         </div>
       </header>
 

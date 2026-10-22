@@ -43,7 +43,7 @@ class StorefrontReadTests(StorefrontTestCase):
         self.assertEqual(body["name"], "Maison Test")
         self.assertEqual(body["accent"], "orange")
         self.assertEqual(body["product_count"], 2)
-        self.assertIn({"id": "Abidjan|Cocody", "city": "Abidjan", "commune": "Cocody", "label": "Cocody, Abidjan", "fee": 1500}, body["delivery_zones"])
+        self.assertIn({"id": "Abidjan|Cocody", "city": "Abidjan", "commune": "Cocody", "label": "Cocody, Abidjan", "fee": 1500, "delay_hours": 24}, body["delivery_zones"])
 
     def test_products_hide_inactive_ones_and_exact_stock(self):
         products = self.client.get(f"{BASE}/products").json()

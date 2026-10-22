@@ -59,8 +59,8 @@ function grid(children: ReactNode) {
 }
 
 function buildTabs(summary: DashboardSummary, chip: string, slug: string, canSeeCustomers: boolean): MonthTab[] {
-  const { kpis, statuses, payment_methods, channels, places, customers, top_customers } = summary;
-  const placed = Object.values(statuses).reduce((sum, n) => sum + n, 0);
+  const { kpis, payment_methods, channels, places, customers, top_customers, on_time } = summary;
+  const late = on_time.measured - on_time.on_time;
   const mobileRevenue = payment_methods.filter((row) => row.method !== "cash_on_delivery").reduce((sum, row) => sum + row.revenue, 0);
   const cashShare = percent(kpis.revenue.value - mobileRevenue, kpis.revenue.value);
   const totalCustomers = customers.new + customers.returning;
@@ -95,8 +95,20 @@ function buildTabs(summary: DashboardSummary, chip: string, slug: string, canSee
           <Tile label="Panier moyen" chip={chip} foot={versus(kpis.average_basket)}>
             <TwoTone value={formatNumber(kpis.average_basket.value)} unit=" F" className="text-[clamp(32px,3vw,44px)]" />
           </Tile>
-          <Tile label="Livrées" chip={chip} foot={`sur ${formatNumber(placed)} commandes passées`}>
-            <TwoTone value={String(percent(statuses.delivered, placed))} unit=" %" className="text-[clamp(32px,3vw,44px)]" />
+          <Tile
+            label="Livrées à temps"
+            chip={chip}
+            foot={
+              on_time.measured > 0
+                ? `${formatNumber(on_time.measured)} livraison${on_time.measured > 1 ? "s" : ""} mesurée${on_time.measured > 1 ? "s" : ""} · ${formatNumber(late)} en retard`
+                : "Pas encore de livraison mesurée sur la période."
+            }
+          >
+            {on_time.measured > 0 ? (
+              <TwoTone value={String(percent(on_time.on_time, on_time.measured))} unit=" %" className="text-[clamp(32px,3vw,44px)]" />
+            ) : (
+              <TwoTone value="—" className="text-[clamp(32px,3vw,44px)]" />
+            )}
           </Tile>
           <Tile label="Paiement" chip={chip}>
             <div className="mt-1 flex flex-col gap-3.5">

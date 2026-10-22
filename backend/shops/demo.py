@@ -7,7 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
 
-from .delivery import ZONES
+from .delivery import ZONES, promised_hours
 from .models import REFERENCE_ALPHABET, Channel, Order, OrderItem, OrderStatus, PaymentMethod, Product
 
 DEMO_DAYS = 180  # deux fois 90 jours : la période précédente existe aussi pour le filtre 90d
@@ -96,6 +96,8 @@ def generate_demo_data(shop):
     rng = random.Random(shop.pk.int)  # même boutique, mêmes données : la démo est reproductible
     # Un tirage à part pour les canaux : ajouter les canaux ne change aucune autre donnée de démo.
     channel_rng = random.Random(shop.pk.int + 1)
+    # Les horaires des étapes ont leur propre tirage : le reste de la démo ne change pas (chantier-p5.md §4.4).
+    timing_rng = random.Random(shop.pk.int + 2)
     Order.objects.for_shop(shop).filter(is_demo=True).delete()
     Product.objects.for_shop(shop).filter(is_demo=True).delete()
 
@@ -157,6 +159,7 @@ def generate_demo_data(shop):
                 is_demo=True,
                 created_at=created_at,
             )
+            _stamp(order, timing_rng, now)
             orders.append(order)
             items.extend(
                 OrderItem(
@@ -198,6 +201,27 @@ def _lines(rng, products, weights):
         quantity = 1 if product.price >= 5000 else rng.choices([1, 2, 3], weights=[60, 30, 10])[0]
         lines.append((product, quantity))
     return lines
+
+
+def _stamp(order, rng, now):
+    """Confirmée dans les heures, expédiée dans la journée, livrée à temps environ 85 fois sur 100."""
+    steps = {
+        OrderStatus.CONFIRMED: ("confirmed_at",),
+        OrderStatus.SHIPPED: ("confirmed_at", "shipped_at"),
+        OrderStatus.DELIVERED: ("confirmed_at", "shipped_at", "delivered_at"),
+    }.get(order.status, ())
+    if not steps:
+        return
+    promised = promised_hours(order.customer_city, order.customer_commune)
+    total = promised * (rng.uniform(0.35, 0.95) if rng.random() < 0.85 else rng.uniform(1.05, 1.6))
+    offsets = {"confirmed_at": rng.uniform(0.2, 3.0), "shipped_at": total * rng.uniform(0.3, 0.6), "delivered_at": total}
+    previous = order.created_at
+    for field in steps:
+        # Jamais dans le futur, toujours après l'étape précédente.
+        moment = min(order.created_at + timedelta(hours=offsets[field]), now - timedelta(minutes=1))
+        moment = max(moment, previous + timedelta(minutes=1))
+        setattr(order, field, moment)
+        previous = moment
 
 
 def _status(rng, age):

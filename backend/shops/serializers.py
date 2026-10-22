@@ -4,6 +4,7 @@ from django.utils.text import slugify
 from rest_framework import serializers
 
 from .models import Order, OrderItem, OrderNote, OrderStatus, Product
+from .delivery import promised_hours
 from .storefront import photos_payload, plain_text
 
 
@@ -50,12 +51,25 @@ class OrderNoteSerializer(serializers.ModelSerializer):
 
 
 class OrderDetailSerializer(OrderSerializer):
-    """La fiche d'une commande : la commande, et les notes internes de l'équipe."""
+    """La fiche d'une commande : la commande, ses horaires, et les notes internes de l'équipe."""
 
     notes = OrderNoteSerializer(many=True, read_only=True)
+    promised_hours = serializers.SerializerMethodField()
+    delivery_hours = serializers.SerializerMethodField()
 
     class Meta(OrderSerializer.Meta):
-        fields = [*OrderSerializer.Meta.fields, "notes"]
+        fields = [
+            *OrderSerializer.Meta.fields, "confirmed_at", "shipped_at", "delivered_at", "promised_hours", "delivery_hours", "notes",
+        ]
+
+    def get_promised_hours(self, order):
+        return promised_hours(order.customer_city, order.customer_commune)
+
+    def get_delivery_hours(self, order):
+        """De la commande à la livraison, en heures arrondies au dixième (null tant qu'elle n'est pas livrée)."""
+        if order.delivered_at is None:
+            return None
+        return round((order.delivered_at - order.created_at).total_seconds() / 3600, 1)
 
 
 SKU = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")

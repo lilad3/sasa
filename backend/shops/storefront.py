@@ -220,7 +220,7 @@ class StorefrontDetailView(StorefrontView):
                 },
                 "product_count": Product.objects.for_shop(shop).filter(is_active=True).count(),
                 "delivery_zones": [
-                    {"id": zone.id, "city": zone.city, "commune": zone.commune, "label": zone.label, "fee": zone.fee}
+                    {"id": zone.id, "city": zone.city, "commune": zone.commune, "label": zone.label, "fee": zone.fee, "delay_hours": zone.delay_hours}
                     for zone in ZONES
                 ],
                 "payment_methods": [{"id": value, "label": label} for value, label in PaymentMethod.choices],

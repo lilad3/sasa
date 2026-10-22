@@ -17,7 +17,7 @@ from core.spreadsheet import excel_csv
 
 from .dashboard import PERIODS, dashboard_summary, order_counts
 from .demo import generate_demo_data
-from .models import Channel, Order, OrderNote, OrderStatus, PaymentMethod
+from .models import STATUS_TIMESTAMP, Channel, Order, OrderNote, OrderStatus, PaymentMethod
 from .permissions import ShopScopedView
 from .serializers import OrderDetailSerializer, OrderNoteSerializer, OrderSerializer, OrderStatusSerializer
 from .team import full_name
@@ -89,7 +89,13 @@ class OrderDetailView(ShopScopedView):
                     )
                 previous_status = order.status
                 order.status = new_status
-                order.save(update_fields=["status", "updated_at"])
+                changed = ["status", "updated_at"]
+                # L'heure de chaque étape, une seule fois : elle sert à mesurer les livraisons à temps.
+                stamp = STATUS_TIMESTAMP.get(new_status)
+                if stamp and getattr(order, stamp) is None:
+                    setattr(order, stamp, timezone.now())
+                    changed.append(stamp)
+                order.save(update_fields=changed)
                 record(
                     "order_status_changed",
                     request,

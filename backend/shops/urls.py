@@ -29,6 +29,7 @@ urlpatterns = [
     # Clients : les routes nommées avant l'identifiant de fiche.
     path("shops/<slug:slug>/customers", customers.CustomerListView.as_view()),
     path("shops/<slug:slug>/customers/summary", customers.CustomerSummaryView.as_view()),
+    path("shops/<slug:slug>/customers/export", customers.CustomerExportView.as_view()),
     path("shops/<slug:slug>/customers/settings", customers.LoyaltySettingsView.as_view()),
     path("shops/<slug:slug>/customers/vip", customers.CustomerVipView.as_view()),
     path("shops/<slug:slug>/customers/<str:customer_id>", customers.CustomerDetailView.as_view()),

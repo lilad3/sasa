@@ -128,6 +128,13 @@ class OrderStatus(models.TextChoices):
     CANCELLED = "cancelled", "Annulée"
 
 
+# Le champ horaire que remplit chaque statut.
+STATUS_TIMESTAMP = {
+    OrderStatus.CONFIRMED: "confirmed_at",
+    OrderStatus.SHIPPED: "shipped_at",
+    OrderStatus.DELIVERED: "delivered_at",
+}
+
 ORDER_TRANSITIONS = {
     OrderStatus.PENDING: {OrderStatus.CONFIRMED, OrderStatus.CANCELLED},
     OrderStatus.CONFIRMED: {OrderStatus.SHIPPED, OrderStatus.CANCELLED},
@@ -193,6 +200,10 @@ class Order(models.Model):
     is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    # Remplis au passage dans chaque statut, une seule fois (docs/chantier-p5.md §4.2).
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    shipped_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
 
     objects = ShopScopedQuerySet.as_manager()
 

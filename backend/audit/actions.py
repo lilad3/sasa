@@ -53,6 +53,7 @@ ACTIONS = {
     "api_key_created": (S, WARNING, "Clé API créée"),
     "api_key_revoked": (S, INFO, "Clé API révoquée"),
     "orders_exported": (S, WARNING, "Ventes exportées"),
+    "customers_exported": (S, WARNING, "Clients exportés"),
     # Activité des boutiques
     "shop_created": (B, INFO, "Boutique créée"),
     "order_placed": (B, INFO, "Commande passée en boutique"),

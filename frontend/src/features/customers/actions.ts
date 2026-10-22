@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { describeProblem, type FormError } from "@/lib/messages";
 import { confirmIdentity } from "@/lib/server/reauth";
-import { authedMutation } from "@/lib/server/session";
+import { authedMutation, authedText } from "@/lib/server/session";
 import type { CreatedDiscount, CustomerDetail } from "@/lib/types";
 
 const Slug = z.string().regex(/^[a-z0-9-]{1,60}$/);
@@ -129,4 +129,32 @@ export async function revokeDiscount(formData: FormData) {
   if (!slug.success || !id.success) return;
   await authedMutation(`shops/${slug.data}/discounts/${id.data}`, "DELETE");
   refresh();
+}
+
+/* ---------- Export des clients ---------- */
+
+export type CustomerExportState = { reauth?: boolean; reauthError?: string; error?: FormError; csv?: string; filename?: string };
+
+const SEGMENTS = ["all", "loyal", "new", "win_back", "at_risk"] as const;
+
+/**
+ * Export CSV des clients, téléphones en clair (customers.export). Django exige une confirmation
+ * renforcée et note l'export dans le journal ; le navigateur télécharge le fichier.
+ */
+export async function exportCustomers(_previous: CustomerExportState, formData: FormData): Promise<CustomerExportState> {
+  const parsed = z.object({ slug: Slug, segment: z.enum(SEGMENTS) }).safeParse({ slug: formData.get("slug"), segment: formData.get("segment") });
+  if (!parsed.success) return { error: { code: "validation_error", message: "Choisissez les clients à exporter." } };
+
+  const identity = await confirmIdentity(formData);
+  if (!identity.ok) return { reauth: true, reauthError: identity.fieldError, error: identity.error };
+
+  const { slug, segment } = parsed.data;
+  const result = await authedText(`shops/${slug}/customers/export?segment=${segment}`);
+  if (!result.ok) {
+    if (result.problem.code === "reauth_required") return { reauth: true };
+    if (result.problem.code === "too_many_requests") return { error: { code: "too_many_requests", message: "Trop d’exports en une heure. Réessayez un peu plus tard." } };
+    return { error: describeProblem(result.problem) };
+  }
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Abidjan" }).format(new Date());
+  return { csv: result.data, filename: `akwaba-${slug}-clients-${day}.csv` };
 }

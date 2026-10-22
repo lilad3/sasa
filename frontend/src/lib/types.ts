@@ -98,6 +98,8 @@ export type DashboardSummary = {
   to_process: Record<"pending" | "confirmed" | "shipped", number>;
   /** Commandes passées sur la période, annulées comprises. */
   statuses: OrderCounts;
+  /** Livrées à temps (chantier-p5.md §4.4) : commandes livrées et horodatées de la période. */
+  on_time: { measured: number; on_time: number; average_hours: number | null };
   payment_methods: { method: PaymentMethod; orders: number; revenue: number }[];
   /** D'où viennent les ventes de la période, hors annulées. */
   channels: { channel: Channel; orders: number; revenue: number }[];
@@ -265,7 +267,16 @@ export type MfaSetup = { otpauth_uri: string; secret: string; qr_svg: string };
 export type OrderNote = { id: string; author_name: string; body: string; created_at: string };
 
 /** La fiche d'une commande : la commande et les notes internes de l'équipe. */
-export type OrderDetail = Order & { notes: OrderNote[] };
+export type OrderDetail = Order & {
+  /** L'heure de chaque étape (null : pas encore, ou commande passée avant qu'on les note). */
+  confirmed_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  /** Le délai promis pour sa zone, et le temps réel de la commande à la livraison (en heures). */
+  promised_hours: number;
+  delivery_hours: number | null;
+  notes: OrderNote[];
+};
 
 /* ---------- Équipe et mot du patron ---------- */
 
@@ -329,7 +340,8 @@ export type Problem = {
 
 export type Accent = "orange" | "indigo" | "ocre" | "lagune" | "corail";
 
-export type DeliveryZone = { id: string; city: string; commune: string; label: string; fee: number };
+/** `delay_hours` : le délai de livraison promis (24 h Grand Abidjan, 48 h Bingerville et Grand-Bassam, 72 h ailleurs). */
+export type DeliveryZone = { id: string; city: string; commune: string; label: string; fee: number; delay_hours: number };
 
 /** Une photo envoyée par la boutique : l'image passe par /boutique/{slug}/photo/{id}?v={version}. */
 export type ProductPhoto = { id: string; version: string };

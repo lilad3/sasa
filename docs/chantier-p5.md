@@ -14,7 +14,7 @@ Rappels communs (ceux de `chantier-p4.md`) :
 | 1. Réductions et canaux de vente | `claude/p5-reductions-canaux` | fait (décisions de §1.11 appliquées) |
 | 2. Produit à la une et photos | `claude/p5-une-photos` (sur le lot 1) | fait |
 | 3. Éditeur « Ma boutique » | `claude/p5-ma-boutique` | esquisse (maquette d'abord) |
-| 4. Export des clients et « Livrées à temps » | `claude/p5-export-delais` | esquisse |
+| 4. Export des clients et « Livrées à temps » | `claude/p5-export-delais` (sur le lot 2) | fait |
 | 5. Renouvellement des sessions | `claude/p5-sessions` | enquête |
 
 ---
@@ -318,16 +318,79 @@ Les photos ne sont pas journalisées, comme les autres modifications d'une fiche
 
 ---
 
+## Lot 4 : export des clients et « Livrées à temps »
+
+Branche `claude/p5-export-delais`, **empilée sur `claude/p5-une-photos`** (migrations shops 0007, audit 0008). Le lot 3 viendra après validation de sa maquette : ses migrations seront numérotées à ce moment-là.
+
+### 4.1 Export des clients
+
+**`GET /shops/{slug}/customers/export?segment=all|loyal|new|win_back|at_risk`**
+- Droit **`customers.export`** : le propriétaire l'a ; il peut le **confier à un gérant** (ajouté à `GRANTABLE`). Un vendeur ne l'a jamais.
+- **Confirmation renforcée** (`require_reauth`) : le fichier contient tous les téléphones en clair. Limite : 10 exports par heure et par membre (`customers_export:member`).
+- Fichier `excel_csv` (séparateur « ; », BOM, formules neutralisées), nommé `akwaba-{slug}-clients-{date}.csv`. Colonnes :
+
+  | Colonne | Contenu |
+  |---|---|
+  | Nom | nom de fidèle donné par la boutique, sinon le dernier nom saisi |
+  | Téléphone | en clair, `+225…` |
+  | Ville, Commune | du dernier lieu de livraison |
+  | Commandes, Livrées, Annulées | nombres |
+  | Total dépensé (F), Panier moyen (F) | hors commandes annulées |
+  | Première commande, Dernière commande | `JJ/MM/AAAA` |
+  | Fidèle | « oui » ou « non » (seuil de la boutique, ou nommé par elle) |
+  | Repères | « nouveau », « à relancer », « à risque », séparés par des virgules |
+
+- Ordre : les plus gros clients d'abord. Le segment suit les filtres de la page Clients.
+- Journal : **`customers_exported`** (« Clients exportés », sécurité, avertissement), détails `rows` et `segment`.
+- Erreurs : segment inconnu → 400 ; non-membre → 404 ; droit manquant → 403 ; sans confirmation → 403 `reauth_required`.
+
+### 4.2 Horaires de la commande (shops 0007)
+
+- `Order.confirmed_at`, `shipped_at`, `delivered_at` (vides par défaut), remplis **au passage** dans le statut correspondant, une seule fois.
+- Les commandes passées avant ce lot n'ont pas d'horaires : elles ne comptent pas dans la mesure ci-dessous. On ne les invente pas.
+- La fiche commande (`GET orders/{id}`) les renvoie, avec `promised_hours` (le délai promis pour sa zone) et `delivery_hours` (le temps réel de la commande à la livraison, en heures, ou `null`).
+
+### 4.3 Délai promis par zone (`delivery.py`)
+
+| Zone | Délai promis |
+|---|---|
+| Grand Abidjan (toutes les communes d'Abidjan) | 24 h |
+| Bingerville, Grand-Bassam | 48 h |
+| Ailleurs (et lieu inconnu) | 72 h |
+
+- Le délai court **de la commande à la livraison** : c'est ce que vit le client, confirmation comprise.
+- La vitrine reçoit `delay_hours` avec chaque zone ; le choix de la commune l'affiche (« livrée sous 24 h »).
+
+### 4.4 « Livrées à temps » (dashboard)
+
+- `GET dashboard` gagne `on_time: {measured, on_time, average_hours}` : parmi les commandes de la période **livrées et horodatées**, combien l'ont été dans le délai promis, et le temps moyen.
+- L'onglet « Commandes » remplace la tuile « Livrées » par **« Livrées à temps »** : la part à temps en grand, puis « 37 livraisons mesurées · 4 en retard » ; sans mesure, « Pas encore de livraison mesurée sur la période ».
+- La fiche commande affiche l'heure de chaque étape sous la frise, et une fois livrée : « Livrée en 18 h · à temps (promis : 24 h) » ou « Livrée en 30 h · 6 h de retard ».
+- Les données de démo reçoivent des horaires réalistes (environ 85 % à temps), tirés par un générateur aléatoire à part : le reste de la démo ne change pas.
+
+### 4.5 Front
+
+- Page Clients : bouton « Exporter » (si `customers.export`), sur le modèle de l'export des ventes : segment, confirmation renforcée à la demande, téléchargement dans le navigateur, mention « noté dans le journal de sécurité ».
+- Mon personnel : le pouvoir « Exporter les clients » (« Fichier avec noms et téléphones, après confirmation de son identité »).
+
+### 4.6 Écart
+
+- Dans le CSV, un téléphone commence par « + » : comme dans l'export des ventes, `csv_safe` le précède d'une apostrophe (`'+2250707…`), sinon Excel le lirait comme une formule. Excel montre cette apostrophe à l'ouverture d'un CSV. C'est le prix de la protection ; on pourrait plus tard écrire le numéro sans « + » (« 225 07 07 … »), à décider.
+
+### 4.7 Tests prévus
+
+- Export : propriétaire 200 avec reauth, 403 `reauth_required` sans ; gérant 403 puis 200 une fois le droit confié ; vendeur 403 ; autre boutique 404 ; segment inconnu 400 ; colonnes et ordre ; formule neutralisée dans un nom ; journal ; limite de débit.
+- Horaires : remplis à chaque passage, jamais réécrits ; une annulation n'en remplit aucun.
+- Délai : 24 / 48 / 72 h selon la zone ; « à temps » à la limite exacte ; commandes sans horaire ignorées ; annulées ignorées.
+
+---
+
 ## Lots 3 à 5 : esquisses (détaillées avant chaque lot)
 
 **Lot 3, éditeur « Ma boutique ».**
 - D'abord la maquette de 3 thèmes, à valider avant tout code.
 - Ensuite : un modèle `StorefrontVersion` (brouillon, versions publiées), une configuration JSON validée par un schéma fermé côté Django, et les limites par plan.
 - Une clé `pages` dans la configuration, pour plus tard (fiche produit, panier, suivi), refusée tant qu'elle n'est pas codée.
-
-**Lot 4, export des clients et délais.**
-- `GET customers/export` : droit `customers.export` (accordable), reauth, `excel_csv`, audit `customers_exported`.
-- `Order.confirmed_at`, `shipped_at` et `delivered_at`, remplis aux transitions. Délai promis par zone dans `delivery.py`. Carte « Livrées à temps ».
 
 **Lot 5, renouvellement des sessions.**
 - Lire `proxy.ts`, `lib/server/session.ts`, `app/session/renouveler/route.ts` et la fenêtre de grâce d'`accounts/sessions.py`.
