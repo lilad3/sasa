@@ -118,7 +118,7 @@ En développement (`http://localhost`), les noms perdent le préfixe `__Host-`.
 
 Le réglage `SIGNUP_EMAIL_VERIFICATION` de `backend/.env` choisit le mode. Le front le lit avec `GET /auth/signup` (`{ "email_verification": true|false }`) et affiche le bon formulaire : c'est Django seul qui décide.
 
-**En une étape (`SIGNUP_EMAIL_VERIFICATION=0`, le réglage actuel).** Akwaba n'a pas encore de nom de domaine pour envoyer des e-mails qui arrivent vraiment.
+**En une étape (`SIGNUP_EMAIL_VERIFICATION=0`, à activer seulement sans serveur d'e-mails).** Akwaba n'a pas encore de nom de domaine pour envoyer des e-mails qui arrivent vraiment.
 1. `POST /auth/signup` avec l'e-mail, le nom, le nom de boutique **et le mot de passe**.
 2. Le mot de passe est vérifié d'abord (règles du §2.2). Un mot de passe trop faible ne consomme pas d'essai.
 3. Ensuite seulement viennent les limites : 5 inscriptions par heure et par IP, 3 par adresse.
@@ -131,7 +131,7 @@ Ce que ce mode coûte, et comment c'est compensé :
 | Savoir si une adresse a un compte | Sans e-mail, on ne peut pas répondre pareil dans les deux cas | Les limites ci-dessus rendent le balayage lent. La connexion et « mot de passe oublié » restent muettes |
 | Pré-détournement : un attaquant inscrit l'adresse d'une victime | Personne ne prouve qu'il contrôle la boîte mail | La victime récupère le compte par « Mot de passe oublié ». La réinitialisation ferme toutes les sessions, celles de l'attaquant comprises |
 
-**En deux temps (`SIGNUP_EMAIL_VERIFICATION=1`, dès qu'il y a un serveur d'e-mails).**
+**En deux temps (`SIGNUP_EMAIL_VERIFICATION=1`, le réglage par défaut : aucune fuite d'existence de compte).**
 1. `POST /auth/signup` avec l'e-mail, le nom et le nom de boutique. Réponse : **toujours `202`**, que l'e-mail soit libre ou non. Un mot de passe envoyé à cette étape est ignoré : il ne finit jamais dans le jeton du lien.
 2. Un e-mail part avec un lien valable 24 h :
    - si l'adresse est libre, le lien permet de terminer l'inscription ;

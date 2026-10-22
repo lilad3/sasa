@@ -115,12 +115,12 @@ def open_account(request, pending, password, conflict, *, email_verified):
         with transaction.atomic():
             user.set_password(password)
             user.save()
-            shop = create_shop_for_owner(user, pending["shop_name"])
+            shop = create_shop_for_owner(user, pending["shop_name"], pending.get("plan", "free"))
     except IntegrityError:  # deux envois simultanés pour la même adresse
         raise conflict()
 
     record("signup_completed", request, actor=user, email_verified=email_verified)
-    record("shop_created", request, actor=user, shop=shop)
+    record("shop_created", request, actor=user, shop=shop, plan=shop.plan)
     session, tokens = open_session(user, request)
     note_device(user, session, request)
     return Response(auth_result(user, tokens), status=status.HTTP_201_CREATED)

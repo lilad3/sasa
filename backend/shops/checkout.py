@@ -16,7 +16,7 @@ from django.utils import timezone
 from core.exceptions import ProblemError
 
 from .delivery import find_zone
-from .models import IdempotencyRecord, Order, OrderItem, OrderStatus, Product, new_reference
+from .models import Customer, IdempotencyRecord, Order, OrderItem, OrderStatus, Product, new_reference
 
 IDEMPOTENCY_TTL = timedelta(hours=24)
 
@@ -80,6 +80,8 @@ def place_order(shop, data, idempotency_key):
             delivery_fee=zone.fee,
             total=total,
         )
+        # La fiche client suit le dernier nom donné avec ce numéro ; un fidèle nommé le reste.
+        Customer.objects.update_or_create(shop=shop, phone=customer["phone"], defaults={"name": customer["name"]})
         OrderItem.objects.bulk_create(
             OrderItem(
                 order=order,

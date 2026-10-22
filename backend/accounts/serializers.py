@@ -34,6 +34,8 @@ class SignupSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=80)
     last_name = serializers.CharField(max_length=80)
     shop_name = serializers.CharField(min_length=2, max_length=60)
+    # Plan choisi à l'inscription. Avec la confirmation par e-mail, il voyage dans le jeton signé : on ne le change pas en route.
+    plan = serializers.ChoiceField(choices=["free", "pro", "business"], default="free")
 
 
 class DirectSignupSerializer(SignupSerializer):

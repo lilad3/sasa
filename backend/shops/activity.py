@@ -36,6 +36,10 @@ DETAILS = {
     "api_key_created": ("scopes",),
     "products_imported": ("created", "updated"),
     "team_note_sent": ("audience", "urgent", "recipients"),
+    "member_grants_changed": ("added", "removed"),
+    "goal_set": ("month", "previous", "amount"),
+    "loyalty_threshold_changed": ("previous", "threshold"),
+    "shop_logo_changed": ("change",),
 }
 
 # Ce qui, sur le compte d'un membre de l'équipe, peut vouloir dire qu'on essaie d'y entrer.

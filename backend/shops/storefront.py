@@ -20,7 +20,7 @@ from core.ratelimit import enforce
 
 from .checkout import fake_response, place_order
 from .delivery import ZONES, find_zone
-from .models import Order, PaymentMethod, Product, Shop
+from .models import Order, PaymentMethod, Product, Shop, ShopLogo
 
 ORDER_LIMIT = (10, 3600)  # 10 commandes par heure et par IP (§3.3)
 # Suivi de commande : 4 chiffres de téléphone, c'est 10 000 possibilités. La limite par
@@ -133,6 +133,7 @@ class StorefrontDetailView(StorefrontView):
                 "description": shop.description,
                 "city": shop.city,
                 "accent": shop.accent,
+                "logo_version": ShopLogo.objects.filter(shop=shop).values_list("version", flat=True).first(),
                 "currency": "XOF",
                 "vacation": {
                     "active": shop.on_vacation(),

@@ -8,22 +8,39 @@ from rest_framework.views import APIView
 
 from .models import Membership, Role
 
+MANAGER_DEFAULT = frozenset(
+    {
+        "dashboard.view", "orders.view", "orders.manage", "orders.export", "products.view", "products.write",
+        "team.view", "notes.send", "customers.view", "customers.loyalty",
+    }
+)
+
 ROLE_PERMISSIONS = {
-    Role.OWNER: frozenset(
+    # Le propriétaire a tout, y compris ce qui ne se délègue jamais (plan, clés API, objectif, fidèles nommés).
+    Role.OWNER: MANAGER_DEFAULT
+    | frozenset(
         {
-            "dashboard.view", "orders.view", "orders.manage", "orders.export", "products.view", "products.write",
-            "team.view", "notes.send", "shop.manage",
+            "shop.manage", "goals.manage", "customers.vip",
+            "team.manage_sellers", "team.presence", "storefront.edit",
         }
     ),
-    Role.MANAGER: frozenset(
-        {
-            "dashboard.view", "orders.view", "orders.manage", "orders.export", "products.view", "products.write",
-            "team.view", "notes.send",
-        }
-    ),
+    Role.MANAGER: MANAGER_DEFAULT,
     # Le vendeur traite les commandes et lit les consignes, mais ne voit ni le chiffre d'affaires ni les exports.
     Role.SELLER: frozenset({"orders.view", "orders.manage", "products.view", "team.view"}),
 }
+
+# Ce que le propriétaire peut confier à un gérant, en plus de ses droits par défaut (docs/chantier-p4.md §A).
+# Jamais : shop.manage (plan, réglages, clés API), goals.manage, customers.vip.
+# team.manage_sellers ne vise que les vendeurs : un gérant ne nomme jamais un gérant.
+GRANTABLE = frozenset({"team.manage_sellers", "team.presence", "storefront.edit"})
+
+
+def effective_permissions(membership):
+    """Les droits réels d'un membre : ceux de son rôle, plus ceux qu'on lui a accordés s'il est gérant."""
+    permissions = ROLE_PERMISSIONS[membership.role]
+    if membership.role == Role.MANAGER:
+        permissions = permissions | (set(membership.grants or ()) & GRANTABLE)
+    return permissions
 
 
 class ShopScopedView(APIView):
@@ -44,7 +61,9 @@ class ShopScopedView(APIView):
         if membership is None:
             raise NotFound("Boutique introuvable.")
         method = "GET" if request.method == "HEAD" else request.method
-        if self.permission_by_method.get(method) not in ROLE_PERMISSIONS[membership.role]:
+        # Les droits sont relus à chaque requête : un droit retiré ne sert plus dès la suivante.
+        self.permissions = effective_permissions(membership)
+        if self.permission_by_method.get(method) not in self.permissions:
             raise PermissionDenied("Votre rôle dans cette boutique ne permet pas cette action.")
         self.membership = membership
         self.shop = membership.shop

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import activity, api_keys, catalog, shop_settings, storefront, team, views
+from . import activity, api_keys, catalog, customers, goals, logo, presence, shop_settings, storefront, team, views
 
 urlpatterns = [
     path("shops/<slug:slug>/dashboard", views.DashboardView.as_view()),
@@ -19,6 +19,16 @@ urlpatterns = [
     path("shops/<slug:slug>/members", team.MemberListView.as_view()),
     path("shops/<slug:slug>/members/<uuid:user_id>", team.MemberDetailView.as_view()),
     path("shops/<slug:slug>/members/<uuid:user_id>/temporary-password", team.MemberPasswordView.as_view()),
+    path("shops/<slug:slug>/team/presence", presence.TeamPresenceView.as_view()),
+    path("shops/<slug:slug>/goal", goals.GoalView.as_view()),
+    path("shops/<slug:slug>/logo", logo.ShopLogoView.as_view()),
+    # Clients : les routes nommées avant l'identifiant de fiche.
+    path("shops/<slug:slug>/customers", customers.CustomerListView.as_view()),
+    path("shops/<slug:slug>/customers/summary", customers.CustomerSummaryView.as_view()),
+    path("shops/<slug:slug>/customers/settings", customers.LoyaltySettingsView.as_view()),
+    path("shops/<slug:slug>/customers/vip", customers.CustomerVipView.as_view()),
+    path("shops/<slug:slug>/customers/<str:customer_id>", customers.CustomerDetailView.as_view()),
+    path("shops/<slug:slug>/customers/<str:customer_id>/vip", customers.CustomerVipRemoveView.as_view()),
     path("shops/<slug:slug>/notes", team.TeamNoteListView.as_view()),
     path("shops/<slug:slug>/notes/<uuid:note_id>", team.TeamNoteDetailView.as_view()),
     path("shops/<slug:slug>/notes/<uuid:note_id>/read", team.TeamNoteReadView.as_view()),
@@ -36,4 +46,5 @@ urlpatterns = [
     path("storefront/<slug:slug>/products/<slug:product_slug>", storefront.StorefrontProductDetailView.as_view()),
     path("storefront/<slug:slug>/orders", storefront.StorefrontOrderView.as_view()),
     path("storefront/<slug:slug>/track", storefront.StorefrontTrackView.as_view()),
+    path("storefront/<slug:slug>/logo", logo.StorefrontLogoView.as_view()),
 ]

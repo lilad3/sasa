@@ -36,7 +36,7 @@ cp .env.example .env.local      # BFF_SHARED_SECRET = la même valeur que dans b
 npm run dev                     # http://localhost:3000
 ```
 
-L'inscription se fait en une étape, sans e-mail de confirmation (réglage `SIGNUP_EMAIL_VERIFICATION=0` dans `backend/.env`, voir plus bas). Les autres e-mails (mot de passe oublié, déblocage du compte, alertes de sécurité) s'affichent dans le terminal de Django en développement.
+L'inscription se fait en deux temps : le lien de confirmation s'affiche dans le terminal de Django en développement (réglage `SIGNUP_EMAIL_VERIFICATION=1` par défaut, voir plus bas). Les autres e-mails (mot de passe oublié, déblocage du compte, alertes de sécurité) s'affichent dans le terminal de Django en développement.
 
 ## Comptes de démo
 
@@ -86,7 +86,7 @@ Le navigateur ne parle jamais à Django. Les jetons vivent dans des cookies `Htt
 | Menace | Parade |
 |---|---|
 | Mot de passe deviné, credential stuffing | Argon2id, verrou par e-mail, limite par IP réelle, liste noire locale (`abidjan2026`, `akwaba123`…) |
-| Énumération des comptes | À la connexion et pour le mot de passe oublié : réponses et temps identiques, que le compte existe ou non. L'inscription en une étape, elle, le dit : voir les limites connues |
+| Énumération des comptes | À la connexion et pour le mot de passe oublié : réponses et temps identiques, que le compte existe ou non. Inscription comprise : toujours la même réponse (202), le lien part par e-mail |
 | Vol de jeton | Cookies `HttpOnly`, refresh qui tourne à chaque usage, réutilisation détectée et session coupée |
 | Session impossible à couper (défaut classique du JWT) | Session serveur vérifiée à chaque requête : révocation immédiate |
 | Session volée utilisée pour une action grave | Confirmation renforcée de 10 min : équipe, plan, clés API, export, 2FA |
@@ -115,8 +115,9 @@ Dépendances (vérifié le 21 octobre 2026) :
 
 ## Limites connues
 
-- **Inscription sans e-mail de confirmation.** Sans nom de domaine, Akwaba ne peut pas encore envoyer d'e-mails qui arrivent vraiment. L'inscription se fait donc en une étape : elle révèle qu'une adresse a déjà un compte (freiné à 5 essais par heure et par IP), et personne ne prouve qu'il contrôle la boîte mail. Le mode en deux temps, avec lien de confirmation, est écrit et testé : il revient avec `SIGNUP_EMAIL_VERIFICATION=1` dès qu'un serveur d'e-mails est branché (contrat §2.5).
+- **E-mails de confirmation.** Sans nom de domaine, Akwaba ne peut pas encore envoyer d'e-mails qui arrivent vraiment : en développement, le lien d'inscription s'affiche dans le terminal de Django. Le mode en une étape (`SIGNUP_EMAIL_VERIFICATION=0`) existe pour un usage sans serveur d'e-mails, mais il révèle qu'une adresse a déjà un compte (freiné à 5 essais par heure et par IP) : il n'est pas activé par défaut (contrat §2.5).
 - **Paiement simulé.** Les plans et les moyens de paiement Mobile Money sont affichés et leurs limites appliquées, mais aucun paiement n'est encaissé.
 - **CSP.** Les en-têtes interdisent l'affichage dans un cadre, les `<base>` et les `<object>` étrangers, mais il n'y a pas encore de `script-src` avec nonce : c'est la prochaine protection à ajouter côté Next.
 - **Dernier article.** Deux commandes simultanées sur le dernier article sont départagées par une mise à jour conditionnelle du stock en base (`stock >= quantité`), mais aucun test ne simule encore la concurrence.
 - **Base SQLite.** Suffisante pour l'évaluation ; en production, PostgreSQL et un cache partagé pour les compteurs de limitation.
+- **Déconnexion forcée par lien.** `/session/fin` efface les cookies sur un simple GET : un autre site peut donc déconnecter un marchand de ce navigateur (la session reste valide côté serveur, rien ne fuit). Bloquer selon `Sec-Fetch-Site` créerait une boucle de redirection quand une session morte est ouverte depuis un lien externe ; la bonne correction est une page de confirmation qui envoie un POST.

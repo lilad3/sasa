@@ -103,7 +103,7 @@ class SignupTests(ApiTestCase):
 
 @override_settings(SIGNUP_EMAIL_VERIFICATION=False)
 class DirectSignupTests(ApiTestCase):
-    """Inscription en une étape, sans e-mail (SIGNUP_EMAIL_VERIFICATION=0, le réglage par défaut)."""
+    """Inscription en une étape, sans e-mail (SIGNUP_EMAIL_VERIFICATION=0, à activer seulement sans serveur d'e-mails)."""
 
     def payload(self, email="aya@example.ci", password=PASSWORD):
         return {**signup_payload(email), "password": password}
@@ -246,3 +246,25 @@ class PasswordPolicyTests(SimpleTestCase):
         user = User(email="adjoua@example.ci")
         user.shop_name = "Maison Adjoua"
         self.assertIn("password_too_similar", self.codes("maisonadjoua", user))
+
+
+class SignupPlanTests(ApiTestCase):
+    """Plan choisi à l'inscription (docs/chantier-p4.md §F) ; la confirmation par e-mail est le mode par défaut."""
+
+    def test_default_mode_does_not_reveal_accounts(self):
+        from django.conf import settings
+
+        self.assertTrue(settings.SIGNUP_EMAIL_VERIFICATION)
+
+    @override_settings(SIGNUP_EMAIL_VERIFICATION=True)
+    def test_plan_travels_in_the_signed_link(self):
+        self.client.post(SIGNUP_URL, {**signup_payload("aya@example.ci"), "plan": "pro"})
+        response = self.client.post(COMPLETE_URL, {"token": link_token(mail.outbox[0]), "password": PASSWORD})
+        self.assertEqual(response.json()["shops"][0]["plan"], "pro")
+
+    @override_settings(SIGNUP_EMAIL_VERIFICATION=False)
+    def test_direct_signup_applies_the_plan_and_rejects_unknown_ones(self):
+        body = self.client.post(SIGNUP_URL, {**signup_payload("aya@example.ci"), "password": PASSWORD, "plan": "business"}).json()
+        self.assertEqual(body["shops"][0]["plan"], "business")
+        refused = self.client.post(SIGNUP_URL, {**signup_payload("awa@example.ci"), "password": PASSWORD, "plan": "gratuit-a-vie"})
+        self.assertProblem(refused, 400, "validation_error")

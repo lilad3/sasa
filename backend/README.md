@@ -19,7 +19,7 @@ cp .env.example .env          # puis remplir les secrets (voir les commentaires 
 
 En développement, les e-mails (réinitialisation du mot de passe, déblocage, alertes) s'affichent dans le terminal de `runserver`.
 
-L'inscription se fait en une étape, sans e-mail, tant que `SIGNUP_EMAIL_VERIFICATION=0` (la valeur par défaut). Avec `SIGNUP_EMAIL_VERIFICATION=1`, elle repasse en deux temps : un lien de confirmation part par e-mail, et le mot de passe se choisit après (contrat §2.5). Le front lit ce réglage tout seul : rien à changer de son côté.
+L'inscription se fait en deux temps (`SIGNUP_EMAIL_VERIFICATION=1`, la valeur par défaut) : un lien de confirmation part par e-mail (affiché dans ce terminal en développement), et le mot de passe se choisit après. La réponse est toujours la même, que l'adresse ait un compte ou non. Avec `SIGNUP_EMAIL_VERIFICATION=0`, elle se fait en une étape, sans e-mail, mais une adresse prise est révélée (contrat §2.5). Le front lit ce réglage tout seul : rien à changer de son côté.
 
 ## Comptes de démo
 
