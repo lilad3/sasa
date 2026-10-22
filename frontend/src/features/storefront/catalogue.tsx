@@ -73,6 +73,12 @@ export function QuantityStepper({
 
 type Sort = "rayon" | "prix-croissant" | "prix-decroissant";
 
+const SORTS: { value: Sort; label: string; spoken: string }[] = [
+  { value: "rayon", label: "Par rayon", spoken: "Trier par rayon" },
+  { value: "prix-croissant", label: "Prix ↑", spoken: "Prix croissant" },
+  { value: "prix-decroissant", label: "Prix ↓", spoken: "Prix décroissant" },
+];
+
 export function Collection({
   products,
   description,
@@ -120,19 +126,21 @@ export function Collection({
               ))}
             </div>
           ) : null}
-          <label className="sr-only" htmlFor="tri">
-            Trier
-          </label>
-          <select
-            id="tri"
-            value={sort}
-            onChange={(event) => setSort(event.target.value as Sort)}
-            className="verre-clair rounded-2xl px-3 py-2.5 text-[13px] font-semibold"
-          >
-            <option value="rayon">Par rayon</option>
-            <option value="prix-croissant">Prix croissant</option>
-            <option value="prix-decroissant">Prix décroissant</option>
-          </select>
+          {/* Trois choix seulement : des boutons plutôt qu'une liste native, grise et carrée sur l'orange. */}
+          <div className="verre-clair flex gap-1 rounded-2xl p-1" role="group" aria-label="Trier les articles">
+            {SORTS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={sort === option.value}
+                aria-label={option.spoken}
+                onClick={() => setSort(option.value)}
+                className="rounded-xl px-3 py-1.5 text-[13px] font-semibold text-encre-doux aria-pressed:bg-encre aria-pressed:text-creme"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -201,8 +209,8 @@ function ProductCard({
 }
 
 function StockNote({ product }: { product: PublicProduct }) {
-  // Couleurs foncées exprès : sur la vitre orangée, il faut 4,5:1 (le vert, l'ocre et le rouge habituels n'y arrivent pas).
+  // Couleurs foncées exprès : sur la vitre orangée, il faut 4,5:1 (l'indigo, l'ocre et le rouge habituels n'y arrivent pas).
   if (!product.in_stock) return <span className="text-xs font-semibold text-[#8a2412]">Épuisé</span>;
   if (product.low_stock) return <span className="text-xs font-semibold text-[#5c3d00]">Plus que quelques pièces</span>;
-  return <span className="text-xs text-[#1f5410]">En stock</span>;
+  return <span className="text-xs text-[#2f3aa8]">En stock</span>;
 }

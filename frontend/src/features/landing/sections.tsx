@@ -115,7 +115,7 @@ export function Features() {
                 Votre article phare fait la une, comme la couverture d’un magazine. Vos clients commandent sans créer de compte.
               </p>
               <span className="bouton-nuit inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold">
-                Voir la boutique de démo <Icon path={ICONS.arrow} className="size-4" />
+                Pousser la porte <Icon path={ICONS.arrow} className="size-4" />
               </span>
             </div>
           </Link>
@@ -125,7 +125,7 @@ export function Features() {
             <p className="flex items-baseline gap-2">
               <span className="chiffres text-[clamp(2rem,3.6vw,2.6rem)]">4 812 500</span>
               <span className="text-encre-doux">F</span>
-              <span className="ml-auto rounded-full bg-[#e5f5dc] px-2 py-0.5 text-xs font-semibold text-[#2c6a14]">+12,4 %</span>
+              <span className="ml-auto rounded-full bg-[#dfe2ff] px-2 py-0.5 text-xs font-semibold text-[#2f3aa8]">+12,4 %</span>
             </p>
             <p className="text-sm text-encre-doux">Chiffre d’affaires du mois, mis à jour à chaque commande.</p>
             <div className="-mx-5 -mb-5 mt-auto">
@@ -179,9 +179,9 @@ export function Features() {
 /* ---------- 2. Comment ça marche ---------- */
 
 const STEPS = [
-  { title: "Créez votre boutique", text: "Votre e-mail, le nom de la boutique, et c’est parti. Le lien de confirmation arrive en une minute.", tone: "bg-encre text-creme" },
+  { title: "Créez votre boutique", text: "Votre e-mail, le nom de la boutique, un mot de passe, et c’est parti : la boutique est prête en une minute.", tone: "bg-encre text-creme" },
   { title: "Partagez le lien", text: "Sur WhatsApp, Instagram ou TikTok : vos clients ouvrent la vitrine et commandent directement.", tone: "bg-indigo text-creme" },
-  { title: "Suivez chaque franc", text: "Commandes, chiffre d’affaires et meilleurs produits, sur ordinateur comme sur téléphone.", tone: "bg-[#237264] text-creme" },
+  { title: "Suivez chaque franc", text: "Commandes, chiffre d’affaires et meilleurs produits, sur ordinateur comme sur téléphone.", tone: "bg-[#1f5f8a] text-creme" },
 ];
 
 export function Steps() {
@@ -379,7 +379,7 @@ export function Footer() {
         </p>
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm text-texte-2">
           <Link href="/boutique/maison-adjoua" className="underline decoration-white/30 underline-offset-[3px] hover:decoration-white">
-            Boutique de démo
+            Visiter Maison Adjoua
           </Link>
           <a href="#tarifs" className="underline decoration-white/30 underline-offset-[3px] hover:decoration-white">
             Tarifs

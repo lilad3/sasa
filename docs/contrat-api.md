@@ -114,17 +114,33 @@ En développement (`http://localhost`), les noms perdent le préfixe `__Host-`.
 - **Les codes 2FA faux comptent dans le même verrou**, et un mot de passe juste ne remet pas le compteur à zéro tant que la 2FA n'est pas passée. Sinon, connaître le mot de passe permettrait d'enchaîner les `mfa_token` pour deviner les codes à l'infini.
 - La connexion à l'admin Django partage ce verrou et cette limite par IP.
 
-### 2.5 Inscription en deux temps (sur mesure)
+### 2.5 Inscription : en une étape, ou en deux temps avec e-mail (sur mesure)
 
-1. `POST /auth/signup` avec l'e-mail, le nom et le nom de boutique. Réponse : **toujours `202`**, que l'e-mail soit libre ou non.
+Le réglage `SIGNUP_EMAIL_VERIFICATION` de `backend/.env` choisit le mode. Le front le lit avec `GET /auth/signup` (`{ "email_verification": true|false }`) et affiche le bon formulaire : c'est Django seul qui décide.
+
+**En une étape (`SIGNUP_EMAIL_VERIFICATION=0`, à activer seulement sans serveur d'e-mails).** Akwaba n'a pas encore de nom de domaine pour envoyer des e-mails qui arrivent vraiment.
+1. `POST /auth/signup` avec l'e-mail, le nom, le nom de boutique **et le mot de passe**.
+2. Le mot de passe est vérifié d'abord (règles du §2.2). Un mot de passe trop faible ne consomme pas d'essai.
+3. Ensuite seulement viennent les limites : 5 inscriptions par heure et par IP, 3 par adresse.
+4. Si l'adresse est libre : le compte et la boutique sont créés, la personne est connectée (`201 AuthResult`). Sinon : `409 email_taken`.
+
+Ce que ce mode coûte, et comment c'est compensé :
+
+| Risque | Pourquoi | Parade |
+|---|---|---|
+| Savoir si une adresse a un compte | Sans e-mail, on ne peut pas répondre pareil dans les deux cas | Les limites ci-dessus rendent le balayage lent. La connexion et « mot de passe oublié » restent muettes |
+| Pré-détournement : un attaquant inscrit l'adresse d'une victime | Personne ne prouve qu'il contrôle la boîte mail | La victime récupère le compte par « Mot de passe oublié ». La réinitialisation ferme toutes les sessions, celles de l'attaquant comprises |
+
+**En deux temps (`SIGNUP_EMAIL_VERIFICATION=1`, le réglage par défaut : aucune fuite d'existence de compte).**
+1. `POST /auth/signup` avec l'e-mail, le nom et le nom de boutique. Réponse : **toujours `202`**, que l'e-mail soit libre ou non. Un mot de passe envoyé à cette étape est ignoré : il ne finit jamais dans le jeton du lien.
 2. Un e-mail part avec un lien valable 24 h :
    - si l'adresse est libre, le lien permet de terminer l'inscription ;
    - si elle est déjà utilisée, l'e-mail propose plutôt de se connecter ou de réinitialiser le mot de passe.
 3. `POST /auth/signup/complete` avec le jeton du lien et le mot de passe. Le compte et la boutique sont créés, et l'utilisateur est connecté.
 
-Pourquoi :
+Pourquoi ce mode est le plus sûr :
 - L'inscription ne révèle pas quels e-mails ont un compte.
-- Le mot de passe est choisi par la personne qui contrôle la boîte mail. Cela supprime le **pré-détournement de compte**, où un attaquant inscrit l'e-mail d'une victime avec son propre mot de passe.
+- Le mot de passe est choisi par la personne qui contrôle la boîte mail. Cela supprime le **pré-détournement de compte**.
 - Aucun compte « fantôme » non vérifié n'est stocké : les données en attente vivent dans le jeton signé.
 
 En développement, les e-mails s'affichent dans le terminal de Django.
@@ -201,6 +217,18 @@ Chaque événement porte une gravité (info, à surveiller, critique), le compte
 - un bouton « Vérifier l'intégrité ».
 
 Entrer dans l'admin exige le mot de passe **et** un code 2FA. Exporter le journal ou vérifier son intégrité est lui-même journalisé. Le marchand, lui, voit seulement ses propres événements de sécurité des 90 derniers jours (`GET /me/security-events`).
+
+**Le propriétaire, pour sa boutique** (la carte « Sécurité de la boutique » de sa vue d'ensemble, et Paramètres > Journal) :
+- `GET /shops/{slug}/activity` : les événements de **sa** boutique sur 90 jours, toujours filtrés par `shop_id`. Avec `?type=sensible` (par défaut), seulement la catégorie Sécurité : équipe, clés, exports, robots. Avec `?type=tout`, aussi les commandes, le catalogue et les messages.
+- Chaque ligne nomme l'auteur et son rôle actuel (`null` s'il a quitté la boutique), ainsi que la cible.
+- Les détails sortent par **liste blanche**, type par type (`rows`, `previous_role`, `new_status`…). Rien d'autre que ces clés ne quitte le journal.
+- L'IP et l'appareil ne sont montrés que pour les actions de l'équipe, jamais pour celles des clients ou des robots : le marchand n'en a pas besoin.
+- `GET /shops/{slug}/security-overview` donne des faits, sans aucun secret. Le front en tire ses verdicts.
+  - Qui a la 2FA dans l'équipe, et les mots de passe provisoires expirés.
+  - Les clés API endormies : jamais utilisées après 7 jours, ou inutilisées depuis 30 jours. Et celles qui expirent sous 14 jours.
+  - Les essais refusés sur les comptes de l'équipe en 7 jours (connexion, 2FA, confirmation, verrouillage, vol de session).
+  - Le dernier export des ventes.
+- Ces deux routes sont réservées au propriétaire (`shop.manage`) : `403` pour le gérant et le vendeur.
 
 **Pourquoi on peut s'y fier.**
 - **En ajout seul, à deux niveaux.** L'ORM refuse toute modification ou suppression, et des triggers SQLite refusent `UPDATE` et `DELETE` même en SQL brut. Personne, pas même un superutilisateur, ne peut retoucher l'historique depuis l'application.
@@ -352,6 +380,7 @@ Les erreurs sont inspirées de la RFC 9457 et envoyées avec `Content-Type: appl
 | 409 | `price_changed` | Afficher le nouveau total, redemander la confirmation |
 | 409 | `idempotency_conflict` | Ne doit jamais arriver depuis le front |
 | 409 | `account_exists` | Adresse déjà utilisée par un compte Akwaba : en choisir une autre |
+| 409 | `email_taken` | Inscription en une étape : l'adresse a déjà un compte, proposer de se connecter ou « Mot de passe oublié » |
 | 409 | `password_already_chosen` | La personne a déjà son mot de passe : elle passe par « Mot de passe oublié » |
 | 409 | `plan_too_small` | Passage à un plan inférieur impossible (produits, équipe ou clés en trop, détail fourni) |
 | 409 | `too_many_api_keys` | 10 clés actives au maximum |
@@ -370,7 +399,7 @@ Les codes de mot de passe dans `errors.password` sont : `password_too_short` · 
 |---|---|---|
 | `POST /auth/login` | 5 échecs → verrou 15 min · 20 / 10 min | e-mail · IP |
 | `POST /auth/login/2fa` | 3 essais par `mfa_token` · verrou commun avec le login · 20 / 10 min | jeton · e-mail · IP |
-| `POST /auth/signup` | 3 / h · 5 / h | e-mail · IP |
+| `POST /auth/signup` | 3 / h · 5 / h (en une étape : comptés une fois le mot de passe accepté) | e-mail · IP |
 | `POST /auth/password/forgot` | 3 / h · 10 / h | e-mail · IP |
 | `POST /auth/reauth` | 5 / 15 min | session |
 | `POST /me/2fa/confirm` | 5 / 15 min | session |
@@ -394,7 +423,8 @@ Priorité : **P1** = indispensable pour la note · **P2** = protections sur mesu
 
 | | Méthode et route | Corps | Succès |
 |---|---|---|---|
-| P1 | `POST /signup` | `{ email, first_name, last_name, shop_name }` | `202` toujours |
+| P1 | `GET /signup` | — | `200 { email_verification }` : le mode d'inscription (§2.5) |
+| P1 | `POST /signup` | `{ email, first_name, last_name, shop_name }`, plus `password` en une étape | Avec e-mail : `202` toujours. En une étape : `201` `AuthResult`, ou `409 email_taken` |
 | P1 | `POST /signup/complete` | `{ token, password }` | `201` `AuthResult` |
 | P1 | `POST /login` | `{ email, password, shared_device }` | `200` `AuthResult` ou `MfaChallenge` |
 | P2 | `POST /login/2fa` | `{ mfa_token, code }` (TOTP ou code de secours) | `200` `AuthResult` |
@@ -510,6 +540,8 @@ type SecurityEvent = {
 | ✓ | `GET /orders/export?from=&to=` | propriétaire, gérant + confirmation renforcée | CSV `;` avec BOM, formules neutralisées, un an au plus, journalisé (`orders_exported`) |
 | ✓ | `GET /plans` · `POST /plan` | propriétaire (+ confirmation renforcée pour changer) | `{ current, plans, usage }` ; `409 plan_too_small` si l'usage dépasse le plan visé |
 | ✓ | `GET` · `POST /api-keys` · `DELETE /api-keys/{id}` | propriétaire (+ confirmation renforcée et plan Pro+ pour créer) | La clé complète n'apparaît que dans la réponse du `POST` ; alerte e-mail à la création |
+| ✓ | `GET /activity?type=sensible\|tout&page=` | propriétaire | Journal de la boutique, 90 jours, paginé (§2.10) |
+| ✓ | `GET /security-overview` | propriétaire | Faits de sécurité : 2FA de l'équipe, clés endormies, essais refusés, dernier export (§2.10) |
 | ✓ | `GET` · `PATCH /settings` | propriétaire | Profil de la vitrine, couleur (Pro+), mode vacances (`vacation_active`, `vacation_message`, `vacation_until`) |
 | ✓ | `GET` · `POST /members` · `PATCH` · `DELETE /members/{user_id}` · `POST /members/{user_id}/temporary-password` | voir : tous · gérer : propriétaire (+ confirmation renforcée) | §2.15 |
 | ✓ | `GET /notes?unread=1` · `POST /notes` · `POST /notes/{id}/read` · `DELETE /notes/{id}` | lire : tous · écrire : propriétaire, gérant | Le mot du patron ; `DELETE` retire la note (auteur ou propriétaire) sans l'effacer de l'historique |
@@ -684,6 +716,10 @@ Chaque protection a un test qui la démontre. Les cases cochées sont couvertes 
 - [x] Suivi client : même réponse pour une référence inconnue et un numéro faux, et 5 essais par heure et par référence.
 - [x] Import CSV : une ligne fausse et rien n'est importé ; mauvais type `415`, fichier trop lourd `413`, plan Gratuit `403`.
 - [x] Les mots de passe `abidjan2026` et `akwaba123` sont refusés.
+- [x] Inscription en une étape : le compte, la boutique et la session sont créés sans e-mail ; une adresse prise renvoie `409 email_taken` ; un mot de passe faible ne consomme pas d'essai ; la 6e inscription de l'heure depuis une IP renvoie `429`.
+- [x] Inscription avec e-mail : un mot de passe envoyé à l'étape 1 n'est jamais gardé dans le jeton du lien.
+- [x] Journal de la boutique : le propriétaire ne voit que sa boutique ; le gérant et le vendeur reçoivent `403` ; les détails passent par liste blanche ; l'IP d'un client n'est jamais montrée ; rien au-delà de 90 jours.
+- [x] Santé de la sécurité : la 2FA de l'équipe, les clés endormies ou bientôt expirées, les essais refusés sur les comptes de l'équipe (et pas ceux d'une autre boutique) et le dernier export sont justes.
 - [x] Avec `DEBUG=0`, une erreur 500 ne contient ni trace ni détail interne.
 - [x] `/api/v1/` sans secret BFF renvoie `403`.
 - [x] Codes 2FA : un `mfa_token` meurt après 3 codes faux, et un mot de passe connu ne permet pas de deviner les codes à l'infini (verrou commun).

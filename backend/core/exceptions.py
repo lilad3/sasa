@@ -6,6 +6,7 @@ import math
 from django.conf import settings
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.http import Http404, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import exceptions
 from rest_framework.response import Response
 
@@ -119,7 +120,10 @@ def _field_errors(details, prefix=""):
     return flat
 
 
+@csrf_exempt
 def not_found_view(request, exception=None):
+    # Sans csrf_exempt, un POST vers une route d'API inconnue recevrait la page HTML « CSRF échoué »
+    # de Django au lieu de ce 404 JSON. Cette vue ne lit ni cookie ni corps : il n'y a rien à protéger.
     return problem_json_response(request, 404, "not_found", "Introuvable.")
 
 

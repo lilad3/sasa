@@ -6,7 +6,12 @@ import { connection } from "next/server";
 import { cache } from "react";
 
 import type {
+  CustomerDetail,
+  CustomerRow,
+  CustomerSegment,
+  CustomerSummary,
   DashboardSummary,
+  Goal,
   Me,
   Member,
   Order,
@@ -15,6 +20,7 @@ import type {
   OrderStatus,
   Paginated,
   Period,
+  PresenceEntry,
   Problem,
   SecurityEvent,
   Session,
@@ -77,8 +83,32 @@ export const getMe = cache(async () => authed<Me>("me"));
 
 export const getMyShops = cache(async () => authed<ShopMembership[]>("me/shops"));
 
-export async function getDashboard(slug: string, period: Period) {
-  return authed<DashboardSummary>(`shops/${encodeURIComponent(slug)}/dashboard?period=${period}`);
+// cache() : la barre latérale (meilleures ventes) et la vue d'ensemble lisent le même résumé sur 30 jours.
+export const getDashboard = cache(async (slug: string, period: Period) =>
+  authed<DashboardSummary>(`shops/${encodeURIComponent(slug)}/dashboard?period=${period}`),
+);
+
+export const getGoal = cache(async (slug: string) => authed<Goal>(`shops/${encodeURIComponent(slug)}/goal`));
+
+export async function getCustomers(
+  slug: string,
+  { page = 1, segment = "all", q, sort = "recent" }: { page?: number; segment?: CustomerSegment; q?: string; sort?: "recent" | "spent" } = {},
+) {
+  const query = new URLSearchParams({ page: String(page), page_size: "20", segment, sort });
+  if (q) query.set("q", q);
+  return authed<Paginated<CustomerRow>>(`shops/${encodeURIComponent(slug)}/customers?${query}`);
+}
+
+export async function getCustomerSummary(slug: string) {
+  return authed<CustomerSummary>(`shops/${encodeURIComponent(slug)}/customers/summary`);
+}
+
+export async function getCustomer(slug: string, id: string) {
+  return authed<CustomerDetail>(`shops/${encodeURIComponent(slug)}/customers/${encodeURIComponent(id)}`);
+}
+
+export async function getPresence(slug: string) {
+  return authed<PresenceEntry[]>(`shops/${encodeURIComponent(slug)}/team/presence`);
 }
 
 export async function getOrders(slug: string, { page = 1, status, q }: { page?: number; status?: OrderStatus; q?: string } = {}) {
@@ -88,9 +118,8 @@ export async function getOrders(slug: string, { page = 1, status, q }: { page?: 
   return authed<Paginated<Order>>(`shops/${encodeURIComponent(slug)}/orders?${query}`);
 }
 
-export async function getOrderCounts(slug: string) {
-  return authed<OrderCounts>(`shops/${encodeURIComponent(slug)}/orders/counts`);
-}
+// La pastille « Commandes » de la barre latérale et la page des commandes lisent les mêmes compteurs.
+export const getOrderCounts = cache(async (slug: string) => authed<OrderCounts>(`shops/${encodeURIComponent(slug)}/orders/counts`));
 
 export async function getOrder(slug: string, id: string) {
   return authed<OrderDetail>(`shops/${encodeURIComponent(slug)}/orders/${encodeURIComponent(id)}`);
@@ -129,7 +158,7 @@ export async function authedText(path: string): Promise<ApiResult<string>> {
   return result;
 }
 
-export async function authedMutation<T>(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown): Promise<ApiResult<T>> {
+export async function authedMutation<T>(path: string, method: "POST" | "PUT" | "PATCH" | "DELETE", body?: unknown): Promise<ApiResult<T>> {
   const access = (await cookies()).get(COOKIE.access)?.value;
   if (!access) redirect("/connexion");
   const result = await callApi<T>(path, { method, body, access, context: await requestContext() });

@@ -33,7 +33,8 @@ export function NoteCard({ note, actions, footer, className }: { note: TeamNote;
         <span className={cn("grid size-8 place-items-center rounded-full border", note.urgent ? "border-ocre/50 text-ocre" : "border-sable/30 text-sable")}>
           <PinIcon className="size-4" />
         </span>
-        <span className="large text-[12px] font-bold tracking-[0.08em] uppercase">Le mot du patron</span>
+        {/* Le message automatique de l'objectif du mois se distingue des messages écrits. */}
+        <span className="large text-[12px] font-bold tracking-[0.08em] uppercase">{note.kind === "goal" ? "Objectif du mois" : "Message"}</span>
         {note.urgent ? <span className="rounded-full bg-ocre px-2.5 py-0.5 text-[11.5px] font-bold text-encre">Urgent</span> : null}
         {note.withdrawn ? <span className="text-xs text-texte-3">Retiré</span> : null}
         <span className="ml-auto text-xs text-texte-3">Pour {note.audience.type === "member" ? note.audience.label : note.audience.label.toLowerCase()}</span>

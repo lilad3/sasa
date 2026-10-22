@@ -1,5 +1,6 @@
 import secrets
 
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
@@ -31,6 +32,7 @@ from .authentication import SessionJWTAuthentication
 from .devices import note_device
 from .models import User, UserSession
 from .serializers import (
+    DirectSignupSerializer,
     ForgotPasswordSerializer,
     LoginMfaSerializer,
     LoginSerializer,
@@ -94,13 +96,51 @@ class PublicAuthView(APIView):
     permission_classes = [AllowAny]
 
 
+def email_taken():
+    return ProblemError(409, "email_taken", "Cette adresse a déjà un compte. Connectez-vous, ou réinitialisez votre mot de passe.")
+
+
+def open_account(request, pending, password, conflict, *, email_verified):
+    """
+    Crée le compte, sa boutique et sa première session : fin commune des deux inscriptions
+    (en une étape, ou après le lien de confirmation). `conflict` est l'erreur si l'adresse est prise ;
+    `email_verified` dit au journal si la personne a prouvé qu'elle contrôle la boîte mail.
+    """
+    if User.objects.filter(email=pending["email"]).exists():
+        raise conflict()
+    user = User(email=pending["email"], first_name=pending["first_name"], last_name=pending["last_name"])
+    user.shop_name = pending["shop_name"]  # lu par le validateur de similarité
+    validate_new_password(password, user)
+    try:
+        with transaction.atomic():
+            user.set_password(password)
+            user.save()
+            shop = create_shop_for_owner(user, pending["shop_name"], pending.get("plan", "free"))
+    except IntegrityError:  # deux envois simultanés pour la même adresse
+        raise conflict()
+
+    record("signup_completed", request, actor=user, email_verified=email_verified)
+    record("shop_created", request, actor=user, shop=shop, plan=shop.plan)
+    session, tokens = open_session(user, request)
+    note_device(user, session, request)
+    return Response(auth_result(user, tokens), status=status.HTTP_201_CREATED)
+
+
 class SignupView(PublicAuthView):
     """
-    Étape 1 de l'inscription. La réponse est toujours 202, que l'e-mail soit libre ou non :
-    l'inscription ne permet pas de savoir qui a un compte. Seul le contenu de l'e-mail diffère.
+    Deux modes, choisis par SIGNUP_EMAIL_VERIFICATION (contrat §2.5) :
+    - avec e-mail : étape 1 de l'inscription. La réponse est toujours 202, que l'adresse soit libre
+      ou non : l'inscription ne permet pas de savoir qui a un compte. Seul le contenu de l'e-mail diffère ;
+    - sans e-mail : le compte est créé tout de suite (201), avec le mot de passe du formulaire.
     """
 
+    def get(self, request):
+        # Le front demande quel formulaire afficher : avec ou sans mot de passe.
+        return Response({"email_verification": settings.SIGNUP_EMAIL_VERIFICATION})
+
     def post(self, request):
+        if not settings.SIGNUP_EMAIL_VERIFICATION:
+            return self.direct(request)
         enforce("signup:ip", request.client_ip, policy.SIGNUP_IP_LIMIT)
         serializer = SignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -118,6 +158,23 @@ class SignupView(PublicAuthView):
             {"detail": "Si cette adresse peut être utilisée, un e-mail vient de partir. Le lien est valable 24 h."},
             status=status.HTTP_202_ACCEPTED,
         )
+
+    def direct(self, request):
+        """
+        Sans e-mail, on ne peut plus taire qu'une adresse est prise : la réponse 409 le dit.
+        Le mot de passe est vérifié avant les compteurs (un mot de passe trop faible ne coûte pas
+        un essai), puis 5 inscriptions par heure et par IP, 3 par adresse, freinent le balayage.
+        """
+        serializer = DirectSignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        candidate = User(email=data["email"], first_name=data["first_name"], last_name=data["last_name"])
+        candidate.shop_name = data["shop_name"]
+        validate_new_password(data["password"], candidate)
+
+        enforce("signup:ip", request.client_ip, policy.SIGNUP_IP_LIMIT)
+        enforce("signup:email", fingerprint(data["email"]), policy.SIGNUP_EMAIL_LIMIT)
+        return open_account(request, data, data["password"], email_taken, email_verified=False)
 
 
 class SignupCompleteView(PublicAuthView):
@@ -138,26 +195,8 @@ class SignupCompleteView(PublicAuthView):
             )
         except signing.BadSignature:
             raise link_error()
-        if User.objects.filter(email=pending["email"]).exists():
-            raise link_error()
-
-        user = User(email=pending["email"], first_name=pending["first_name"], last_name=pending["last_name"])
-        user.shop_name = pending["shop_name"]  # lu par le validateur de similarité
-        password = serializer.validated_data["password"]
-        validate_new_password(password, user)
-        try:
-            with transaction.atomic():
-                user.set_password(password)
-                user.save()
-                shop = create_shop_for_owner(user, pending["shop_name"])
-        except IntegrityError:  # deux onglets ont validé le même lien en même temps
-            raise link_error()
-
-        record("signup_completed", request, actor=user)
-        record("shop_created", request, actor=user, shop=shop)
-        session, tokens = open_session(user, request)
-        note_device(user, session, request)
-        return Response(auth_result(user, tokens), status=status.HTTP_201_CREATED)
+        # Adresse prise entre-temps, ou lien déjà utilisé (deux onglets) : le lien ne sert plus.
+        return open_account(request, pending, serializer.validated_data["password"], link_error, email_verified=True)
 
 
 class LoginView(PublicAuthView):

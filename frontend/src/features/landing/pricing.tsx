@@ -23,7 +23,7 @@ const PLANS: Plan[] = [
     price: 0,
     upTo: 100,
     features: ["25 produits", "1 personne pour gérer la boutique", "Le dashboard des ventes au quotidien"],
-    tone: "bg-[#237264] text-creme",
+    tone: "bg-[#1f5f8a] text-creme",
   },
   {
     id: "pro",

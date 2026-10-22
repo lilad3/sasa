@@ -36,6 +36,7 @@ const MESSAGES: Record<string, string> = {
   plan_limit_reached: "Votre plan actuel ne le permet pas : passez au plan supérieur dans Paramètres.",
   plan_too_small: "Ce plan est trop petit pour votre boutique actuelle.",
   account_exists: "Cette adresse a déjà un compte Akwaba : utilisez une autre adresse pour cette personne.",
+  email_taken: "Cette adresse a déjà un compte Akwaba. Connectez-vous, ou utilisez « Mot de passe oublié ».",
   password_already_chosen: "Cette personne a déjà choisi son mot de passe : elle peut le réinitialiser par e-mail.",
   too_many_api_keys: "Trop de clés actives : révoquez-en une avant d'en créer une autre.",
   shop_on_vacation: "La boutique est en congé : elle ne prend pas de commande pour le moment.",

@@ -7,6 +7,13 @@ class ErrorFormatTests(ApiTestCase):
     def test_unknown_route_keeps_the_problem_format(self):
         self.assertProblem(self.client.get("/api/v1/n-existe-pas"), 404, "not_found")
 
+    def test_unknown_route_answers_json_even_to_a_post_without_csrf_token(self):
+        # Le client de test n'applique pas le CSRF par défaut : on le force, comme un vrai navigateur.
+        strict = self.client_class(enforce_csrf_checks=True)
+        for method in ("post", "patch", "delete"):
+            with self.subTest(method=method):
+                self.assertProblem(getattr(strict, method)("/api/v1/me/role"), 404, "not_found")
+
     def test_unexpected_error_hides_internals(self):
         shop = make_shop("maison-test")
         self.authenticate(make_member("owner@example.ci", shop, "owner"))

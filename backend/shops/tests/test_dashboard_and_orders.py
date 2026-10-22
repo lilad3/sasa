@@ -27,7 +27,8 @@ class DashboardTests(ApiTestCase):
         self.assertEqual(body["kpis"]["customers"]["value"], 2)
         self.assertEqual(len(body["revenue_series"]), 7)
         self.assertEqual(body["revenue_series"][-1]["revenue"], 10_000)
-        self.assertEqual(body["top_products"][0], {"id": str(self.karite.pk), "name": "Karité", "units": 4, "revenue": 10_000})
+        top = body["top_products"][0]
+        self.assertEqual((top["id"], top["name"], top["units"], top["revenue"]), (str(self.karite.pk), "Karité", 4, 10_000))
         self.assertEqual(len(body["recent_orders"]), 4)
 
     def test_breakdowns_by_payment_place_status_and_hour(self):
@@ -74,6 +75,22 @@ class DashboardTests(ApiTestCase):
         self.assertEqual([customer["name"] for customer in body["top_customers"]], ["Aya Koné", "Koffi Yao", "Awa Traoré"])
         self.assertEqual(set(body["top_customers"][0]), {"name", "city", "commune", "orders", "revenue"})
         self.assertEqual(len(body["previous_series"]), 7)
+
+    def test_product_series_month_and_demo_flag(self):
+        make_order(self.shop, total=10_000, product=self.karite, quantity=4)
+        make_order(self.shop, total=5_000, product=self.karite, quantity=2, age=timedelta(days=9))
+
+        body = self.client.get("/api/v1/shops/maison-test/dashboard?period=7d").json()
+
+        top = body["top_products"][0]
+        self.assertEqual(len(top["series"]), 7)
+        self.assertEqual(top["series"][-1], 10_000)
+        self.assertEqual(top["previous_revenue"], 5_000)
+        self.assertIn("category", top)
+        self.assertEqual(set(body["month"]), {"month", "label", "revenue", "orders", "previous_revenue"})
+        self.assertGreaterEqual(body["month"]["revenue"], 10_000)
+        self.assertFalse(body["has_demo_data"])
+        self.assertIn("generated_at", body)
 
     def test_unknown_period_is_a_validation_error(self):
         response = self.client.get("/api/v1/shops/maison-test/dashboard?period=1y")

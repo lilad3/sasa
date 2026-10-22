@@ -1,11 +1,13 @@
 """Chiffres du dashboard. Une commande annulée ne compte ni dans le CA ni dans le nombre de commandes."""
 
+import calendar
 from datetime import datetime, time, timedelta
 
 from django.db.models import Count, F, Max, Sum
 from django.db.models.functions import ExtractHour, ExtractIsoWeekDay, TruncDate
 from django.utils import timezone
 
+from .goals import MONTHS
 from .models import Order, OrderItem, OrderStatus, Product
 from .serializers import OrderSerializer
 
@@ -29,7 +31,7 @@ def dashboard_summary(shop, label):
         "kpis": {name: {"value": now_totals[name], "previous": before_totals[name]} for name in now_totals},
         "revenue_series": _daily_series(current, start, days),
         "previous_series": _daily_series(previous, previous_start, days),
-        "top_products": _top_products(current),
+        "top_products": _top_products(current, previous, start, days),
         "recent_orders": OrderSerializer(
             Order.objects.for_shop(shop).prefetch_related("items")[:5], many=True
         ).data,
@@ -42,6 +44,10 @@ def dashboard_summary(shop, label):
         "customers": _customer_split(shop, current, start),
         "top_customers": _top_customers(current),
         "low_stock": low_stock(shop),
+        "month": _month(shop, today),
+        "generated_at": timezone.now(),
+        # Le front marque alors les chiffres « exemple » : ils ne viennent pas de vrais clients.
+        "has_demo_data": Order.objects.for_shop(shop).filter(is_demo=True).exists(),
     }
 
 
@@ -93,17 +99,67 @@ def _daily_series(orders, start, days):
     return series
 
 
-def _top_products(orders):
-    rows = (
+def _top_products(orders, previous, start, days):
+    """Les 5 produits qui rapportent le plus, avec leur CA sur la période précédente et jour par jour."""
+    rows = list(
         OrderItem.objects.filter(order__in=orders, product__isnull=False)
         .values("product_id")
         .annotate(name=Max("name"), units=Sum("quantity"), revenue=Sum("line_total"))
         .order_by("-revenue")[:5]
     )
+    ids = [row["product_id"] for row in rows]
+    products = {p.pk: p for p in Product.objects.filter(pk__in=ids)}
+    before = dict(
+        OrderItem.objects.filter(order__in=previous, product_id__in=ids)
+        .order_by()
+        .values("product_id")
+        .annotate(revenue=Sum("line_total"))
+        .values_list("product_id", "revenue")
+    )
+    series = {pk: [0] * days for pk in ids}
+    daily = (
+        OrderItem.objects.filter(order__in=orders, product_id__in=ids)
+        .annotate(day=TruncDate("order__created_at"))
+        .order_by()
+        .values("product_id", "day")
+        .annotate(revenue=Sum("line_total"))
+    )
+    for row in daily:
+        offset = (row["day"] - start).days
+        if 0 <= offset < days:
+            series[row["product_id"]][offset] += row["revenue"]
     return [
-        {"id": str(row["product_id"]), "name": row["name"], "units": row["units"], "revenue": row["revenue"]}
+        {
+            "id": str(row["product_id"]),
+            "name": row["name"],
+            "category": products[row["product_id"]].category if row["product_id"] in products else "",
+            "image_url": (products[row["product_id"]].image_url or None) if row["product_id"] in products else None,
+            "units": row["units"],
+            "revenue": row["revenue"],
+            "previous_revenue": before.get(row["product_id"], 0),
+            "series": series[row["product_id"]],
+        }
         for row in rows
     ]
+
+
+def _month(shop, today):
+    """Le mois en cours, comparé au mois précédent jusqu'au même quantième (le 22 contre le 22)."""
+    first = today.replace(day=1)
+    previous_first = (first - timedelta(days=1)).replace(day=1)
+    same_day = min(today.day, calendar.monthrange(previous_first.year, previous_first.month)[1])
+    current = _placed_orders(shop, first, today + timedelta(days=1)).exclude(status=OrderStatus.CANCELLED)
+    before = _placed_orders(shop, previous_first, previous_first.replace(day=same_day) + timedelta(days=1)).exclude(
+        status=OrderStatus.CANCELLED
+    )
+    now = current.aggregate(revenue=Sum("total"), orders=Count("id"))
+    return {
+        "month": first.strftime("%Y-%m"),
+        "label": MONTHS[first.month - 1],
+        "revenue": now["revenue"] or 0,
+        "orders": now["orders"],
+        "previous_revenue": before.aggregate(revenue=Sum("total"))["revenue"] or 0,
+    }
 
 
 def _status_counts(orders):

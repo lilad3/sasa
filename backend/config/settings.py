@@ -221,6 +221,12 @@ AUDIT_HMAC_KEY = os.environ['AUDIT_HMAC_KEY']
 
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
 
+# Inscription (contrat §2.5). Par défaut (1), un lien de confirmation part par e-mail avant la création
+# du compte, et la réponse est toujours la même : l'inscription ne dit pas si une adresse a déjà un compte.
+# En développement, l'e-mail s'affiche dans le terminal de Django. À 0, inscription en une étape, sans e-mail,
+# mais une adresse prise est alors révélée (409 email_taken) : à réserver à un usage sans serveur d'e-mails.
+SIGNUP_EMAIL_VERIFICATION = os.environ.get('SIGNUP_EMAIL_VERIFICATION', '1') == '1'
+
 ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'admin/')
 
 

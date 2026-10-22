@@ -25,7 +25,7 @@ from core.ratelimit import enforce
 
 from . import plans
 from .models import Membership, NoteAudience, Role, TeamNote, TeamNoteReceipt
-from .permissions import ROLE_PERMISSIONS, ShopScopedView
+from .permissions import GRANTABLE, ShopScopedView
 from .storefront import plain_text
 
 TEMPORARY_PASSWORD_LIFETIME = timedelta(hours=72)
@@ -48,6 +48,7 @@ def full_name(user):
 
 
 def member_payload(membership, *, with_email):
+    """`with_email` : le lecteur gère la boutique ; il voit aussi l'e-mail et les droits accordés aux gérants."""
     user = membership.user
     data = {
         "user_id": str(user.pk),
@@ -62,16 +63,23 @@ def member_payload(membership, *, with_email):
     }
     if with_email:
         data["email"] = user.email
+        if membership.role == Role.MANAGER:
+            data["grants"] = sorted(membership.grants or [])
     return data
 
 
-def staff_membership(shop, user_id):
-    """Un gérant ou un vendeur de la boutique ; le propriétaire ne se modifie pas d'ici."""
+def staff_membership(shop, user_id, requester):
+    """
+    Un gérant ou un vendeur de la boutique ; le propriétaire ne se modifie pas d'ici.
+    Un gérant à qui l'on a confié l'équipe (team.manage_sellers) ne vise que des vendeurs.
+    """
     membership = Membership.objects.select_related("user").filter(shop=shop, user_id=user_id).first()
     if membership is None:
         raise NotFound("Membre introuvable.")
     if membership.role == Role.OWNER:
         raise PermissionDenied("Le propriétaire de la boutique ne peut être ni modifié ni retiré.")
+    if requester.role != Role.OWNER and membership.role != Role.SELLER:
+        raise PermissionDenied("Un gérant ne gère que les vendeurs.")
     return membership
 
 
@@ -87,11 +95,11 @@ class MemberCreateSerializer(serializers.Serializer):
 
 
 class MemberListView(ShopScopedView):
-    permission_by_method = {"GET": "team.view", "POST": "shop.manage"}
+    permission_by_method = {"GET": "team.view", "POST": "team.manage_sellers"}
 
     def get(self, request, slug):
         # L'e-mail des autres n'est montré qu'au propriétaire : un vendeur n'en a pas besoin.
-        with_email = "shop.manage" in ROLE_PERMISSIONS[self.membership.role]
+        with_email = "shop.manage" in self.permissions
         memberships = Membership.objects.filter(shop=self.shop).select_related("user")
         ordered = sorted(memberships, key=lambda m: (ROLE_ORDER[m.role], full_name(m.user).lower()))
         return Response([{**member_payload(m, with_email=with_email), "is_you": m.user_id == request.user.pk} for m in ordered])
@@ -101,6 +109,8 @@ class MemberListView(ShopScopedView):
         serializer = MemberCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        if self.membership.role != Role.OWNER and data["role"] != Role.SELLER:
+            raise PermissionDenied("Un gérant ajoute des vendeurs, pas des gérants.")
         # Donner accès aux commandes et aux téléphones des clients est une action grave.
         require_reauth(request)
         plans.ensure_room(self.shop, "members")
@@ -134,26 +144,51 @@ class MemberListView(ShopScopedView):
 
 
 class MemberDetailView(ShopScopedView):
-    permission_by_method = {"PATCH": "shop.manage", "DELETE": "shop.manage"}
+    """
+    PATCH (propriétaire) : le poste et, pour un gérant, les droits accordés en plus des siens.
+    DELETE : le propriétaire, ou un gérant à qui l'on a confié l'équipe (vendeurs seulement).
+    """
+
+    permission_by_method = {"PATCH": "shop.manage", "DELETE": "team.manage_sellers"}
 
     def patch(self, request, slug, user_id):
-        membership = staff_membership(self.shop, user_id)
-        role = request.data.get("role")
+        membership = staff_membership(self.shop, user_id, self.membership)
+        if "role" not in request.data and "grants" not in request.data:
+            raise ValidationError({"role": [ErrorDetail("Indiquez le poste ou les droits.", code="required")]})
+        role = request.data.get("role", membership.role)
         if role not in (Role.MANAGER, Role.SELLER):
             raise ValidationError({"role": [ErrorDetail("Rôle attendu : manager ou seller.", code="invalid_choice")]})
+        grants = request.data.get("grants")
+        if grants is not None:
+            if not isinstance(grants, list) or not all(isinstance(code, str) for code in grants):
+                raise ValidationError({"grants": [ErrorDetail("Liste de droits attendue.", code="invalid")]})
+            if refused := sorted(set(grants) - GRANTABLE):
+                raise ValidationError(
+                    {"grants": [ErrorDetail(f"Droits qui ne se confient pas : {', '.join(refused)}.", code="not_grantable")]}
+                )
+            if role != Role.MANAGER:
+                raise ValidationError({"grants": [ErrorDetail("Seul un gérant reçoit des droits en plus.", code="manager_only")]})
         require_reauth(request)
+
+        target = ("user", membership.user.pk, membership.user.email)
+        previous_grants = set(membership.grants or [])
         if membership.role != role:
             previous = membership.role
             membership.role = role
-            membership.save(update_fields=["role"])
+            record("member_role_changed", request, actor=request.user, shop=self.shop, target=target, previous_role=previous, new_role=role)
+        # Repasser vendeur retire tous les droits accordés ; sinon, les droits envoyés remplacent les anciens.
+        new_grants = set() if role == Role.SELLER else set(grants) if grants is not None else previous_grants
+        if new_grants != previous_grants:
             record(
-                "member_role_changed", request, actor=request.user, shop=self.shop,
-                target=("user", membership.user.pk, membership.user.email), previous_role=previous, new_role=role,
+                "member_grants_changed", request, actor=request.user, shop=self.shop, target=target,
+                added=sorted(new_grants - previous_grants), removed=sorted(previous_grants - new_grants),
             )
+        membership.grants = sorted(new_grants)
+        membership.save(update_fields=["role", "grants"])
         return Response(member_payload(membership, with_email=True))
 
     def delete(self, request, slug, user_id):
-        membership = staff_membership(self.shop, user_id)
+        membership = staff_membership(self.shop, user_id, self.membership)
         user = membership.user
         with transaction.atomic():
             membership.delete()
@@ -169,10 +204,10 @@ class MemberDetailView(ShopScopedView):
 class MemberPasswordView(ShopScopedView):
     """Nouveau mot de passe provisoire, pour un membre qui n'a jamais choisi le sien (perdu ou expiré)."""
 
-    permission_by_method = {"POST": "shop.manage"}
+    permission_by_method = {"POST": "team.manage_sellers"}
 
     def post(self, request, slug, user_id):
-        membership = staff_membership(self.shop, user_id)
+        membership = staff_membership(self.shop, user_id, self.membership)
         user = membership.user
         if not user.must_change_password:
             raise ProblemError(
@@ -234,6 +269,7 @@ def note_payload(note, user, *, can_send):
         "id": str(note.pk),
         "body": note.body,
         "urgent": note.urgent,
+        "kind": note.kind,
         "author": {"name": note.author_name, "role": note.author_role, "is_you": note.author_id == user.pk},
         "audience": {"type": note.audience, "label": audience_label(note)},
         "created_at": note.created_at,
@@ -259,7 +295,7 @@ class TeamNoteListView(ShopScopedView):
     permission_by_method = {"GET": "team.view", "POST": "notes.send"}
 
     def get(self, request, slug):
-        can_send = "notes.send" in ROLE_PERMISSIONS[self.membership.role]
+        can_send = "notes.send" in self.permissions
         notes = TeamNote.objects.for_shop(self.shop)
         if request.query_params.get("unread") == "1":
             # Le bandeau en haut des pages : mes consignes pas encore lues, les urgentes d'abord.

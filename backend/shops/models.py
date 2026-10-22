@@ -42,6 +42,8 @@ class Shop(models.Model):
     description = models.CharField(max_length=280, blank=True)
     city = models.CharField("ville", max_length=60, blank=True)
     accent = models.CharField("couleur de la vitrine", max_length=10, choices=Accent.choices, default=Accent.ORANGE)
+    # Un client devient fidèle à partir de ce nombre de commandes livrées (réglable de 1 à 50).
+    loyalty_threshold = models.PositiveSmallIntegerField("seuil de fidélité", default=3)
     # Mode vacances : la vitrine reste visible, mais les commandes sont fermées jusqu'à la date de retour.
     vacation_active = models.BooleanField("en vacances", default=False)
     vacation_message = models.CharField("message de vacances", max_length=280, blank=True)
@@ -65,6 +67,8 @@ class Membership(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="memberships")
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="memberships")
     role = models.CharField(max_length=10, choices=Role.choices)
+    # Droits confiés à un gérant en plus des siens (permissions.GRANTABLE) ; ignorés pour les autres rôles.
+    grants = models.JSONField("droits accordés", default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -233,6 +237,8 @@ class TeamNote(models.Model):
     body = models.TextField(max_length=1000)
     urgent = models.BooleanField(default=False)
     audience = models.CharField(max_length=10, choices=NoteAudience.choices)
+    # « goal » : message écrit par Akwaba quand le propriétaire fixe l'objectif du mois.
+    kind = models.CharField(max_length=10, choices=[("message", "Message"), ("goal", "Objectif")], default="message")
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     created_at = models.DateTimeField(default=timezone.now)
     # Retirée par son auteur ou le propriétaire : elle ne s'affiche plus en haut des pages.
@@ -279,6 +285,65 @@ class ApiKey(models.Model):
 
     def __str__(self):
         return f"{self.name} (akw_live_{self.key_id}_…)"
+
+
+def new_public_id():
+    return secrets.token_urlsafe(16)
+
+
+class Customer(models.Model):
+    """
+    Un client de la boutique, reconnu à son téléphone. Ses chiffres se calculent sur ses commandes ;
+    la fiche garde ce qui n'en découle pas : le nom de fidèle donné à la main par le propriétaire.
+    Le numéro ne sort jamais dans une adresse : la fiche se désigne par `public_id`, aléatoire.
+    """
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="customers")
+    phone = models.CharField(max_length=16)
+    public_id = models.CharField(max_length=32, unique=True, default=new_public_id)
+    name = models.CharField(max_length=120, blank=True)
+    is_vip = models.BooleanField("fidèle nommé", default=False)
+    vip_set_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    vip_set_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["shop", "phone"], name="unique_customer_phone")]
+
+    def __str__(self):
+        return self.name or self.public_id
+
+
+class ShopGoal(models.Model):
+    """L'objectif de chiffre d'affaires d'un mois, fixé par le propriétaire."""
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="goals")
+    month = models.DateField(help_text="Le 1er du mois.")
+    amount = models.PositiveBigIntegerField(help_text="En FCFA.")
+    set_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    set_by_name = models.CharField(max_length=160)
+    set_by_role = models.CharField(max_length=10, choices=Role.choices, default=Role.OWNER)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["shop", "month"], name="unique_goal_month")]
+
+
+class ShopLogo(models.Model):
+    """
+    Le logo, réencodé en PNG par le serveur (sans métadonnées). Gardé en base, à part de la boutique :
+    aucun nom de fichier venu de l'extérieur, et les lectures de Shop ne chargent pas l'image.
+    """
+
+    shop = models.OneToOneField(Shop, on_delete=models.CASCADE, related_name="logo")
+    image = models.BinaryField()
+    version = models.CharField(max_length=12)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class IdempotencyRecord(models.Model):

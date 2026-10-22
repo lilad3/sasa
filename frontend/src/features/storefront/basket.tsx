@@ -23,11 +23,14 @@ export function Basket({
   onChange,
   onCheckout,
   checkingOut,
+  closed = false,
 }: {
   lines: Line[];
   onChange: (product: PublicProduct, quantity: number) => void;
   onCheckout: () => void;
   checkingOut: boolean;
+  /** Boutique en congé : le panier se garde, mais on ne peut pas commander. */
+  closed?: boolean;
 }) {
   const count = articleCount(lines);
   return (
@@ -64,8 +67,8 @@ export function Basket({
       </div>
       <p className="-mt-2 text-xs text-encre-doux">Les frais de livraison dépendent de votre commune.</p>
       {checkingOut ? null : (
-        <button type="button" disabled={lines.length === 0} onClick={onCheckout} className="bouton-nuit rounded-full px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-40">
-          Commander
+        <button type="button" disabled={lines.length === 0 || closed} onClick={onCheckout} className="bouton-nuit rounded-full px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-40">
+          {closed ? "Boutique en congé" : "Commander"}
         </button>
       )}
     </aside>
@@ -73,7 +76,7 @@ export function Basket({
 }
 
 /** Barre flottante sur téléphone : total et bouton Commander, toujours à portée de pouce. */
-export function MobileBar({ lines, onCheckout }: { lines: Line[]; onCheckout: () => void }) {
+export function MobileBar({ lines, onCheckout, closed = false }: { lines: Line[]; onCheckout: () => void; closed?: boolean }) {
   const count = articleCount(lines);
   if (count === 0) return null;
   return (
@@ -82,8 +85,8 @@ export function MobileBar({ lines, onCheckout }: { lines: Line[]; onCheckout: ()
         <strong className="large text-lg font-extrabold">{formatFcfa(subtotalOf(lines))}</strong>
         <span className="text-xs text-texte-2">{articles(count)} · hors livraison</span>
       </p>
-      <button type="button" onClick={onCheckout} className="bouton-nuit rounded-full px-5 py-3 font-bold">
-        Commander
+      <button type="button" onClick={onCheckout} disabled={closed} className="bouton-nuit rounded-full px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-50">
+        {closed ? "En congé" : "Commander"}
       </button>
     </div>
   );
