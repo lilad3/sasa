@@ -59,6 +59,7 @@ def is_owner(membership):
 def discount_payload(discount, membership, permissions, today=None):
     can_give = "discounts.give" in permissions
     mine = discount.created_by_id == membership.user_id
+    current = discount.status(today)
     return {
         "id": str(discount.pk),
         # Sans le droit d'offrir, le code est masqué : on peut dire au client qu'il en a un, pas s'en servir à sa place.
@@ -69,10 +70,11 @@ def discount_payload(discount, membership, permissions, today=None):
         "ends_on": discount.ends_on,
         "max_uses": discount.max_uses,
         "uses": discount.uses,
-        "status": discount.status(today),
+        "status": current,
         "created_at": discount.created_at,
         "created_by": {"name": discount.created_by_name, "is_you": mine},
-        "can_revoke": can_give and discount.revoked_at is None and (is_owner(membership) or mine),
+        # Un code utilisé ou expiré ne sert plus : rien à annuler.
+        "can_revoke": can_give and current == "active" and (is_owner(membership) or mine),
     }
 
 
@@ -98,7 +100,7 @@ class CustomerDiscountView(ShopScopedView):
         # Les limites du gérant passent avant la confirmation : un refus ne doit rien coûter d'autre.
         if not is_owner(self.membership):
             if data["kind"] != DiscountKind.PERCENT:
-                raise ProblemError(403, "discount_kind_forbidden", "Un gérant offre des remises en % seulement.")
+                raise ProblemError(403, "discount_kind_forbidden", "Votre poste permet seulement des remises en %.")
             cap = self.membership.discount_cap_percent or 0
             if data["value"] > cap:
                 raise ProblemError(403, "discount_cap_exceeded", f"Votre plafond de remise est de {cap} %.", limit=cap)

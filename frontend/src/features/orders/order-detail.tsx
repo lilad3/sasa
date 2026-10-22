@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { StatusPill, TwoTone } from "@/features/dashboard/parts";
 import { cn } from "@/lib/cn";
-import { formatDateTime, formatFcfa, formatNumber, formatPhone, PAYMENT_LABEL } from "@/lib/format";
+import { CHANNEL_LABEL, formatDateTime, formatFcfa, formatNumber, formatPhone, PAYMENT_LABEL } from "@/lib/format";
 import type { OrderDetail as OrderDetailData, OrderStatus } from "@/lib/types";
 
 import { OrderNotes } from "./order-notes";
@@ -62,6 +62,14 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
         <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 px-1 text-sm">
           <dt className="text-texte-2">Sous-total</dt>
           <dd className="text-right tabular-nums">{formatFcfa(order.subtotal)}</dd>
+          {order.discount_amount > 0 ? (
+            <>
+              <dt className="text-texte-2">
+                Remise{order.discount_code ? <> · <span className="font-mono tracking-[0.06em]">{order.discount_code}</span></> : null}
+              </dt>
+              <dd className="text-right tabular-nums">−{formatFcfa(order.discount_amount)}</dd>
+            </>
+          ) : null}
           <dt className="text-texte-2">Livraison · {customer.commune || customer.city}</dt>
           <dd className="text-right tabular-nums">{order.delivery_fee ? formatFcfa(order.delivery_fee) : "offerte"}</dd>
           <dt className="self-end pt-2 text-texte-2">Total</dt>
@@ -124,6 +132,10 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
                 <dd>{customer.landmark}</dd>
               </div>
             ) : null}
+            <div>
+              <dt className="text-xs text-texte-3">Venue de</dt>
+              <dd>{CHANNEL_LABEL[order.channel]}</dd>
+            </div>
           </dl>
         </section>
 

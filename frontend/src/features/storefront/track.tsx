@@ -157,6 +157,10 @@ function OrderStatusCard({ order }: { order: TrackedOrder }) {
         <div>
           <dt className="text-xs text-encre-doux">Total</dt>
           <dd className="large text-2xl font-bold">{formatFcfa(order.total)}</dd>
+          <dd className="text-xs text-encre-doux">
+            {formatFcfa(order.subtotal)} d’articles
+            {order.discount_amount > 0 ? <>, −{formatFcfa(order.discount_amount)} de remise</> : null}, {order.delivery_fee ? `${formatFcfa(order.delivery_fee)} de livraison` : "livraison offerte"}
+          </dd>
           <dd className="text-xs text-encre-doux">{PAYMENT_LABEL[order.payment_method]}</dd>
         </div>
         <div>

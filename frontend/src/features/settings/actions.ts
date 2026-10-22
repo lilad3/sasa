@@ -208,7 +208,14 @@ const MemberAction = z.discriminatedUnion("intent", [
   z.object({ intent: z.literal("role"), slug: Slug, member: z.uuid(), role: z.enum(["manager", "seller"]) }),
   z.object({ intent: z.literal("password"), slug: Slug, member: z.uuid() }),
   z.object({ intent: z.literal("remove"), slug: Slug, member: z.uuid() }),
-  z.object({ intent: z.literal("grants"), slug: Slug, member: z.uuid(), grants: z.array(z.enum(GRANTABLE)) }),
+  z.object({
+    intent: z.literal("grants"),
+    slug: Slug,
+    member: z.uuid(),
+    grants: z.array(z.enum(GRANTABLE)),
+    // Le plafond des remises (docs/chantier-p5.md §1.3) : seulement avec le droit d'offrir des réductions.
+    discount_cap_percent: z.coerce.number().int().min(1).max(90).optional(),
+  }),
 ]);
 
 /** Changer le rôle ou les pouvoirs, refaire un mot de passe provisoire, ou retirer quelqu'un de l'équipe. */
@@ -219,8 +226,14 @@ export async function memberAction(_previous: MemberActionState, formData: FormD
     member: formData.get("member"),
     role: formData.get("role") ?? undefined,
     grants: formData.getAll("grants"),
+    discount_cap_percent: formData.get("discount_cap_percent") || undefined,
   });
-  if (!parsed.success) return { error: INVALID };
+  if (!parsed.success) {
+    if (parsed.error.issues.some((issue) => issue.path[0] === "discount_cap_percent")) {
+      return { error: { code: "validation_error", message: "Plafond des remises : entre 1 et 90 %." } };
+    }
+    return { error: INVALID };
+  }
   const action = parsed.data;
   const path = `shops/${action.slug}/members/${action.member}`;
 
@@ -246,9 +259,13 @@ export async function memberAction(_previous: MemberActionState, formData: FormD
   }
 
   if (action.intent === "grants") {
-    const result = await authedMutation<Member>(path, "PATCH", { grants: action.grants });
+    const gives = action.grants.includes("discounts.give");
+    const body = gives ? { grants: action.grants, discount_cap_percent: action.discount_cap_percent } : { grants: action.grants };
+    const result = await authedMutation<Member>(path, "PATCH", body);
     if (!result.ok) {
       if (result.problem.code === "reauth_required") return { reauth: "grants" };
+      const cap = result.problem.errors?.discount_cap_percent?.[0];
+      if (cap) return { error: { code: "validation_error", message: cap.message } };
       return { error: describeProblem(result.problem) };
     }
     refresh();

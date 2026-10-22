@@ -25,6 +25,8 @@ export type ShopMembership = {
   grants?: string[];
   /** Empreinte du logo (null : pas de logo), pour invalider le cache de l'image. */
   logo_version?: string | null;
+  /** Plafond des remises d'un gérant qui a le droit discounts.give (docs/chantier-p5.md §1.3), sinon null. */
+  discount_cap_percent?: number | null;
 };
 
 export type AuthResult = {
@@ -66,10 +68,18 @@ export type Order = {
   customer: { name: string; phone: string; city: string; commune: string; landmark: string };
   items: { product_id: string; name: string; unit_price: number; quantity: number; line_total: number }[];
   subtotal: number;
+  /** Code de réduction utilisé (vide sans réduction) et remise sur le sous-total (docs/chantier-p5.md §1.6). */
+  discount_code: string;
+  discount_amount: number;
   delivery_fee: number;
   total: number;
+  channel: Channel;
   created_at: string;
 };
+
+/** D'où vient une commande (lien ?via= de la vitrine). Liste fermée, comme côté Django. */
+export const CHANNELS = ["whatsapp", "facebook", "instagram", "tiktok", "sms", "direct", "autre"] as const;
+export type Channel = (typeof CHANNELS)[number];
 
 export type OrderCounts = Record<OrderStatus, number>;
 
@@ -89,6 +99,8 @@ export type DashboardSummary = {
   /** Commandes passées sur la période, annulées comprises. */
   statuses: OrderCounts;
   payment_methods: { method: PaymentMethod; orders: number; revenue: number }[];
+  /** D'où viennent les ventes de la période, hors annulées. */
+  channels: { channel: Channel; orders: number; revenue: number }[];
   places: { city: string; commune: string; orders: number; revenue: number }[];
   /** 7 lignes (lundi d'abord) de 24 heures. */
   order_hours: number[][];
@@ -183,7 +195,35 @@ export type CustomerDetail = Omit<CustomerRow, "orders"> & {
   orders: { id: string; reference: string; created_at: string; total: number; status: OrderStatus; payment_method: PaymentMethod }[];
   vip_set_by: { name: string } | null;
   vip_set_at: string | null;
+  /** Les 20 dernières réductions, celles en cours d'abord. Code masqué sans le droit discounts.give. */
+  discounts: Discount[];
 };
+
+/* ---------- Réductions personnelles (docs/chantier-p5.md §1) ---------- */
+
+export type DiscountKind = "percent" | "amount";
+export type DiscountStatus = "active" | "used" | "expired" | "revoked";
+
+export type Discount = {
+  id: string;
+  code: string;
+  kind: DiscountKind;
+  value: number;
+  /** « −15 % » ou « −2 000 F ». */
+  label: string;
+  ends_on: string;
+  max_uses: number;
+  uses: number;
+  status: DiscountStatus;
+  created_at: string;
+  created_by: { name: string; is_you: boolean };
+  can_revoke: boolean;
+};
+
+/** Réponse de la création : le code en clair et le numéro, pour préparer le message WhatsApp. */
+export type CreatedDiscount = Discount & { customer: { name: string; phone: string } };
+
+export type DiscountCheck = { code: string; label: string; subtotal: number; discount_amount: number };
 
 /* ---------- Mon personnel : présence (docs/chantier-p4.md §B) ---------- */
 
@@ -242,6 +282,8 @@ export type Member = {
   is_you: boolean;
   /** Droits accordés à un gérant, visibles du propriétaire. */
   grants?: string[];
+  /** Plafond de ses remises (avec discounts.give), visible du propriétaire. */
+  discount_cap_percent?: number | null;
 };
 
 export type NoteAudience = "all" | "managers" | "sellers" | "member";
@@ -277,6 +319,8 @@ export type Problem = {
   request_id?: string;
   /** Total recalculé par le serveur, sur `price_changed`. */
   total?: number;
+  /** Remise recalculée par le serveur, sur `price_changed` avec un code de réduction. */
+  discount_amount?: number;
   /** Limite du plan, sur `plan_limit_reached`. */
   limit?: number;
 };
@@ -316,7 +360,7 @@ export type PublicProduct = {
   max_quantity: number;
 };
 
-export type PlacedOrder = { reference: string; total: number; status: OrderStatus };
+export type PlacedOrder = { reference: string; total: number; status: OrderStatus; discount_amount: number };
 
 /** Suivi d'une commande par le client : l'état seulement, ni adresse ni téléphone (contrat §4.4). */
 export type TrackedOrder = {
@@ -324,6 +368,10 @@ export type TrackedOrder = {
   status: OrderStatus;
   created_at: string;
   updated_at: string;
+  subtotal: number;
+  /** La remise, sans le code : il pourrait encore servir. */
+  discount_amount: number;
+  delivery_fee: number;
   total: number;
   payment_method: PaymentMethod;
   items: { name: string; quantity: number }[];

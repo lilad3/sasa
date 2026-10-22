@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { TwoTone } from "@/features/dashboard/parts";
 import { smoothPath } from "@/features/dashboard/curve";
@@ -62,7 +63,7 @@ function MonthlyCurve({ values }: { values: number[] }) {
 }
 
 /** Carte d'un client fidèle, dans la section du haut de la page Clients. */
-export function LoyalCard({ customer, slug }: { customer: CustomerRow & { monthly: number[] }; slug: string }) {
+export function LoyalCard({ customer, slug, action }: { customer: CustomerRow & { monthly: number[] }; slug: string; action?: ReactNode }) {
   const [value, unit] = compactFcfa(customer.spent);
   const silent = customer.flags.includes("win_back");
   return (
@@ -87,10 +88,12 @@ export function LoyalCard({ customer, slug }: { customer: CustomerRow & { monthl
         {formatNumber(customer.orders)} commande{customer.orders > 1 ? "s" : ""}
         {customer.last_order_at ? ` · dernière ${formatSince(customer.last_order_at)}` : ""}
       </p>
-      {silent ? <p className="text-xs font-semibold text-ocre">Silencieux depuis un moment : un petit mot ?</p> : null}
+      {silent ? <p className="text-xs font-semibold text-ocre">Pas de nouvelles depuis un moment : un petit mot ?</p> : null}
       <div className="mt-auto pt-1">
         <MonthlyCurve values={customer.monthly} />
       </div>
+      {/* « Offrir une réduction », pour qui en a le droit : le formulaire s'ouvre dans la carte. */}
+      {action}
     </li>
   );
 }

@@ -1,10 +1,10 @@
-import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { SecurityCard, SecurityCardSkeleton } from "@/features/settings/security-card";
 import { getDashboard, getGoal, getMyShops } from "@/lib/server/session";
+import { storefrontLink } from "@/lib/server/storefront-link";
 import type { Period } from "@/lib/types";
 import { voice } from "@/lib/voice";
 
@@ -24,14 +24,6 @@ export const PERIODS: { value: Period; param: string; short: string; label: stri
 
 export function periodFromParam(param: unknown): (typeof PERIODS)[number] {
   return PERIODS.find((p) => p.param === param) ?? PERIODS[1];
-}
-
-/** Le lien public de la vitrine, tel que le visiteur l'a sous les yeux (même hôte que l'espace marchand). */
-async function storefrontLink(slug: string) {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "akwaba.ci";
-  const proto = h.get("x-forwarded-proto") ?? (/^(localhost|127\.)/.test(host) ? "http" : "https");
-  return { url: `${proto}://${host}/boutique/${slug}`, display: `${host.replace(/^www\./, "")}/boutique/${slug}` };
 }
 
 function PeriodNav({ slug, period }: { slug: string; period: (typeof PERIODS)[number] }) {

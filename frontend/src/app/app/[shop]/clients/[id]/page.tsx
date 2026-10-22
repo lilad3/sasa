@@ -5,10 +5,13 @@ import { Suspense } from "react";
 
 import { SubmitButton } from "@/components/ui/submit-button";
 import { removeVip } from "@/features/customers/actions";
+import { DiscountList } from "@/features/customers/discount-list";
+import { GiveDiscount } from "@/features/customers/discounts";
 import { CustomerTags, Reliability } from "@/features/customers/parts";
 import { StatusPill, TwoTone } from "@/features/dashboard/parts";
 import { compactFcfa, formatDateTime, formatFcfa, formatNumber, formatPhone, PAYMENT_LABEL } from "@/lib/format";
-import { getCustomer, getMyShops } from "@/lib/server/session";
+import { getCustomer, getMe, getMyShops } from "@/lib/server/session";
+import { storefrontLink } from "@/lib/server/storefront-link";
 
 export const metadata: Metadata = { title: "Fiche client" };
 
@@ -24,7 +27,7 @@ export default function CustomerPage({ params }: PageProps<"/app/[shop]/clients/
 
 async function CustomerFromRoute({ params }: Pick<PageProps<"/app/[shop]/clients/[id]">, "params">) {
   const { shop, id } = await params;
-  const [result, shops] = await Promise.all([getCustomer(shop, id), getMyShops()]);
+  const [result, shops, me, link] = await Promise.all([getCustomer(shop, id), getMyShops(), getMe(), storefrontLink(shop)]);
   if (!result.ok) {
     if ([400, 403, 404].includes(result.problem.status)) notFound();
     throw new Error(result.problem.detail);
@@ -32,6 +35,7 @@ async function CustomerFromRoute({ params }: Pick<PageProps<"/app/[shop]/clients
   const customer = result.data;
   const membership = shops.ok ? shops.data.find((item) => item.slug === shop) : undefined;
   const canNameVip = membership?.permissions.includes("customers.vip") ?? false;
+  const canGive = membership?.permissions.includes("discounts.give") ?? false;
   const digits = customer.phone.replace(/\D/g, "");
   const [spent, spentUnit] = compactFcfa(customer.spent);
   const firstName = customer.name.split(" ")[0];
@@ -75,6 +79,17 @@ async function CustomerFromRoute({ params }: Pick<PageProps<"/app/[shop]/clients
             <a href={`tel:${customer.phone}`} className="bouton-contour rounded-full px-5 py-3 text-sm font-bold">
               Appeler
             </a>
+            {canGive && membership ? (
+              <GiveDiscount
+                slug={shop}
+                customerId={customer.id}
+                customerName={customer.name}
+                shopName={membership.name}
+                shopUrl={link.url}
+                cap={membership.role === "owner" ? null : (membership.discount_cap_percent ?? 0)}
+                mfaEnabled={me.ok && me.data.mfa_enabled}
+              />
+            ) : null}
             {canNameVip && customer.vip ? (
               <form action={removeVip}>
                 <input type="hidden" name="slug" value={shop} />
@@ -138,6 +153,7 @@ async function CustomerFromRoute({ params }: Pick<PageProps<"/app/[shop]/clients
       </section>
 
       <div className="cascade col-span-full flex flex-col gap-2.5 md:gap-3 lg:col-span-4">
+        <DiscountList slug={shop} discounts={customer.discounts ?? []} />
         <section aria-labelledby="titre-achats" className="vitre flex flex-col gap-2.5 rounded-[26px] p-[18px]">
           <h2 id="titre-achats" className="text-sm text-texte-2">
             Ses achats préférés

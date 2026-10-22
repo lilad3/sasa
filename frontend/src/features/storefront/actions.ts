@@ -5,7 +5,7 @@ import { z } from "zod";
 import { formatWait, messageFor } from "@/lib/messages";
 import { callApi } from "@/lib/server/api";
 import { requestContext } from "@/lib/server/session";
-import type { PlacedOrder, TrackedOrder } from "@/lib/types";
+import { CHANNELS, type DiscountCheck, type PlacedOrder, type TrackedOrder } from "@/lib/types";
 
 // Ce que le navigateur envoie. Une Server Action est une route publique : on revalide tout ici,
 // puis Django revalide encore (prix, stock, zone). Ce schéma ne fait que filtrer les envois absurdes.
@@ -25,6 +25,9 @@ const checkoutSchema = z.object({
   }),
   payment_method: z.enum(["cash_on_delivery", "orange_money", "mtn_momo", "moov_money", "wave"]),
   expected_total: z.number().int().min(0),
+  // Code de réduction (vide sans code) et canal d'arrivée : Django revérifie et normalise les deux.
+  discount_code: z.string().trim().max(20),
+  channel: z.enum(CHANNELS),
   website: z.string().max(200),
 });
 
@@ -40,8 +43,9 @@ export type CheckoutResult =
       fields?: Record<string, string>;
       /** Stock restant par ligne du panier (index → quantité), sur out_of_stock. */
       available?: Record<number, number>;
-      /** Nouveau total, sur price_changed. */
+      /** Nouveau total et nouvelle remise, sur price_changed. */
       total?: number;
+      discountAmount?: number;
       retryAfter?: number;
     };
 
@@ -73,8 +77,41 @@ export async function placeOrder(input: CheckoutInput): Promise<CheckoutResult> 
     fields: Object.keys(fields).length ? fields : undefined,
     available: Object.keys(available).length ? available : undefined,
     total: problem.total,
+    discountAmount: problem.discount_amount,
     retryAfter: problem.retry_after,
   };
+}
+
+/* ---------- Code de réduction ---------- */
+
+const discountCheckSchema = z.object({
+  slug: z.string().regex(/^[a-z0-9-]{1,60}$/),
+  code: z.string().trim().min(1).max(20),
+  phone: z.string().trim().max(24),
+  items: z
+    .array(z.object({ product_id: z.uuid(), quantity: z.number().int().min(1).max(99) }))
+    .min(1)
+    .max(30),
+});
+
+export type DiscountCheckResult = { ok: true; discount: DiscountCheck } | { ok: false; message: string };
+
+/**
+ * Vérifier un code avant d'envoyer la commande (docs/chantier-p5.md §1.5). Django donne la même réponse
+ * pour toutes les raisons de refus : on ne peut apprendre ni si un code existe, ni si un numéro est client.
+ */
+export async function checkDiscount(input: z.input<typeof discountCheckSchema>): Promise<DiscountCheckResult> {
+  const parsed = discountCheckSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: messageFor("discount_invalid") };
+  const { slug, ...body } = parsed.data;
+  const result = await callApi<DiscountCheck>(`storefront/${slug}/discounts/check`, { method: "POST", body, context: await requestContext() });
+  if (result.ok) return { ok: true, discount: result.data };
+  const { problem } = result;
+  if (problem.code === "too_many_requests") {
+    return { ok: false, message: `Trop d’essais pour ce code.${problem.retry_after ? ` Réessayez dans ${formatWait(problem.retry_after)}.` : ""}` };
+  }
+  if (problem.errors?.phone) return { ok: false, message: "Indiquez d’abord votre numéro, au format 07 07 12 34 56." };
+  return { ok: false, message: messageFor(problem.code, problem.detail) };
 }
 
 /* ---------- Suivi de commande ---------- */

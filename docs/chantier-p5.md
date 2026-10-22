@@ -86,6 +86,7 @@ Annuler : le propriétaire annule n'importe quelle réduction ; un gérant avec 
 ```
 
 - Sans `discounts.give`, le lecteur voit `"code": "AYA-••••"` : il peut dire au client qu'il a une réduction, mais pas l'utiliser à sa place avec le numéro qu'il voit sur la fiche.
+- `can_revoke` n'est vrai que pour un code **en cours** (ni utilisé, ni expiré, ni annulé), et seulement pour qui peut l'annuler (voir ci-dessus).
 - Un client sans réduction : `discounts: []`.
 
 **`POST /shops/{slug}/customers/{id}/discounts`** (droit `discounts.give`, **reauth**).
@@ -140,7 +141,7 @@ Annuler : le propriétaire annule n'importe quelle réduction ; un gérant avec 
 
 **Offrir une réduction** : fiche client (`clients/[id]/page.tsx`) et chaque carte de fidèle (`LoyalCard`), visible avec `discounts.give`.
 - Un panneau `<details>` dans le style de `NameVipForm`, avec `useActionState`, `ReauthFields` à la demande, et zod dans `features/customers/actions.ts` (`giveDiscount`, `revokeDiscount`). On y choisit :
-  - le type, « En % » ou « En francs ». Le gérant n'a que « En % », avec un maximum égal à son plafond et la mention « Jusqu'à 15 %, plafond fixé par le propriétaire » (texte dans `lib/voice.ts`) ;
+  - le type, « En % » ou « En francs ». Le gérant n'a que « En % », avec un maximum égal à son plafond et la mention « En % seulement, jusqu'à 15 % : c'est votre plafond » (texte dans `lib/voice.ts`, en écriture neutre) ;
   - la valeur ;
   - la date de fin (30 jours par défaut) ;
   - le nombre d'utilisations (1 par défaut, 10 au plus).
@@ -176,12 +177,12 @@ Annuler : le propriétaire annule n'importe quelle réduction ; un gérant avec 
 
 **Canal**.
 - `StorefrontApp` lit `?via=` dans le navigateur, à l'arrivée : la page serveur ne change pas.
-- La valeur n'est gardée que si elle est dans la liste fermée, dans `sessionStorage` (`akwaba:via:{slug}`, lecture protégée par try/catch).
+- La valeur est gardée dans `sessionStorage` (`akwaba:via:{slug}`, lecture protégée par try/catch). Liste fermée : une valeur inconnue devient `autre`, jamais le texte de l'adresse ; sans `?via=`, c'est `direct`.
 - `Checkout` l'envoie en `channel`.
 
 **Marchand**.
 - Fiche commande (`order-detail.tsx`) : une ligne « Remise (AYA-7K2Q) » entre la livraison et le total, et « Venue de WhatsApp » près de la référence.
-- Dashboard (`month-panel.tsx`) : l'onglet `paiements` devient `canaux`, « Canaux · D'où viennent les ventes ». Il a une tuile par canal (les 4 premiers, puis « Autres »), avec part du CA et barre. La part livraison / Mobile Money reste dans l'onglet Commandes, qui l'a déjà.
+- Dashboard (`month-panel.tsx`) : l'onglet `paiements` devient `canaux`, « Canaux · D'où viennent les ventes ». Il a une tuile par canal, avec part du CA et barre : 4 tuiles au plus, donc les 3 premiers canaux puis « Autres » quand il y en a plus de 4. La part livraison / Mobile Money reste dans l'onglet Commandes, qui l'a déjà.
 - Carte « Votre boutique est en ligne » (`share-card.tsx`) :
   - le lien WhatsApp ajoute `?via=whatsapp` ;
   - une ligne « Liens prêts » propose Facebook, Instagram, TikTok et SMS, chacun avec « Copier ».

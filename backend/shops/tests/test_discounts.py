@@ -170,6 +170,8 @@ class CustomerDetailTests(DiscountTestCase):
         listed = self.client.get(f"{SHOP}/customers/{self.customer.public_id}").json()["discounts"]
         self.assertEqual([(d["code"], d["status"]) for d in listed][0], ("AYA-5555", "active"))
         self.assertEqual(sorted(d["status"] for d in listed), ["active", "expired", "revoked", "used"])
+        # Seul le code encore utilisable s'annule.
+        self.assertEqual([d["code"] for d in listed if d["can_revoke"]], ["AYA-5555"])
 
         self.as_member(self.manager, confirm=False)
         listed = self.client.get(f"{SHOP}/customers/{self.customer.public_id}").json()["discounts"]

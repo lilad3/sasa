@@ -120,6 +120,7 @@ function toProblem(status: number, json: unknown): Problem {
     attempts_remaining: typeof body.attempts_remaining === "number" ? body.attempts_remaining : undefined,
     request_id: typeof body.request_id === "string" ? body.request_id : undefined,
     total: typeof body.total === "number" ? body.total : undefined,
+    discount_amount: typeof body.discount_amount === "number" ? body.discount_amount : undefined,
     limit: typeof body.limit === "number" ? body.limit : undefined,
   };
 }

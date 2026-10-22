@@ -3,7 +3,7 @@
 import "./storefront.css";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { FondOrange } from "@/components/ui/fond-orange";
 import { Logo } from "@/components/ui/logo";
@@ -13,6 +13,7 @@ import type { PublicProduct, Storefront } from "@/lib/types";
 import { articleCount, Basket, MobileBar } from "./basket";
 import { useCart } from "./cart-store";
 import { Collection, type Line } from "./catalogue";
+import { rememberChannel } from "./channel";
 import { Checkout, Confirmation, type Receipt } from "./checkout";
 import { Cover } from "./cover";
 
@@ -23,6 +24,9 @@ export function StorefrontApp({ shop, products }: { shop: Storefront; products: 
   const { cart, setQuantity, clear } = useCart(shop.slug);
   const [view, setView] = useState<View>("catalogue");
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+
+  // ?via=whatsapp… : retenu pour la visite, envoyé avec la commande (docs/chantier-p5.md §1.7).
+  useEffect(() => rememberChannel(shop.slug), [shop.slug]);
 
   // Le panier garde des identifiants : on ne retient que les articles encore en vente, et jamais plus que le stock.
   const lines: Line[] = useMemo(() => {
