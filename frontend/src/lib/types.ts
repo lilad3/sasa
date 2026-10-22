@@ -343,6 +343,44 @@ export type Accent = "orange" | "indigo" | "ocre" | "lagune" | "corail";
 /** `delay_hours` : le délai de livraison promis (24 h Grand Abidjan, 48 h Bingerville et Grand-Bassam, 72 h ailleurs). */
 export type DeliveryZone = { id: string; city: string; commune: string; label: string; fee: number; delay_hours: number };
 
+/* ---------- Vitrine : thèmes et versions (docs/chantier-p5.md §3) ---------- */
+
+export const THEME_IDS = ["essentiel", "epicerie", "beaute", "artisanat", "piece-phare"] as const;
+export type ThemeId = (typeof THEME_IDS)[number];
+export const SECTION_IDS = ["livraison", "demandes", "collection", "histoire", "suivi"] as const;
+export type SectionId = (typeof SECTION_IDS)[number];
+export const MOTIONS = ["full", "soft", "none"] as const;
+export type Motion = (typeof MOTIONS)[number];
+
+/** La configuration de la vitrine : un JSON fermé, validé par Django (et par zod pour l'aperçu). */
+export type StorefrontDesign = {
+  version: 1;
+  theme: ThemeId;
+  motion: Motion;
+  cover: "featured" | "name";
+  sections: SectionId[];
+  texts: { tagline: string; story: string };
+};
+
+export type DesignVersion = {
+  number: number;
+  status: "draft" | "published" | "archived";
+  config: StorefrontDesign;
+  updated_at: string;
+  created_by_name: string;
+  published_at: string | null;
+  published_by_name: string;
+};
+
+export type DesignOverview = {
+  draft: DesignVersion | null;
+  published: DesignVersion | null;
+  default: StorefrontDesign;
+  limits: { plan: Plan; plan_name: string; custom_sections: boolean; story: boolean; versions_kept: number };
+  accent: Accent;
+  themes: { id: ThemeId; label: string; plan: Plan; allowed: boolean; sections: SectionId[] }[];
+};
+
 /** Une photo envoyée par la boutique : l'image passe par /boutique/{slug}/photo/{id}?v={version}. */
 export type ProductPhoto = { id: string; version: string };
 
@@ -363,6 +401,10 @@ export type Storefront = {
   logo_version?: string | null;
   /** Le produit de la couverture : à la une, sinon le plus vendu sur 30 jours, sinon le plus cher (null : aucun en stock). */
   featured: { product_id: string; source: CoverSource } | null;
+  /** Les 3 produits les plus vendus sur 30 jours (« Les plus demandés »). */
+  popular: string[];
+  /** La version en ligne de « Ma boutique », sinon Essentiel. */
+  design: StorefrontDesign;
   delivery_zones: DeliveryZone[];
   payment_methods: { id: PaymentMethod; label: string }[];
 };

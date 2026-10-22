@@ -84,7 +84,7 @@ class ValidationTests(DesignTestCase):
 
 class PlanTests(DesignTestCase):
     def test_free_plan_keeps_its_two_themes_fixed_sections_and_no_story(self):
-        self.assertEqual(self.save(config(theme="essentiel", sections=["livraison", "collection", "suivi"])).status_code, 200)
+        self.assertEqual(self.save(config(theme="essentiel", sections=["collection", "livraison", "suivi"])).status_code, 200)
         self.assertProblem(self.save(config(theme="beaute", sections=["collection", "histoire", "livraison", "suivi"])), 403, "plan_limit_reached")
         self.assertProblem(self.save(config(sections=["collection", "livraison"])), 403, "plan_limit_reached")
         self.assertProblem(self.save(config(texts={"story": "Notre histoire"})), 403, "plan_limit_reached")
@@ -114,7 +114,7 @@ class PlanTests(DesignTestCase):
 class LifecycleTests(DesignTestCase):
     def test_publish_archive_and_storefront(self):
         public = self.client.get(STOREFRONT).json()["design"]
-        self.assertEqual((public["theme"], public["sections"]), ("essentiel", ["livraison", "collection", "suivi"]))
+        self.assertEqual((public["theme"], public["sections"]), ("essentiel", ["collection", "livraison", "suivi"]))
 
         self.assertProblem(self.publish(), 409, "no_draft")
         self.save()

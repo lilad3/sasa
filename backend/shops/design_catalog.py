@@ -13,7 +13,7 @@ COVERS = ("featured", "name")
 # Chaque thème : son nom, le plan à partir duquel il est compris, et ses sections par défaut
 # (celles du plan Gratuit, qui ne peut pas les changer).
 THEMES = {
-    "essentiel": {"label": "Essentiel", "plan": "free", "sections": ("livraison", "collection", "suivi")},
+    "essentiel": {"label": "Essentiel", "plan": "free", "sections": ("collection", "livraison", "suivi")},
     "epicerie": {"label": "Épicerie", "plan": "free", "sections": ("livraison", "demandes", "collection", "suivi")},
     "beaute": {"label": "Beauté", "plan": "pro", "sections": ("collection", "histoire", "livraison", "suivi")},
     "artisanat": {"label": "Artisanat", "plan": "pro", "sections": ("histoire", "collection", "livraison", "suivi")},

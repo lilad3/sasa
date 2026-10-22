@@ -505,7 +505,18 @@ Branche `claude/p5-ma-boutique`, **empilée sur `claude/p5-sessions`** (migratio
 | Versions gardées | 1 | 5 | 20 |
 
 - Un thème non compris dans le plan s'essaie **en aperçu**, mais ne s'enregistre pas : 403 `plan_limit_reached`.
-- Un plan qui baisse garde la vitrine en ligne telle quelle.
+- Un plan qui baisse garde la vitrine en ligne telle quelle. Dans l'éditeur, une boutique repassée en Gratuit reprend d'office les sections de son thème (le bloc est verrouillé, sinon elle ne pourrait plus publier), et une histoire écrite avant reste modifiable le temps de l'effacer.
+- Sections par défaut de chaque thème (celles du plan Gratuit) :
+
+| Thème | Sections, dans l'ordre |
+|---|---|
+| Essentiel | collection, livraison, suivi (la couverture montre déjà les délais : la livraison vient après les produits) |
+| Épicerie | livraison, demandes, collection, suivi |
+| Beauté | collection, histoire, livraison, suivi |
+| Artisanat | histoire, collection, livraison, suivi |
+| Pièce phare | histoire, collection, livraison, suivi |
+
+Une section `histoire` sans texte ne s'affiche pas.
 
 ### 3.5 Front
 
@@ -517,8 +528,10 @@ Branche `claude/p5-ma-boutique`, **empilée sur `claude/p5-sessions`** (migratio
   - les versions, avec « Reprendre celle-ci » ;
   - **un aperçu en direct**, en téléphone ou en grand écran.
 - **Aperçu** : `/apercu/{slug}?c=…`, réservé à qui a `storefront.edit` sur la boutique. Il reçoit la configuration dans l'adresse, la revalide avec zod et n'enregistre rien. Les commandes y sont désactivées. C'est la seule page qui peut s'afficher dans un cadre, et seulement depuis Akwaba (`X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`). Elle est en `noindex`.
-- **Vitrine** : chaque thème a sa couverture, sa façon de montrer la collection et ses animations. Le panier, la commande et la confirmation sont communs.
+- **Vitrine** : chaque thème a sa couverture, sa façon de montrer la collection et ses animations. Le panier, la commande et la confirmation sont communs : dès que le client passe commande, la page reprend la mise en page d'Essentiel.
 - **Animations** : seulement `transform`, `opacity`, `clip-path` et le tracé des traits. Les entrées se jouent quand l'élément arrive à l'écran ; les boucles sont coupées en `soft`. Un nom découpé en lettres garde son `aria-label`.
+  - Les traits qui se dessinent (Artisanat) sont recalculés à la taille réelle du bloc : un SVG étiré avec un trait fixe (`non-scaling-stroke`) fausse `pathLength` dans Chrome, et le trait s'arrêtait avant la fin.
+  - L'aperçu est un cadre à la taille réelle de l'écran imité (375 × 740 ou 1280 × 800), réduit pour tenir dans la colonne : les media queries et les éléments fixes de la vitrine restent justes. Le cadre est en `sandbox` (scripts et formulaires, ni popup ni navigation de la page qui le contient).
 
 ### 3.6 Tests prévus
 

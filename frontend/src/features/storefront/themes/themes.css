@@ -1,0 +1,272 @@
+/*
+ * Animations des thèmes de la vitrine (docs/chantier-p5.md §3.5). Classes préfixées th- : ce fichier est global.
+ * - th-enter : une entrée jouée au chargement (la couverture) ;
+ * - th-reveal : une entrée jouée quand sa scène arrive à l'écran (Scene pose data-vu) ;
+ * - th-loop : un mouvement en boucle, coupé en mode « Discret ».
+ * Seulement transform, opacity, clip-path et le tracé des traits : rien n'est recalculé dans la page.
+ */
+
+/* Une scène (Scene) attend d'être à l'écran : ses entrées restent en pause jusque-là. */
+.th-scene:not([data-vu]) .th-reveal,
+.th-scene.th-reveal:not([data-vu]) {
+  animation-play-state: paused;
+}
+
+.th-up {
+  animation: th-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.th-rise {
+  animation: th-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.th-blur {
+  animation: th-blur 1s ease-out both;
+}
+.th-curtain {
+  animation: th-curtain 1.1s cubic-bezier(0.7, 0, 0.2, 1) both;
+}
+.th-circle {
+  animation: th-circle 1.3s cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+.th-slide {
+  animation: th-slide 0.6s ease-out both;
+}
+.th-drop {
+  animation: th-drop 0.9s cubic-bezier(0.3, 1.2, 0.5, 1) both;
+}
+.th-stamp {
+  animation: th-stamp 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) both;
+}
+.th-grow {
+  transform-origin: left center;
+  animation: th-grow 0.9s cubic-bezier(0.7, 0, 0.2, 1) both;
+}
+.th-sun {
+  animation: th-sun 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.th-ink {
+  animation: th-ink 1.3s ease-out both;
+}
+.th-trace {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: th-trace 1.8s ease-in-out both;
+}
+
+.th-loop.th-drift {
+  animation: th-drift 18s ease-in-out infinite alternate;
+}
+.th-loop.th-float {
+  animation: th-float 6s ease-in-out infinite;
+}
+.th-loop.th-marquee {
+  animation: th-marquee 24s linear infinite;
+}
+.th-loop.th-wave {
+  animation: th-wave 9s linear infinite;
+}
+.th-loop.th-wave-back {
+  animation: th-wave-back 14s linear infinite;
+}
+.th-loop.th-bob {
+  animation: th-bob 5s ease-in-out infinite;
+}
+
+@keyframes th-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes th-rise {
+  from {
+    transform: translateY(110%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes th-blur {
+  from {
+    opacity: 0;
+    filter: blur(9px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+@keyframes th-curtain {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes th-circle {
+  from {
+    clip-path: circle(0% at 50% 55%);
+  }
+  to {
+    clip-path: circle(75% at 50% 55%);
+  }
+}
+@keyframes th-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes th-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-34px) rotate(-22deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(4px) rotate(-3deg);
+  }
+  100% {
+    transform: rotate(-6deg);
+  }
+}
+@keyframes th-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.8) rotate(-24deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.92) rotate(-10deg);
+  }
+  100% {
+    transform: rotate(-12deg);
+  }
+}
+@keyframes th-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes th-sun {
+  from {
+    opacity: 0;
+    transform: translateY(80px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes th-ink {
+  from {
+    opacity: 0;
+    filter: blur(7px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+@keyframes th-trace {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes th-drift {
+  from {
+    transform: scale(1.06) translate(0, 0);
+  }
+  to {
+    transform: scale(1.18) translate(-3%, -2%);
+  }
+}
+@keyframes th-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes th-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes th-wave {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes th-wave-back {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes th-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-5px) rotate(-2deg);
+  }
+}
+
+/* « Discret » : les entrées restent, rien ne bouge en boucle. */
+[data-motion="soft"] .th-loop,
+[data-motion="soft"] .vit-sticker svg {
+  animation: none !important;
+}
+
+/* « Aucun », ou le téléphone a demandé moins d'animations : tout est à sa place, tout de suite. */
+[data-motion="none"] .th-enter,
+[data-motion="none"] .th-reveal,
+[data-motion="none"] .th-loop,
+[data-motion="none"] .th-trace,
+[data-motion="none"] .vit-mast .vit-word > span,
+[data-motion="none"] .vit-fade,
+[data-motion="none"] .vit-sticker svg {
+  animation: none !important;
+}
+[data-motion="none"] .th-trace {
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .th-enter,
+  .th-reveal,
+  .th-loop,
+  .th-trace {
+    animation: none !important;
+  }
+  .th-trace {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+}
