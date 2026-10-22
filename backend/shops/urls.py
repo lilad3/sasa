@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import activity, api_keys, catalog, customers, goals, logo, presence, shop_settings, storefront, team, views
+from . import activity, api_keys, catalog, customers, discounts, goals, logo, presence, shop_settings, storefront, team, views
 
 urlpatterns = [
     path("shops/<slug:slug>/dashboard", views.DashboardView.as_view()),
@@ -29,6 +29,8 @@ urlpatterns = [
     path("shops/<slug:slug>/customers/vip", customers.CustomerVipView.as_view()),
     path("shops/<slug:slug>/customers/<str:customer_id>", customers.CustomerDetailView.as_view()),
     path("shops/<slug:slug>/customers/<str:customer_id>/vip", customers.CustomerVipRemoveView.as_view()),
+    path("shops/<slug:slug>/customers/<str:customer_id>/discounts", discounts.CustomerDiscountView.as_view()),
+    path("shops/<slug:slug>/discounts/<uuid:discount_id>", discounts.DiscountDetailView.as_view()),
     path("shops/<slug:slug>/notes", team.TeamNoteListView.as_view()),
     path("shops/<slug:slug>/notes/<uuid:note_id>", team.TeamNoteDetailView.as_view()),
     path("shops/<slug:slug>/notes/<uuid:note_id>/read", team.TeamNoteReadView.as_view()),
@@ -46,5 +48,6 @@ urlpatterns = [
     path("storefront/<slug:slug>/products/<slug:product_slug>", storefront.StorefrontProductDetailView.as_view()),
     path("storefront/<slug:slug>/orders", storefront.StorefrontOrderView.as_view()),
     path("storefront/<slug:slug>/track", storefront.StorefrontTrackView.as_view()),
+    path("storefront/<slug:slug>/discounts/check", storefront.StorefrontDiscountCheckView.as_view()),
     path("storefront/<slug:slug>/logo", logo.StorefrontLogoView.as_view()),
 ]

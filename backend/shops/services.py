@@ -31,6 +31,8 @@ def memberships_for(user):
             # Les droits réels : ceux du rôle, plus ceux accordés à un gérant.
             "permissions": sorted(effective_permissions(m)),
             "grants": sorted(m.grants or []) if m.role == Role.MANAGER else [],
+            # Le plafond de ses remises, pour régler le formulaire « Offrir une réduction » (null sans le droit).
+            "discount_cap_percent": m.discount_cap_percent if m.role == Role.MANAGER else None,
             "logo_version": logos.get(m.shop_id),
         }
         for m in memberships

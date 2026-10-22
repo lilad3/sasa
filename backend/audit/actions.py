@@ -47,6 +47,9 @@ ACTIONS = {
     "member_removed": (S, INFO, "Membre retiré de la boutique"),
     "member_password_reset": (S, WARNING, "Nouveau mot de passe provisoire"),
     "member_grants_changed": (S, WARNING, "Droits d'un gérant modifiés"),
+    # De l'argent sort de la boutique : les réductions vont dans la catégorie Sécurité (vue « Sensible »).
+    "discount_created": (S, WARNING, "Réduction offerte"),
+    "discount_revoked": (S, INFO, "Réduction annulée"),
     "api_key_created": (S, WARNING, "Clé API créée"),
     "api_key_revoked": (S, INFO, "Clé API révoquée"),
     "orders_exported": (S, WARNING, "Ventes exportées"),

@@ -69,6 +69,8 @@ class Membership(models.Model):
     role = models.CharField(max_length=10, choices=Role.choices)
     # Droits confiés à un gérant en plus des siens (permissions.GRANTABLE) ; ignorés pour les autres rôles.
     grants = models.JSONField("droits accordés", default=list, blank=True)
+    # Avec le droit discounts.give, un gérant n'offre que des remises en %, jusqu'à ce plafond (1 à 90).
+    discount_cap_percent = models.PositiveSmallIntegerField("plafond de remise (%)", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -140,6 +142,18 @@ class PaymentMethod(models.TextChoices):
     WAVE = "wave", "Wave"
 
 
+class Channel(models.TextChoices):
+    """D'où vient une commande (lien ?via= de la vitrine). Liste fermée : jamais de texte libre."""
+
+    WHATSAPP = "whatsapp", "WhatsApp"
+    FACEBOOK = "facebook", "Facebook"
+    INSTAGRAM = "instagram", "Instagram"
+    TIKTOK = "tiktok", "TikTok"
+    SMS = "sms", "SMS"
+    DIRECT = "direct", "Direct"
+    OTHER = "autre", "Autre"
+
+
 # Sans 0/O, 1/I/L ni U : une référence se dicte au téléphone sans confusion.
 REFERENCE_ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ23456789"
 
@@ -166,8 +180,13 @@ class Order(models.Model):
     customer_commune = models.CharField(max_length=60, blank=True)
     customer_landmark = models.CharField("repère", max_length=160, blank=True)
     subtotal = models.PositiveIntegerField()
+    # Remise d'un code personnel : total = sous-total − remise + livraison (docs/chantier-p5.md §1.1).
+    discount = models.ForeignKey("Discount", on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    discount_code = models.CharField(max_length=9, blank=True)
+    discount_amount = models.PositiveIntegerField(default=0)
     delivery_fee = models.PositiveIntegerField(default=0)
     total = models.PositiveIntegerField()
+    channel = models.CharField("canal", max_length=10, choices=Channel.choices, default=Channel.DIRECT)
     is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
@@ -314,6 +333,58 @@ class Customer(models.Model):
 
     def __str__(self):
         return self.name or self.public_id
+
+
+class DiscountKind(models.TextChoices):
+    PERCENT = "percent", "En %"
+    AMOUNT = "amount", "En francs"
+
+
+class Discount(models.Model):
+    """
+    Un code de réduction personnel, offert à un client et valable avec son seul téléphone.
+    Le code seul ne sert à rien : il faut aussi le numéro exact du client (docs/chantier-p5.md §1.2).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="discounts")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="discounts")
+    code = models.CharField(max_length=9)
+    kind = models.CharField(max_length=10, choices=DiscountKind.choices)
+    value = models.PositiveIntegerField()
+    ends_on = models.DateField("valable jusqu'au")
+    max_uses = models.PositiveSmallIntegerField(default=1)
+    uses = models.PositiveSmallIntegerField(default=0)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    created_by_name = models.CharField(max_length=160, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["shop", "code"], name="unique_discount_code")]
+
+    def __str__(self):
+        return self.code
+
+    def status(self, today=None):
+        """Annulée › utilisée › expirée › en cours : calculé à chaque lecture, jamais stocké."""
+        if self.revoked_at is not None:
+            return "revoked"
+        if self.uses >= self.max_uses:
+            return "used"
+        if self.ends_on < (today or timezone.localdate()):
+            return "expired"
+        return "active"
+
+    def amount_for(self, subtotal):
+        """La remise sur le sous-total des articles, jamais sur la livraison, arrondie au franc inférieur."""
+        if self.kind == DiscountKind.PERCENT:
+            return subtotal * self.value // 100
+        return min(self.value, subtotal)
 
 
 class ShopGoal(models.Model):

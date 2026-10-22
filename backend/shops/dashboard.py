@@ -39,6 +39,7 @@ def dashboard_summary(shop, label):
         "to_process": {status: counts[status] for status in ("pending", "confirmed", "shipped")},
         "statuses": _status_counts(placed),
         "payment_methods": _by_payment(current),
+        "channels": _by_channel(current),
         "places": _by_place(current),
         "order_hours": _order_hours(current),
         "customers": _customer_split(shop, current, start),
@@ -170,6 +171,12 @@ def _status_counts(orders):
 def _by_payment(orders):
     rows = orders.order_by().values("payment_method").annotate(orders=Count("id"), revenue=Sum("total")).order_by("-revenue")
     return [{"method": row["payment_method"], "orders": row["orders"], "revenue": row["revenue"]} for row in rows]
+
+
+def _by_channel(orders):
+    """D'où viennent les ventes (lien ?via= de la vitrine), hors annulées comme les paiements."""
+    rows = orders.order_by().values("channel").annotate(orders=Count("id"), revenue=Sum("total")).order_by("-revenue")
+    return [{"channel": row["channel"], "orders": row["orders"], "revenue": row["revenue"]} for row in rows]
 
 
 def _by_place(orders):

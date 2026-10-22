@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from audit.services import record
 from core.pagination import PagePagination
 
+from .discounts import customer_discounts
 from .models import Customer, Order, OrderItem, OrderStatus
 from .permissions import ShopScopedView
 from .storefront import normalize_phone, plain_text
@@ -241,6 +242,11 @@ def customer_detail(shop, customer):
     }
 
 
+def with_discounts(payload, customer, view):
+    """La fiche et ses réductions (docs/chantier-p5.md §1.4), écrites pour le lecteur : code masqué sans le droit."""
+    return {**payload, "discounts": customer_discounts(customer, view.membership, view.permissions)}
+
+
 def shop_customer(shop, customer_id):
     # Une fiche d'une autre boutique donne 404, comme une fiche inexistante.
     customer = Customer.objects.for_shop(shop).select_related("vip_set_by").filter(public_id=customer_id).first()
@@ -253,7 +259,8 @@ class CustomerDetailView(ShopScopedView):
     permission_by_method = {"GET": "customers.view"}
 
     def get(self, request, slug, customer_id):
-        return Response(customer_detail(self.shop, shop_customer(self.shop, customer_id)))
+        customer = shop_customer(self.shop, customer_id)
+        return Response(with_discounts(customer_detail(self.shop, customer), customer, self))
 
 
 class LoyaltySettingsView(ShopScopedView):
@@ -296,7 +303,7 @@ class CustomerVipView(ShopScopedView):
         customer.is_vip, customer.vip_set_by, customer.vip_set_at = True, request.user, timezone.now()
         customer.save()
         record("customer_vip_set", request, actor=request.user, shop=self.shop, target=("customer", customer.public_id, customer.name))
-        return Response(customer_detail(self.shop, customer))
+        return Response(with_discounts(customer_detail(self.shop, customer), customer, self))
 
 
 class CustomerVipRemoveView(ShopScopedView):
@@ -308,4 +315,4 @@ class CustomerVipRemoveView(ShopScopedView):
             customer.is_vip, customer.vip_set_by, customer.vip_set_at = False, None, None
             customer.save(update_fields=["is_vip", "vip_set_by", "vip_set_at"])
             record("customer_vip_removed", request, actor=request.user, shop=self.shop, target=("customer", customer.public_id, customer.name))
-        return Response(customer_detail(self.shop, customer))
+        return Response(with_discounts(customer_detail(self.shop, customer), customer, self))

@@ -23,7 +23,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "id", "reference", "status", "payment_method", "customer", "items",
-            "subtotal", "delivery_fee", "total", "created_at",
+            "subtotal", "discount_code", "discount_amount", "delivery_fee", "total", "channel", "created_at",
         ]
 
     def get_customer(self, order):

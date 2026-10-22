@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from .delivery import ZONES
-from .models import REFERENCE_ALPHABET, Order, OrderItem, OrderStatus, PaymentMethod, Product
+from .models import REFERENCE_ALPHABET, Channel, Order, OrderItem, OrderStatus, PaymentMethod, Product
 
 DEMO_DAYS = 180  # deux fois 90 jours : la période précédente existe aussi pour le filtre 90d
 
@@ -70,6 +70,17 @@ ORDER_HOURS = [
     (15, 4), (16, 4), (17, 5), (18, 7), (19, 10), (20, 10), (21, 7), (22, 3),
 ]
 
+# D'où viennent les commandes d'une boutique ivoirienne : WhatsApp d'abord, puis Facebook et Instagram.
+CHANNELS = [
+    (Channel.WHATSAPP, 44),
+    (Channel.FACEBOOK, 20),
+    (Channel.INSTAGRAM, 13),
+    (Channel.DIRECT, 11),
+    (Channel.TIKTOK, 8),
+    (Channel.SMS, 3),
+    (Channel.OTHER, 1),
+]
+
 PAYMENTS = [
     (PaymentMethod.WAVE, 35),
     (PaymentMethod.ORANGE_MONEY, 30),
@@ -83,6 +94,8 @@ PAYMENTS = [
 def generate_demo_data(shop):
     """Remplace les données de démo de la boutique. Les données réelles ne sont jamais touchées."""
     rng = random.Random(shop.pk.int)  # même boutique, mêmes données : la démo est reproductible
+    # Un tirage à part pour les canaux : ajouter les canaux ne change aucune autre donnée de démo.
+    channel_rng = random.Random(shop.pk.int + 1)
     Order.objects.for_shop(shop).filter(is_demo=True).delete()
     Product.objects.for_shop(shop).filter(is_demo=True).delete()
 
@@ -140,6 +153,7 @@ def generate_demo_data(shop):
                 subtotal=subtotal,
                 delivery_fee=customer["fee"],
                 total=subtotal + customer["fee"],
+                channel=channel_rng.choices([c for c, _ in CHANNELS], weights=[w for _, w in CHANNELS])[0],
                 is_demo=True,
                 created_at=created_at,
             )
