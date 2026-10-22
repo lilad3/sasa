@@ -21,7 +21,7 @@ from accounts.sessions import require_reauth
 from audit.services import record
 from core.pagination import PagePagination
 from core.ratelimit import enforce
-from core.spreadsheet import excel_csv
+from core.spreadsheet import excel_csv, phone_cell
 
 from .discounts import customer_discounts
 from .models import Customer, Order, OrderItem, OrderStatus
@@ -184,7 +184,7 @@ class CustomerExportView(ShopScopedView):
         rows = [
             [
                 item["name"],
-                customer.phone,
+                phone_cell(customer.phone),
                 item["city"],
                 item["commune"],
                 item["orders"],

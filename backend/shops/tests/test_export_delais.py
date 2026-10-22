@@ -48,8 +48,8 @@ class CustomerExportTests(ApiTestCase):
 
         rows = read_csv(response)
         self.assertEqual(rows[0][:4], ["Nom", "Téléphone", "Ville", "Commune"])
-        # « + » en tête : Excel le lirait comme une formule ; l'apostrophe le garde en texte (comme l'export des ventes).
-        self.assertEqual([row[1] for row in rows[1:]], ["'+2250707000001", "'+2250505000002", "'+2250101000003"])
+        # Formule texte : Excel affiche « +2250707000001 », sans apostrophe et sans rien calculer.
+        self.assertEqual([row[1] for row in rows[1:]], ['="+2250707000001"', '="+2250505000002"', '="+2250101000003"'])
         aya = rows[1]
         self.assertEqual(aya[0], "Aya Koné")
         self.assertEqual(aya[4:9], ["2", "2", "0", "25000", "12500"])
@@ -66,7 +66,7 @@ class CustomerExportTests(ApiTestCase):
         self.client.get(f"{SHOP}/customers")  # crée les fiches, comme la page Clients
         Customer.objects.filter(phone="+2250101000003").update(is_vip=True)
         rows = read_csv(self.client.get(self.url, {"segment": "loyal"}))
-        self.assertEqual([row[1] for row in rows[1:]], ["'+2250101000003"])
+        self.assertEqual([row[1] for row in rows[1:]], ['="+2250101000003"'])
         self.assertProblem(self.client.get(self.url, {"segment": "tous"}), 400, "validation_error")
 
     def test_the_grant_can_be_given_to_a_manager_never_to_a_seller(self):
