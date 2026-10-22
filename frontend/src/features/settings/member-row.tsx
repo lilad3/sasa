@@ -7,21 +7,56 @@ import { OneTimeSecret } from "@/components/ui/one-time-secret";
 import { ReauthFields } from "@/components/ui/reauth-fields";
 import { FormAlert } from "@/features/auth/form-alert";
 import { cn } from "@/lib/cn";
-import { formatDateTime, ROLE_LABEL } from "@/lib/format";
-import type { Member } from "@/lib/types";
+import { formatDateTime, formatSince, ROLE_LABEL } from "@/lib/format";
+import type { Member, PresenceEntry } from "@/lib/types";
 
 import { type MemberActionState, memberAction } from "./actions";
 import { ROLE_HELP } from "./add-member-form";
+import { GRANT_TEXT, GRANTABLE } from "./grants";
 
 const initial: MemberActionState = {};
 
-type Mode = "role" | "password" | "remove";
+type Mode = "role" | "password" | "remove" | "grants";
+
+const hourMinute = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Abidjan" });
+
+/** Où en est la personne aujourd'hui : l'heure de connexion seulement, jamais l'IP ni l'appareil. */
+function PresenceLine({ presence }: { presence: PresenceEntry }) {
+  const label =
+    presence.status === "today"
+      ? `Connecté·e aujourd’hui${presence.first_seen_today ? ` dès ${hourMinute.format(new Date(presence.first_seen_today))}` : ""}`
+      : presence.status === "absent"
+        ? `Pas connecté·e aujourd’hui${presence.last_seen_at ? ` · dernière fois ${formatSince(presence.last_seen_at)}` : ""}`
+        : "Jamais connecté·e";
+  return (
+    <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+      <span className={cn("inline-flex items-center gap-1.5", presence.status === "today" ? "text-texte" : "text-texte-3")}>
+        <span aria-hidden className={cn("size-2 rounded-full", presence.status === "today" ? "pastille-en-ligne bg-orange" : "border border-white/35")} />
+        {label}
+      </span>
+      {presence.handled_today > 0 ? (
+        <span className="text-texte-2">
+          {presence.handled_today} commande{presence.handled_today > 1 ? "s" : ""} traitée{presence.handled_today > 1 ? "s" : ""} aujourd’hui
+        </span>
+      ) : null}
+    </p>
+  );
+}
+
+type MemberRowProps = {
+  slug: string;
+  member: Member;
+  mfaEnabled: boolean;
+  /** Qui regarde : le propriétaire peut tout ; un gérant qui a « Gérer les vendeurs » n'agit que sur les vendeurs. */
+  viewer?: { isOwner: boolean; canManageSellers: boolean };
+  presence?: PresenceEntry;
+};
 
 /** Une personne de l'équipe. Le propriétaire et soi-même n'ont pas d'actions : Django refuserait de toute façon. */
-export function MemberRow({ slug, member, mfaEnabled }: { slug: string; member: Member; mfaEnabled: boolean }) {
+export function MemberRow({ slug, member, mfaEnabled, viewer = { isOwner: true, canManageSellers: true }, presence }: MemberRowProps) {
   const [state, formAction, pending] = useActionState(memberAction, initial);
   const [mode, setMode] = useState<Mode | null>(null);
-  const editable = member.role !== "owner" && !member.is_you;
+  const editable = member.role !== "owner" && !member.is_you && (viewer.isOwner || (viewer.canManageSellers && member.role === "seller"));
   const firstName = member.first_name || member.name;
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -59,6 +94,12 @@ export function MemberRow({ slug, member, mfaEnabled }: { slug: string; member: 
             </span>
           </p>
           {member.email ? <p className="truncate font-mono text-[12.5px] text-texte-3">{member.email}</p> : null}
+          {presence ? <PresenceLine presence={presence} /> : null}
+          {member.role === "manager" && member.grants && member.grants.length > 0 ? (
+            <p className="mt-1 text-[12.5px] text-indigo-clair">
+              Pouvoirs en plus : {member.grants.map((grant) => GRANT_TEXT[grant as keyof typeof GRANT_TEXT]?.label.toLowerCase() ?? grant).join(", ")}
+            </p>
+          ) : null}
           <p className="mt-1 text-[12.5px] text-texte-3">
             {member.pending
               ? member.temporary_password_expires_at && new Date(member.temporary_password_expires_at) > new Date()
@@ -69,9 +110,16 @@ export function MemberRow({ slug, member, mfaEnabled }: { slug: string; member: 
         </div>
         {editable ? (
           <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={() => open("role")} aria-expanded={mode === "role"} className="rounded-full border border-trait px-3 py-1.5 text-[13px] text-texte-2 hover:bg-white/10 hover:text-texte">
-              Changer le rôle
-            </button>
+            {viewer.isOwner ? (
+              <button type="button" onClick={() => open("role")} aria-expanded={mode === "role"} className="rounded-full border border-trait px-3 py-1.5 text-[13px] text-texte-2 hover:bg-white/10 hover:text-texte">
+                Changer le poste
+              </button>
+            ) : null}
+            {viewer.isOwner && member.role === "manager" ? (
+              <button type="button" onClick={() => open("grants")} aria-expanded={mode === "grants"} className="rounded-full border border-indigo-clair/40 px-3 py-1.5 text-[13px] text-indigo-clair hover:bg-white/10">
+                Pouvoirs
+              </button>
+            ) : null}
             {member.pending ? (
               <button type="button" onClick={() => open("password")} aria-expanded={mode === "password"} className="rounded-full border border-trait px-3 py-1.5 text-[13px] text-texte-2 hover:bg-white/10 hover:text-texte">
                 Nouveau mot de passe provisoire
@@ -116,6 +164,25 @@ export function MemberRow({ slug, member, mfaEnabled }: { slug: string; member: 
                 </label>
               ))}
             </fieldset>
+          ) : panel === "grants" ? (
+            <fieldset className="flex flex-col gap-1.5">
+              <legend className="mb-1 text-[13px] font-semibold text-texte-2">Ce que {firstName} peut faire en plus</legend>
+              <p className="mb-1.5 text-[12.5px] text-texte-3">
+                Toujours réservés au propriétaire : l’objectif du mois, le plan, les clés API, nommer un fidèle et gérer un autre gérant.
+              </p>
+              {GRANTABLE.map((grant) => (
+                <label
+                  key={grant}
+                  className="flex cursor-pointer items-start gap-2.5 rounded-[14px] border border-trait-doux bg-encre/40 px-3 py-2 has-checked:border-indigo-clair/50 has-checked:bg-white/10"
+                >
+                  <input type="checkbox" name="grants" value={grant} defaultChecked={member.grants?.includes(grant)} className="mt-1 accent-indigo" />
+                  <span>
+                    <span className="text-[14px] font-semibold">{GRANT_TEXT[grant].label}</span>
+                    <span className="block text-[12.5px] text-texte-3">{GRANT_TEXT[grant].help}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
           ) : panel === "password" ? (
             <p className="text-[13.5px] text-texte-2">
               {firstName} a perdu son mot de passe provisoire, ou il a expiré ? Akwaba en crée un nouveau, valable 72 heures. L’ancien cesse de fonctionner.
@@ -128,13 +195,15 @@ export function MemberRow({ slug, member, mfaEnabled }: { slug: string; member: 
           {state.reauth === panel ? (
             <ReauthFields
               mfaEnabled={mfaEnabled}
-              what={panel === "role" ? `changer le rôle de ${firstName}` : `refaire le mot de passe de ${firstName}`}
+              what={
+                panel === "role" ? `changer le poste de ${firstName}` : panel === "grants" ? `changer les pouvoirs de ${firstName}` : `refaire le mot de passe de ${firstName}`
+              }
               error={state.reauthError}
             />
           ) : null}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" pending={pending} pendingLabel="Envoi…" className="px-5 py-2.5 text-sm">
-              {panel === "role" ? "Changer le rôle" : panel === "password" ? "Créer le mot de passe" : `Retirer ${firstName}`}
+              {panel === "role" ? "Changer le poste" : panel === "grants" ? "Enregistrer les pouvoirs" : panel === "password" ? "Créer le mot de passe" : `Retirer ${firstName}`}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setMode(null)} className="px-5 py-2.5 text-sm">
               Annuler

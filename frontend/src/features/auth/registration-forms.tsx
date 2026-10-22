@@ -18,6 +18,41 @@ import {
 
 const initial: RegistrationState = {};
 
+// Les mêmes plans que la landing et que Django (shops/plans.py) : Django applique les limites, ce texte ne fait que les dire.
+const PLANS = [
+  { id: "free", name: "Gratuit", price: "0 F", gain: "25 produits, vous seul" },
+  { id: "pro", name: "Pro", price: "9 900 F / mois", gain: "500 produits, équipe de 5, import et clés API" },
+  { id: "business", name: "Business", price: "29 900 F / mois", gain: "Produits illimités, équipe de 20" },
+] as const;
+
+/** « Votre plan » : en démo, le plan choisi s'applique tout de suite, sans paiement. */
+function PlanChoice({ error }: { error?: string }) {
+  return (
+    <fieldset className="flex flex-col gap-2" aria-describedby="plan-aide">
+      <legend className="mb-1.5 text-[13px] font-semibold text-texte-2">Votre plan</legend>
+      {PLANS.map((plan) => (
+        <label
+          key={plan.id}
+          className="flex cursor-pointer items-start gap-3 rounded-[16px] border border-white/12 bg-encre/40 px-3.5 py-3 transition-colors has-checked:border-orange-clair/60 has-checked:bg-white/[0.07]"
+        >
+          <input type="radio" name="plan" value={plan.id} defaultChecked={plan.id === "free"} className="mt-1 accent-orange" />
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span className="text-[15px] font-semibold">{plan.name}</span>
+              <span className="text-[13px] text-texte-2 tabular-nums">{plan.price}</span>
+            </span>
+            <span className="block text-[12.5px] text-texte-3">{plan.gain}</span>
+          </span>
+        </label>
+      ))}
+      <p id="plan-aide" className="text-[12.5px] text-texte-3">
+        Démonstration : aucun paiement, le plan s’applique dès la création. Vous pourrez en changer dans Paramètres.
+      </p>
+      {error ? <p className="text-[13px] text-danger-clair">{error}</p> : null}
+    </fieldset>
+  );
+}
+
 /**
  * Inscription. Avec `emailVerification`, un lien part par e-mail et le mot de passe se choisit ensuite ;
  * sans, le mot de passe est demandé ici et la boutique est créée tout de suite.
@@ -53,6 +88,7 @@ export function SignupRequestForm({ emailVerification }: { emailVerification: bo
       <Field id="first_name" name="first_name" label="Prénom" autoComplete="given-name" error={state.fields?.first_name} required />
       <Field id="last_name" name="last_name" label="Nom" autoComplete="family-name" error={state.fields?.last_name} required />
       <Field id="shop_name" name="shop_name" label="Nom de la boutique" autoComplete="organization" error={state.fields?.shop_name} required />
+      <PlanChoice error={state.fields?.plan} />
       {emailVerification ? null : (
         <div className="flex flex-col gap-2">
           <Field

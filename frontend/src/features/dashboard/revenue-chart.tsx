@@ -6,6 +6,8 @@ import { cn } from "@/lib/cn";
 import { compactFcfa, formatDay, formatFcfa, formatNumber } from "@/lib/format";
 import type { DayPoint } from "@/lib/types";
 
+import { smoothPath } from "./curve";
+
 type Measure = "revenue" | "orders";
 
 const MEASURES: { value: Measure; label: string }[] = [
@@ -17,22 +19,6 @@ const W = 600;
 const H = 170;
 const TOP = 10;
 const BOTTOM = 6;
-
-/** Courbe lissée (Catmull-Rom) à travers les points. */
-function smoothPath(points: [number, number][]) {
-  if (points.length === 0) return "";
-  let d = `M${points[0][0].toFixed(1)} ${points[0][1].toFixed(1)}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i - 1] ?? points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2] ?? p2;
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
-    d += ` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
-  }
-  return d;
-}
 
 /** Haut d'échelle « rond » (1, 2 ou 5 × 10ⁿ) : les repères tombent sur des valeurs lisibles. */
 function niceMax(value: number) {

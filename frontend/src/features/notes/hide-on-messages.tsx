@@ -3,8 +3,8 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-/** Sur la page du mot du patron, le bandeau ferait doublon avec la liste : on le cache. */
+/** Sur les pages qui listent déjà les messages (Messages, Mon personnel), le bandeau ferait doublon : on le cache. */
 export function HideOnMessages({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  return pathname.endsWith("/messages") ? null : children;
+  return /\/(messages|personnel)$/.test(pathname) ? null : children;
 }

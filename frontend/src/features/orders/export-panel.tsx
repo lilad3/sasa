@@ -15,7 +15,8 @@ function isoDay(date: Date) {
 }
 
 /** Export CSV des ventes, pour Excel. Django demande de confirmer son identité avant de tout laisser sortir. */
-export function ExportPanel({ slug, mfaEnabled }: { slug: string; mfaEnabled: boolean }) {
+/** `defaultOpen` : on arrive du bouton « Exporter » de la vue d'ensemble, le formulaire est déjà ouvert. */
+export function ExportPanel({ slug, mfaEnabled, defaultOpen = false }: { slug: string; mfaEnabled: boolean; defaultOpen?: boolean }) {
   const [state, formAction, pending] = useActionState(exportOrders, initial);
   const today = new Date();
   const monthAgo = new Date(today.getTime() - 29 * 86_400_000);
@@ -33,7 +34,7 @@ export function ExportPanel({ slug, mfaEnabled }: { slug: string; mfaEnabled: bo
 
   return (
     // Un bouton dans l'en-tête de la liste ; le formulaire s'ouvre dessous, par-dessus la page.
-    <details className="group relative" open={state.reauth || undefined}>
+    <details className="group relative" open={state.reauth || defaultOpen || undefined}>
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-white/15 bg-encre/45 px-4 py-2.5 text-sm font-semibold text-texte-2 hover:text-texte group-open:text-texte [&::-webkit-details-marker]:hidden">
         <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14" />

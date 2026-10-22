@@ -13,7 +13,7 @@ import type { AuthResult } from "@/lib/types";
 export type RegistrationState = {
   done?: boolean;
   error?: FormError;
-  fields?: Partial<Record<"email" | "first_name" | "last_name" | "shop_name" | "password", string>>;
+  fields?: Partial<Record<"email" | "first_name" | "last_name" | "shop_name" | "password" | "plan", string>>;
 };
 
 const SignupSchema = z.object({
@@ -23,10 +23,12 @@ const SignupSchema = z.object({
   shop_name: z.string().trim().min(2, "Le nom de la boutique doit contenir au moins 2 caractères.").max(60),
   // Seulement dans l'inscription en une étape (sans e-mail) : le formulaire avec lien n'a pas ce champ.
   password: z.string().min(10, PASSWORD_RULES.password_too_short).max(128, PASSWORD_RULES.password_too_long).optional(),
+  // Le plan de la boutique : en démo, il s'applique tout de suite, sans paiement (Django n'accepte que ces trois-là).
+  plan: z.enum(["free", "pro", "business"], "Choisissez un plan."),
 });
 
 type SignupField = keyof NonNullable<RegistrationState["fields"]>;
-const SIGNUP_FIELDS: SignupField[] = ["email", "first_name", "last_name", "shop_name", "password"];
+const SIGNUP_FIELDS: SignupField[] = ["email", "first_name", "last_name", "shop_name", "password", "plan"];
 
 /**
  * Inscription. Django répond 202 quand il envoie un lien de confirmation (mode e-mail),
@@ -40,6 +42,7 @@ export async function requestSignup(_previous: RegistrationState, formData: Form
     last_name: formData.get("last_name") ?? "",
     shop_name: formData.get("shop_name") ?? "",
     password: typeof password === "string" ? password : undefined,
+    plan: formData.get("plan") ?? "free",
   });
   if (!parsed.success) {
     const fields = z.flattenError(parsed.error).fieldErrors;

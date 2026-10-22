@@ -9,8 +9,9 @@ import { ExportPanel } from "@/features/orders/export-panel";
 import { OrderLedger } from "@/features/orders/ledger";
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
-import { getMe, getMyShops, getOrderCounts, getOrders } from "@/lib/server/session";
+import { getGoal, getMe, getMyShops, getOrderCounts, getOrders } from "@/lib/server/session";
 import type { OrderStatus } from "@/lib/types";
+import { ofMonth } from "@/lib/voice";
 
 export const metadata: Metadata = { title: "Commandes" };
 
@@ -55,7 +56,7 @@ async function OrdersFromRoute({ params, searchParams }: Pick<PageProps<"/app/[s
     page: Math.max(1, Number.parseInt(first(query.page) ?? "1", 10) || 1),
   };
 
-  const [result, counts, shops, me] = await Promise.all([getOrders(shop, filters), getOrderCounts(shop), getMyShops(), getMe()]);
+  const [result, counts, shops, me, goal] = await Promise.all([getOrders(shop, filters), getOrderCounts(shop), getMyShops(), getMe(), getGoal(shop)]);
   if (!result.ok) {
     if (result.problem.status === 404) notFound();
     throw new Error(result.problem.detail);
@@ -63,7 +64,10 @@ async function OrdersFromRoute({ params, searchParams }: Pick<PageProps<"/app/[s
   const { results, count, pages } = result.data;
   const total = counts.ok ? Object.values(counts.data).reduce((sum, n) => sum + n, 0) : count;
   const filtered = Boolean(filters.status || filters.q);
-  const canExport = shops.ok && shops.data.some((item) => item.slug === shop && item.permissions.includes("orders.export"));
+  const membership = shops.ok ? shops.data.find((item) => item.slug === shop) : undefined;
+  const canExport = membership?.permissions.includes("orders.export") ?? false;
+  // L'objectif de l'équipe, en tête de la page d'accueil du vendeur : le % seulement, jamais le montant.
+  const teamGoal = membership?.role === "seller" && goal.ok ? goal.data.goal : null;
 
   return (
     <>
@@ -71,6 +75,17 @@ async function OrdersFromRoute({ params, searchParams }: Pick<PageProps<"/app/[s
         <div>
           <p className="text-[12.5px] text-texte-2">{formatNumber(total)} commandes au total</p>
           <h1 className="mt-1.5 text-[clamp(24px,2.6vw,30px)] font-medium tracking-tight">Commandes</h1>
+          {teamGoal && goal.ok ? (
+            <div className="mt-3 flex max-w-[360px] flex-col gap-1.5">
+              <p className="text-[13px] text-texte-2">
+                Objectif {ofMonth(goal.data.label)} de l’équipe : <span className="font-semibold text-texte">{Math.round(teamGoal.percent)} %</span>
+                {teamGoal.reached ? <span className="text-orange-clair"> · atteint</span> : null}
+              </p>
+              <div className="h-1.5 rounded-full bg-white/10" aria-hidden>
+                <div className="barre-pousse h-full rounded-full bg-orange-clair shadow-[0_0_10px_rgb(255_155_82/0.6)]" style={{ width: `${Math.min(Math.max(teamGoal.percent, 2), 100)}%` }} />
+              </div>
+            </div>
+          ) : null}
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Form action={`/app/${shop}/commandes`} role="search" className="flex w-full gap-2 sm:w-auto">
@@ -91,7 +106,7 @@ async function OrdersFromRoute({ params, searchParams }: Pick<PageProps<"/app/[s
               Chercher
             </button>
           </Form>
-          {canExport && me.ok ? <ExportPanel slug={shop} mfaEnabled={me.data.mfa_enabled} /> : null}
+          {canExport && me.ok ? <ExportPanel slug={shop} mfaEnabled={me.data.mfa_enabled} defaultOpen={first(query.export) === "1"} /> : null}
         </div>
       </header>
 

@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
-import { compactFcfa, formatDateTime, formatFcfa, formatNumber, formatVariation, PAYMENT_LABEL, ROLE_LABEL, STATUS_LABEL, variation } from "@/lib/format";
-import type { Kpi, Order, OrderStatus, ShopMembership } from "@/lib/types";
+import { formatDateTime, formatFcfa, PAYMENT_LABEL, ROLE_LABEL, STATUS_LABEL } from "@/lib/format";
+import type { Order, OrderStatus, ShopMembership } from "@/lib/types";
 
 /** Chiffre en deux tons : la valeur en clair, l'unité en retrait. */
 export function TwoTone({ value, unit, className }: { value: string; unit?: string; className?: string }) {
@@ -12,64 +12,6 @@ export function TwoTone({ value, unit, className }: { value: string; unit?: stri
       <span>{value}</span>
       {unit ? <span className="text-texte-3">{unit}</span> : null}
     </p>
-  );
-}
-
-export function Delta({ kpi }: { kpi: Kpi }) {
-  const percent = variation(kpi.value, kpi.previous);
-  if (percent === null) return <span className="text-xs text-texte-3">pas de période précédente</span>;
-  const up = percent >= 0;
-  return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold", up ? "text-indigo-clair" : "text-danger")}>
-      <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <circle cx="12" cy="12" r="9" />
-        <path d={up ? "M8 13l4-4 4 4" : "M8 11l4 4 4-4"} />
-      </svg>
-      {formatVariation(percent)}
-      <span className="sr-only">par rapport à la période précédente</span>
-    </span>
-  );
-}
-
-export function StatCard({ label, kpi, money }: { label: string; kpi: Kpi; money?: boolean }) {
-  const [value, unit] = money ? [formatNumber(kpi.value), " F"] : [formatNumber(kpi.value), ""];
-  return (
-    <div className="carte flex flex-col gap-3 rounded-[18px] p-3.5">
-      <span className="text-[12.5px] text-texte-2">{label}</span>
-      <TwoTone value={value} unit={unit} className="text-[clamp(24px,2.4vw,30px)]" />
-      <Delta kpi={kpi} />
-    </div>
-  );
-}
-
-type TopProduct = { id: string; name: string; units: number; revenue: number };
-
-/** Produits phares en liste classée : une ligne par produit, la barre donne sa part du chiffre d'affaires. */
-export function TopProducts({ products, total }: { products: TopProduct[]; total: number }) {
-  return (
-    <ol className="flex flex-col">
-      {products.map((product, rank) => {
-        const [value, unit] = compactFcfa(product.revenue);
-        const share = total > 0 ? Math.round((product.revenue / total) * 100) : 0;
-        return (
-          <li key={product.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-4 gap-y-2 border-b border-trait-doux py-3 first:pt-1 last:border-0 last:pb-1">
-            <span className="min-w-0">
-              <span className="block truncate text-[14px] font-semibold">{product.name}</span>
-              <span className="text-xs text-texte-3">
-                N° {rank + 1} · {formatNumber(product.units)} vendu{product.units > 1 ? "s" : ""}
-              </span>
-            </span>
-            <TwoTone value={value} unit={unit} className="text-right text-[22px]" />
-            <span className="col-span-full flex items-center gap-2.5">
-              <span className="h-1 flex-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
-                <span className="block h-full rounded-full bg-orange-clair shadow-[0_0_10px_rgb(255_155_82/0.7)]" style={{ width: `${Math.max(share, 2)}%` }} />
-              </span>
-              <span className="w-[11ch] text-right text-[11.5px] text-texte-3 tabular-nums">{share} % du CA</span>
-            </span>
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 

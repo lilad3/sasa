@@ -3,26 +3,24 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { AddMemberForm } from "@/features/settings/add-member-form";
 import { ApiKeyForm, SCOPE_LABEL } from "@/features/settings/api-key-form";
 import { type ActivityKind, getApiKeys, getPlans, getShopActivity, getShopSettings } from "@/features/settings/data";
 import { ShopJournal } from "@/features/settings/journal";
 import { SecurityCard, SecurityCardSkeleton } from "@/features/settings/security-card";
-import { MemberRow } from "@/features/settings/member-row";
 import { PlanPicker } from "@/features/settings/plan-picker";
 import { ProfileForm } from "@/features/settings/profile-form";
 import { RevokeKey } from "@/features/settings/revoke-key";
+import { LogoForm } from "@/features/settings/logo-form";
 import { VacationPanel } from "@/features/settings/vacation-panel";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatNumber } from "@/lib/format";
-import { getMe, getMembers, getMyShops } from "@/lib/server/session";
+import { getMe, getMyShops } from "@/lib/server/session";
 import type { ApiKey, Me, PlansOverview } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Paramètres" };
 
 const TABS = [
   { id: "boutique", label: "Boutique" },
-  { id: "equipe", label: "Équipe" },
   { id: "plan", label: "Plan" },
   { id: "cles", label: "Clés API" },
   { id: "journal", label: "Journal" },
@@ -43,6 +41,8 @@ export default function SettingsPage({ params, searchParams }: PageProps<"/app/[
 async function SettingsFromRoute({ params, searchParams }: Pick<PageProps<"/app/[shop]/parametres">, "params" | "searchParams">) {
   const [{ shop }, query] = await Promise.all([params, searchParams]);
   const wanted = typeof query.onglet === "string" ? query.onglet : "";
+  // L'équipe se gère maintenant dans « Mon personnel » : les anciens liens y mènent.
+  if (wanted === "equipe") redirect(`/app/${shop}/personnel`);
   const tab: Tab = TABS.find((item) => item.id === wanted)?.id ?? "boutique";
 
   const [shops, me] = await Promise.all([getMyShops(), getMe()]);
@@ -53,6 +53,18 @@ async function SettingsFromRoute({ params, searchParams }: Pick<PageProps<"/app/
   // Le menu ne montre Paramètres qu'au propriétaire ; une adresse tapée à la main arrive ici.
   // Django refuserait de toute façon (403) : on explique plutôt que d'afficher une erreur.
   if (!membership.permissions.includes("shop.manage")) {
+    // Un gérant à qui le propriétaire a accordé « Gérer la vitrine » n'a que le logo.
+    if (membership.permissions.includes("storefront.edit")) {
+      return (
+        <>
+          <header className="col-span-full px-1 pt-1.5">
+            <p className="text-[12.5px] text-texte-2">{membership.name}</p>
+            <h1 className="mt-1.5 text-[clamp(24px,2.6vw,30px)] font-medium tracking-tight">La vitrine</h1>
+          </header>
+          <LogoForm slug={shop} logoUrl={logoUrl(shop, membership.logo_version ?? null)} />
+        </>
+      );
+    }
     return (
       <section className="vitre col-span-full flex flex-col items-start gap-3 rounded-[24px] p-6">
         <h1 className="text-[clamp(22px,2.4vw,28px)] font-medium tracking-tight">Réservé au propriétaire</h1>
@@ -89,8 +101,7 @@ async function SettingsFromRoute({ params, searchParams }: Pick<PageProps<"/app/
         ))}
       </nav>
 
-      {tab === "boutique" ? <ShopTab slug={shop} /> : null}
-      {tab === "equipe" ? <TeamTab slug={shop} me={me.data} /> : null}
+      {tab === "boutique" ? <ShopTab slug={shop} logoVersion={membership.logo_version ?? null} /> : null}
       {tab === "plan" ? <PlanTab slug={shop} me={me.data} /> : null}
       {tab === "cles" ? <KeysTab slug={shop} me={me.data} /> : null}
       {tab === "journal" ? (
@@ -116,43 +127,19 @@ function tomorrowInAbidjan() {
   return date.toISOString().slice(0, 10);
 }
 
-async function ShopTab({ slug }: { slug: string }) {
+/** L'adresse du logo, relayée par Next ; ?v= change avec chaque nouveau logo. */
+function logoUrl(slug: string, version: string | null) {
+  return version ? `/boutique/${slug}/logo?v=${encodeURIComponent(version)}` : null;
+}
+
+async function ShopTab({ slug, logoVersion }: { slug: string; logoVersion: string | null }) {
   const settings = await getShopSettings(slug);
   if (!settings.ok) fail(settings.problem.detail);
   return (
     <>
       <ProfileForm settings={settings.data} />
+      <LogoForm slug={slug} logoUrl={logoUrl(slug, logoVersion)} />
       <VacationPanel settings={settings.data} tomorrow={tomorrowInAbidjan()} />
-    </>
-  );
-}
-
-async function TeamTab({ slug, me }: { slug: string; me: Me }) {
-  const [members, plans] = await Promise.all([getMembers(slug), getPlans(slug)]);
-  if (!members.ok) fail(members.problem.detail);
-  if (!plans.ok) fail(plans.problem.detail);
-  const plan = currentPlan(plans.data);
-  const full = plan.members !== null && plans.data.usage.members >= plan.members ? { plan: plan.name, limit: plan.members } : null;
-
-  return (
-    <>
-      <AddMemberForm slug={slug} mfaEnabled={me.mfa_enabled} full={full} />
-      <section aria-labelledby="titre-equipe" className="vitre col-span-full flex flex-col gap-3 self-start rounded-[24px] p-[18px] lg:col-span-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="titre-equipe" className="text-sm text-texte-2">
-            L’équipe
-          </h2>
-          <p className="text-[12.5px] text-texte-3 tabular-nums">
-            {members.data.length} personne{members.data.length > 1 ? "s" : ""}
-            {plan.members !== null ? ` sur ${plan.members} (plan ${plan.name})` : ""}
-          </p>
-        </div>
-        <ul className="flex flex-col gap-2">
-          {members.data.map((member) => (
-            <MemberRow key={member.user_id} slug={slug} member={member} mfaEnabled={me.mfa_enabled} />
-          ))}
-        </ul>
-      </section>
     </>
   );
 }

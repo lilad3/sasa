@@ -36,6 +36,14 @@ export function Cover({ shop, featured, onAdd }: { shop: Storefront; featured: P
       />
 
       <div className="vit-mast absolute inset-x-5 top-5 flex flex-col gap-2.5 md:inset-x-7 md:top-6">
+        {shop.logo_version ? (
+          // eslint-disable-next-line @next/next/no-img-element -- logo relayé par /boutique/[slug]/logo (vérifié et réencodé par Django)
+          <img
+            src={`/boutique/${shop.slug}/logo?v=${encodeURIComponent(shop.logo_version)}`}
+            alt={`Logo de ${shop.name}`}
+            className="vit-fade h-[clamp(44px,5vw,64px)] w-auto max-w-[180px] self-start object-contain"
+          />
+        ) : null}
         <h1 aria-label={shop.name} className="large flex flex-wrap gap-x-[0.28em] text-[clamp(44px,10vw,132px)] leading-[0.84] font-extrabold tracking-[-0.02em]">
           {words.map((word, i) => (
             <span key={`${word}-${i}`} className="vit-word" aria-hidden>

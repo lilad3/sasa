@@ -8,6 +8,8 @@ import { confirmIdentity } from "@/lib/server/reauth";
 import { authedMutation } from "@/lib/server/session";
 import type { ApiKey, Member, PlansOverview, Problem, ShopSettings } from "@/lib/types";
 
+import { GRANTABLE } from "./grants";
+
 // Le slug et les identifiants finissent dans l'adresse de l'API : on n'accepte que leur forme attendue.
 const Slug = z.string().regex(/^[a-z0-9-]{1,60}$/);
 
@@ -195,7 +197,7 @@ export async function addMember(_previous: AddMemberState, formData: FormData): 
 
 export type MemberActionState = {
   /** L'action qui attend la confirmation renforcée. */
-  reauth?: "role" | "password";
+  reauth?: "role" | "password" | "grants";
   reauthError?: string;
   error?: FormError;
   done?: string;
@@ -206,15 +208,17 @@ const MemberAction = z.discriminatedUnion("intent", [
   z.object({ intent: z.literal("role"), slug: Slug, member: z.uuid(), role: z.enum(["manager", "seller"]) }),
   z.object({ intent: z.literal("password"), slug: Slug, member: z.uuid() }),
   z.object({ intent: z.literal("remove"), slug: Slug, member: z.uuid() }),
+  z.object({ intent: z.literal("grants"), slug: Slug, member: z.uuid(), grants: z.array(z.enum(GRANTABLE)) }),
 ]);
 
-/** Changer le rôle, refaire un mot de passe provisoire ou retirer quelqu'un de l'équipe. */
+/** Changer le rôle ou les pouvoirs, refaire un mot de passe provisoire, ou retirer quelqu'un de l'équipe. */
 export async function memberAction(_previous: MemberActionState, formData: FormData): Promise<MemberActionState> {
   const parsed = MemberAction.safeParse({
     intent: formData.get("intent"),
     slug: formData.get("slug"),
     member: formData.get("member"),
     role: formData.get("role") ?? undefined,
+    grants: formData.getAll("grants"),
   });
   if (!parsed.success) return { error: INVALID };
   const action = parsed.data;
@@ -239,6 +243,16 @@ export async function memberAction(_previous: MemberActionState, formData: FormD
     }
     refresh();
     return { done: "Rôle changé. Ses droits changent dès sa prochaine page." };
+  }
+
+  if (action.intent === "grants") {
+    const result = await authedMutation<Member>(path, "PATCH", { grants: action.grants });
+    if (!result.ok) {
+      if (result.problem.code === "reauth_required") return { reauth: "grants" };
+      return { error: describeProblem(result.problem) };
+    }
+    refresh();
+    return { done: "Pouvoirs enregistrés. Ils s’appliquent dès sa prochaine page." };
   }
 
   const result = await authedMutation<{ member: Member; temporary_password: string }>(`${path}/temporary-password`, "POST");

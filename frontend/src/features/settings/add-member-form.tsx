@@ -24,13 +24,16 @@ type AddMemberFormProps = {
   mfaEnabled: boolean;
   /** La limite du plan est atteinte : on explique au lieu d'ouvrir un formulaire qui serait refusé. */
   full: { plan: string; limit: number } | null;
+  /** Un gérant qui a « Gérer les vendeurs » n'ajoute que des vendeurs (Django refuse le reste). */
+  sellersOnly?: boolean;
+  className?: string;
 };
 
 /**
  * Ajouter un gérant ou un vendeur. Akwaba crée son compte avec un mot de passe provisoire, affiché ici une seule fois :
  * le patron le donne de vive voix, et la personne choisit le sien à sa première connexion.
  */
-export function AddMemberForm({ slug, mfaEnabled, full }: AddMemberFormProps) {
+export function AddMemberForm({ slug, mfaEnabled, full, sellersOnly = false, className = "lg:col-span-4" }: AddMemberFormProps) {
   const [state, formAction, pending] = useActionState(addMember, initial);
   const form = useRef<HTMLFormElement>(null);
   const fields = state.fields ?? {};
@@ -47,7 +50,7 @@ export function AddMemberForm({ slug, mfaEnabled, full }: AddMemberFormProps) {
   }
 
   return (
-    <section aria-labelledby="titre-ajouter" className="vitre col-span-full flex flex-col gap-4 self-start rounded-[24px] p-[18px] lg:col-span-4">
+    <section aria-labelledby="titre-ajouter" className={`vitre col-span-full flex flex-col gap-4 self-start rounded-[24px] p-[18px] ${className}`}>
       <h2 id="titre-ajouter" className="text-sm text-texte-2">
         Ajouter quelqu’un
       </h2>
@@ -91,7 +94,7 @@ export function AddMemberForm({ slug, mfaEnabled, full }: AddMemberFormProps) {
           />
           <fieldset className="flex flex-col gap-1.5">
             <legend className="mb-2 text-[13px] font-semibold text-texte-2">Son rôle</legend>
-            {(["seller", "manager"] as const).map((role) => (
+            {(sellersOnly ? (["seller"] as const) : (["seller", "manager"] as const)).map((role) => (
               <label
                 key={role}
                 className="flex cursor-pointer items-start gap-2.5 rounded-[14px] border border-trait-doux bg-encre/40 px-3 py-2.5 has-checked:border-sable/45 has-checked:bg-white/10"
