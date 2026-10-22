@@ -331,6 +331,12 @@ export type Accent = "orange" | "indigo" | "ocre" | "lagune" | "corail";
 
 export type DeliveryZone = { id: string; city: string; commune: string; label: string; fee: number };
 
+/** Une photo envoyée par la boutique : l'image passe par /boutique/{slug}/photo/{id}?v={version}. */
+export type ProductPhoto = { id: string; version: string };
+
+/** D'où vient le produit de la couverture (docs/chantier-p5.md §2.4). */
+export type CoverSource = "chosen" | "best_seller" | "price";
+
 export type Storefront = {
   slug: string;
   name: string;
@@ -343,6 +349,8 @@ export type Storefront = {
   product_count: number;
   /** Empreinte du logo (null : pas de logo) ; l'image passe par /boutique/{slug}/logo?v=. */
   logo_version?: string | null;
+  /** Le produit de la couverture : à la une, sinon le plus vendu sur 30 jours, sinon le plus cher (null : aucun en stock). */
+  featured: { product_id: string; source: CoverSource } | null;
   delivery_zones: DeliveryZone[];
   payment_methods: { id: PaymentMethod; label: string }[];
 };
@@ -354,7 +362,9 @@ export type PublicProduct = {
   description: string;
   category: string;
   price: number;
+  /** L'adresse de l'image : la première photo envoyée (relayée par Next), sinon l'adresse externe. */
   image_url: string | null;
+  photos: ProductPhoto[];
   in_stock: boolean;
   low_stock: boolean;
   max_quantity: number;

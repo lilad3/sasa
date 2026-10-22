@@ -42,6 +42,7 @@ DETAILS = {
     "goal_set": ("month", "previous", "amount"),
     "loyalty_threshold_changed": ("previous", "threshold"),
     "shop_logo_changed": ("change",),
+    "product_featured": ("change",),
 }
 
 # Ce qui, sur le compte d'un membre de l'équipe, peut vouloir dire qu'on essaie d'y entrer.

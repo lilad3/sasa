@@ -1,54 +1,33 @@
 """
 Logo de la boutique (docs/chantier-p4.md §G).
 
-Une image envoyée par un marchand n'est jamais servie telle quelle : son format est lu d'après
-son contenu (pas d'après son nom ni le Content-Type annoncé), seuls PNG, JPEG et WebP passent,
-et elle est entièrement redessinée en PNG de 512 px au plus. Le fichier servi ne garde donc ni
-EXIF, ni position GPS, ni script caché dans un SVG ou un polyglotte.
+La lecture de l'envoi (format d'après le contenu, tailles) est commune avec les photos de produit
+(images.py) ; le logo est ensuite redessiné en PNG de 512 px au plus.
 """
 
 import hashlib
 import io
 
 from django.http import HttpResponse
-from PIL import Image, UnidentifiedImageError
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail, NotFound, ValidationError
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from audit.services import record
-from core.exceptions import ProblemError
 
+from .images import ImageResponseMixin, open_upload
 from .models import ShopLogo
 from .permissions import ShopScopedView
 from .storefront import StorefrontView, storefront_shop
 
-MAX_BYTES = 2 * 1024 * 1024
 MAX_SIDE = 512
-# Une image de 2 Mo peut annoncer des dimensions énormes (bombe de décompression) : refusée avant d'être décodée.
-MAX_PIXELS = 25_000_000
-ACCEPTED = {"PNG", "JPEG", "WEBP"}
 
 
 def clean_logo(upload):
     """Renvoie le PNG réencodé, ou lève une erreur au format du contrat."""
-    if upload.size > MAX_BYTES:
-        raise ProblemError(413, "file_too_large", "Logo trop lourd : 2 Mo au maximum.")
-    raw = upload.read(MAX_BYTES + 1)
-    try:
-        with Image.open(io.BytesIO(raw)) as probe:
-            kind = probe.format
-            width, height = probe.size
-        if kind not in ACCEPTED:
-            raise ProblemError(415, "unsupported_file", "Logo en PNG, JPEG ou WebP seulement.")
-        if width * height > MAX_PIXELS:
-            raise ProblemError(415, "unsupported_file", "Cette image est trop grande pour un logo.")
-        with Image.open(io.BytesIO(raw)) as image:
-            image.load()
-            picture = image.convert("RGBA")
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError, SyntaxError, ValueError):
-        raise ProblemError(415, "unsupported_file", "Ce fichier n'est pas une image lisible.") from None
+    with open_upload(upload, "logo") as image:
+        picture = image.convert("RGBA")
     picture.thumbnail((MAX_SIDE, MAX_SIDE))
     out = io.BytesIO()
     picture.save(out, format="PNG", optimize=True)
@@ -76,7 +55,7 @@ class ShopLogoView(ShopScopedView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class StorefrontLogoView(StorefrontView):
+class StorefrontLogoView(ImageResponseMixin, StorefrontView):
     """Public (derrière le BFF) : le PNG réencodé, jamais le fichier d'origine."""
 
     def get(self, request, slug):

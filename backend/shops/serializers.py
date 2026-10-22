@@ -4,7 +4,7 @@ from django.utils.text import slugify
 from rest_framework import serializers
 
 from .models import Order, OrderItem, OrderNote, OrderStatus, Product
-from .storefront import plain_text
+from .storefront import photos_payload, plain_text
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -82,15 +82,20 @@ class ProductSerializer(serializers.ModelSerializer):
     stock = serializers.IntegerField(min_value=0, max_value=1_000_000, required=False)
     low_stock_threshold = serializers.IntegerField(min_value=0, max_value=10_000, required=False)
     image_url = serializers.URLField(max_length=200, required=False, allow_blank=True)
+    photos = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             "id", "slug", "sku", "name", "description", "category", "price", "stock",
-            "low_stock_threshold", "is_active", "image_url", "created_at", "updated_at",
+            "low_stock_threshold", "is_active", "image_url", "is_featured", "photos", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "slug", "created_at", "updated_at"]
+        # La une se change par sa propre route (storefront.edit), jamais par la fiche.
+        read_only_fields = ["id", "slug", "is_featured", "created_at", "updated_at"]
         extra_kwargs = {"sku": {"validators": []}}
+
+    def get_photos(self, product):
+        return photos_payload(product)
 
     def validate_sku(self, value):
         value = value.strip()

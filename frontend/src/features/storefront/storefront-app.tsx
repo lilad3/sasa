@@ -37,10 +37,14 @@ export function StorefrontApp({ shop, products }: { shop: Storefront; products: 
     });
   }, [cart, products]);
 
-  const featured = useMemo(
-    () => products.filter((p) => p.in_stock).reduce<PublicProduct | null>((best, p) => (!best || p.price > best.price ? p : best), null),
-    [products],
-  );
+  // Django choisit le produit de couverture (à la une, sinon le plus vendu, sinon le plus cher) ;
+  // s'il n'est plus dans la liste (vendu entre-temps), on retombe sur le plus cher en stock.
+  const cover = useMemo(() => {
+    const chosen = shop.featured && products.find((p) => p.id === shop.featured?.product_id && p.in_stock);
+    if (chosen && shop.featured) return { product: chosen, source: shop.featured.source };
+    const priciest = products.filter((p) => p.in_stock).reduce<PublicProduct | null>((best, p) => (!best || p.price > best.price ? p : best), null);
+    return { product: priciest, source: "price" as const };
+  }, [products, shop.featured]);
 
   const change = (product: PublicProduct, quantity: number) => setQuantity(product.id, Math.min(quantity, product.max_quantity));
   const add = (product: PublicProduct) => change(product, (cart[product.id] ?? 0) + 1);
@@ -90,7 +94,7 @@ export function StorefrontApp({ shop, products }: { shop: Storefront; products: 
 
       <div className="mx-auto flex max-w-[1180px] flex-col gap-8 px-3 pt-3 pb-28 md:px-5 lg:pb-16">
         {closed ? <VacationBanner vacation={shop.vacation} name={shop.name} /> : null}
-        <Cover shop={shop} featured={featured} onAdd={add} />
+        <Cover shop={shop} featured={cover.product} source={cover.source} onAdd={add} />
 
         <div id="contenu-boutique" className="grid scroll-mt-24 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
           <main className="min-w-0">

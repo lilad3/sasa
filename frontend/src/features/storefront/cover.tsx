@@ -4,16 +4,33 @@ import type { CSSProperties } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
-import type { PublicProduct, Storefront } from "@/lib/types";
+import type { CoverSource, PublicProduct, Storefront } from "@/lib/types";
 
 import { ACCENTS } from "./accent";
 import { ProductArt } from "./catalogue";
 
+/** Le sur-titre dit pourquoi ce produit est en couverture (docs/chantier-p5.md §2.4). */
+const KICKER: Record<CoverSource, string> = {
+  chosen: "À la une",
+  best_seller: "La plus demandée",
+  price: "La pièce du mois",
+};
+
 /**
- * Couverture façon magazine : le nom de la boutique en très grand, et la « pièce du mois »,
- * l'article en stock le plus cher (souvent la pièce artisanale qui donne le ton de la boutique).
+ * Couverture façon magazine : le nom de la boutique en très grand, et un produit mis en avant :
+ * celui que la boutique a mis à la une, sinon le plus vendu du mois, sinon le plus cher en stock.
  */
-export function Cover({ shop, featured, onAdd }: { shop: Storefront; featured: PublicProduct | null; onAdd: (product: PublicProduct) => void }) {
+export function Cover({
+  shop,
+  featured,
+  source,
+  onAdd,
+}: {
+  shop: Storefront;
+  featured: PublicProduct | null;
+  source: CoverSource;
+  onAdd: (product: PublicProduct) => void;
+}) {
   const accent = ACCENTS[shop.accent];
   const minFee = Math.min(...shop.delivery_zones.map((zone) => zone.fee));
   const words = shop.name.toUpperCase().split(/\s+/);
@@ -79,7 +96,7 @@ export function Cover({ shop, featured, onAdd }: { shop: Storefront; featured: P
         <>
           <div className="absolute inset-x-5 bottom-5 flex max-w-[560px] flex-col gap-2.5 md:inset-x-7 md:bottom-7">
             <p className="vit-fade font-mono text-xs tracking-[0.08em] text-sable uppercase" style={{ "--d": "1s" } as CSSProperties}>
-              La pièce du mois
+              {KICKER[source]}
             </p>
             <h2 className="vit-fade large text-[clamp(26px,4vw,48px)] leading-[0.98] font-extrabold text-balance" style={{ "--d": "1.1s" } as CSSProperties}>
               {featured.name}
@@ -106,7 +123,7 @@ export function Cover({ shop, featured, onAdd }: { shop: Storefront; featured: P
               </defs>
               <text fontFamily="var(--font-plex-mono), monospace" fontSize="10.5" letterSpacing="2.4" fill="#f0ddba">
                 <textPath href="#vit-cercle" textLength="348" lengthAdjust="spacing">
-                  {`LA PIÈCE DU MOIS · ${shop.name.toUpperCase().slice(0, 18)} ·`}
+                  {`${KICKER[source].toUpperCase()} · ${shop.name.toUpperCase().slice(0, 18)} ·`}
                 </textPath>
               </text>
             </svg>

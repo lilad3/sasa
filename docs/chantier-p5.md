@@ -11,8 +11,8 @@ Rappels communs (ceux de `chantier-p4.md`) :
 
 | Lot | Branche | État |
 |---|---|---|
-| 1. Réductions et canaux de vente | `claude/p5-reductions-canaux` | **contrat à valider** |
-| 2. Produit à la une et photos | `claude/p5-une-photos` | esquisse |
+| 1. Réductions et canaux de vente | `claude/p5-reductions-canaux` | fait (décisions de §1.11 appliquées) |
+| 2. Produit à la une et photos | `claude/p5-une-photos` (sur le lot 1) | fait |
 | 3. Éditeur « Ma boutique » | `claude/p5-ma-boutique` | esquisse (maquette d'abord) |
 | 4. Export des clients et « Livrées à temps » | `claude/p5-export-delais` | esquisse |
 | 5. Renouvellement des sessions | `claude/p5-sessions` | enquête |
@@ -236,12 +236,89 @@ Les réductions vont dans la catégorie Sécurité : de l'argent sort de la bout
 
 ---
 
-## Lots 2 à 5 : esquisses (détaillées avant chaque lot)
+## Lot 2 : produit à la une et photos produit
 
-**Lot 2, produit à la une et photos.**
-- `Product.is_featured` : un seul par boutique, basculé dans une transaction (contrainte unique conditionnelle).
-- `ProductPhoto` : 1 à 3 par produit, stockées en base comme `ShopLogo`, avec la chaîne du logo (type lu d'après le contenu, réencodage Pillow, nom aléatoire, `nosniff`, CSP sandbox, relais par une route Next).
-- La couverture prend le produit à la une, sinon le plus vendu sur 30 jours, sinon le plus cher en stock.
+Branche `claude/p5-une-photos`, **empilée sur `claude/p5-reductions-canaux`** : ses migrations (shops 0006, audit 0007) suivent celles du lot 1. Intégrer le lot 1, puis le lot 2.
+
+### 2.1 Modèle (shops 0006)
+
+- `Product.is_featured` (booléen, faux par défaut) : **un seul par boutique**, garanti par une contrainte unique conditionnelle `(shop) WHERE is_featured`. Le changement se fait dans une transaction : on retire l'ancien, puis on pose le nouveau.
+- `ProductPhoto` :
+
+  | Champ | Rôle |
+  |---|---|
+  | `id` | UUID aléatoire : c'est lui qui sert dans l'adresse de l'image |
+  | `shop`, `product` | la boutique (pour `.for_shop()`) et le produit (suppression en cascade) |
+  | `position` | 0, 1 ou 2 ; la photo 0 est la photo principale. Contrainte unique `(product, position)` |
+  | `image` | l'image réencodée par le serveur (binaire en base, comme le logo) |
+  | `version` | 12 caractères de l'empreinte SHA-256, pour l'adresse `?v=` |
+  | `created_by`, `created_at` | qui l'a ajoutée, et quand |
+
+- **3 photos au plus par produit**, pour tous les plans. La contrainte `(product, position)` empêche deux envois simultanés de dépasser la limite : le second reçoit 409.
+
+### 2.2 La chaîne de l'image (celle du logo)
+
+1. Le navigateur réduit la photo à **1 200 px** de côté au plus et l'envoie en JPEG : une Server Action accepte 1 Mo au plus. Si le fichier dépasse encore 900 Ko, il baisse la qualité.
+2. Django la relit **d'après son contenu** (Pillow), jamais d'après son nom ni son type annoncé : PNG, JPEG et WebP seulement, 2 Mo et 25 millions de pixels au plus (bombe de décompression refusée avant décodage).
+3. Il la **redessine entièrement** en WebP (qualité 80, 1 200 px au plus, orientation EXIF appliquée puis métadonnées retirées) : ni EXIF, ni GPS, ni contenu caché.
+4. Elle est servie par Django avec `Content-Type: image/webp`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, puis **relayée par une route Next** (`/boutique/{slug}/photo/{id}?v=…`) qui vérifie le type et met un cache immuable quand l'adresse porte `?v=`.
+
+### 2.3 Routes marchandes
+
+| Route | Droit | Effet |
+|---|---|---|
+| `POST /shops/{slug}/products/{id}/photos` (multipart `photo`) | `products.write` | 201 `{id, version, position}` ; 409 `photo_limit` s'il y a déjà 3 photos ; 413 `file_too_large`, 415 `unsupported_file` |
+| `DELETE /shops/{slug}/products/{id}/photos/{photo_id}` | `products.write` | 204 ; les photos suivantes remontent d'un rang |
+| `PUT /shops/{slug}/products/{id}/photos/{photo_id}/main` | `products.write` | la photo devient la principale (position 0), les autres gardent leur ordre |
+| `PUT /shops/{slug}/products/{id}/featured` | `storefront.edit` | met le produit à la une (remplace l'ancien) ; 409 `product_inactive` si le produit n'est pas en vente |
+| `DELETE /shops/{slug}/products/{id}/featured` | `storefront.edit` | retire la une (idempotent) |
+
+- Les envois de photos sont limités à **60 par heure et par membre** (`product_photo:member`).
+- Une photo d'une autre boutique, ou d'un autre produit, répond 404. Un non-membre reçoit 404, un vendeur (sans `products.write`) 403.
+- La fiche produit (`GET`/`PATCH products/{id}` et la liste) gagne `is_featured` et `photos: [{id, version}]` (dans l'ordre).
+- Choisir la une relève de la vitrine (`storefront.edit`, propriétaire ou gérant à qui on l'a confié), pas du catalogue.
+
+### 2.4 Vitrine
+
+- `GET /storefront/{slug}` gagne `featured: {product_id, source}` ou `null`. Le produit de couverture est :
+  1. le produit **à la une**, s'il est en vente et en stock (`source: "chosen"`) ;
+  2. sinon le **plus vendu sur 30 jours** parmi ceux en vente et en stock, commandes annulées exclues (`"best_seller"`) ;
+  3. sinon le **plus cher en stock** (`"price"`) ;
+  4. sinon `null`.
+- Chaque produit public gagne `photos: [{id, version}]`. La photo envoyée passe avant `image_url` (l'adresse externe, gardée).
+- `GET /storefront/{slug}/photos/{photo_id}` : l'image WebP. L'identifiant est un UUID aléatoire : il n'est publié que pour les produits en vente, et seule l'équipe le connaît pour un produit masqué. Une photo d'une autre boutique répond 404.
+
+### 2.5 Journal
+
+| Action | Catégorie | Niveau | Détails |
+|---|---|---|---|
+| `product_featured` (« Produit mis à la une ») | boutique | info | `change` (`set` ou `removed`) ; la cible est le produit |
+
+Les photos ne sont pas journalisées, comme les autres modifications d'une fiche produit.
+
+### 2.6 Front
+
+- **Fiche produit** (`produits/[id]`) : une section « Photos » avec 3 emplacements. Ajouter (réduction dans le navigateur, comme `logo-form.tsx`), « Mettre en premier », « Retirer » en deux temps. Chaque image a un texte alternatif (« Photo 1 de {produit} »).
+- La fiche montre aussi « À la une sur la vitrine » (pour `storefront.edit`) : un interrupteur avec l'explication de la règle de repli (plus vendu, puis plus cher).
+- **Liste des produits** : la vignette prend la première photo ; la ligne du produit à la une porte la mention « à la une », en texte.
+- **Vitrine** : la couverture prend `featured` ; son sur-titre suit `source` (« À la une », « La plus demandée », « La pièce du mois »). Les cartes et la couverture affichent la première photo. Le nom du produit est écrit juste à côté : l'image garde un texte alternatif vide, pour ne pas faire lire le nom deux fois. Dans l'espace marchand, chaque photo a son texte (« Photo 1 de {produit} »).
+- Les nouvelles Server Actions suivent les règles : `authedMutation`, zod, fichier « use server » sans export autre que des fonctions async.
+
+### 2.7 Écarts et découverte
+
+- **Bug du P4 corrigé : le logo ne s'affichait jamais par le relais Next.** Le BFF demande `Accept: image/png`, et DRF, qui ne connaît que le JSON, répondait 406 avant d'appeler la vue ; Next renvoyait alors 404. Les tests ne le voyaient pas, car ils n'envoyaient pas cet en-tête. `ImageResponseMixin` (`shops/images.py`) corrige le logo et les photos ; les tests envoient maintenant `Accept: image/png` et `image/webp`.
+- La lecture sécurisée de l'envoi est sortie de `logo.py` vers `shops/images.py` (`open_upload`), partagée par le logo et les photos. Le comportement du logo ne change pas.
+- La carte « Ce qui se vend le mieux » du dashboard et l'API publique à clé gardent `image_url` : elles ne montrent pas encore les photos envoyées.
+
+### 2.8 Tests prévus
+
+- Une seule une par boutique, même en en posant deux de suite ; le retrait est idempotent ; 409 pour un produit masqué ; un vendeur reçoit 403 ; une autre boutique 404.
+- Photos : fichier qui n'est pas une image (415), SVG ou GIF (415), image trop grande en pixels (415), trop lourde (413) ; la 4ᵉ photo répond 409 ; l'image servie est un WebP sans EXIF ; `main` réordonne ; la suppression compacte les rangs ; une photo d'un autre produit ou d'une autre boutique répond 404 ; limite de débit.
+- Couverture : produit choisi, puis repli sur le plus vendu (annulées exclues), puis sur le plus cher, puis `null`.
+
+---
+
+## Lots 3 à 5 : esquisses (détaillées avant chaque lot)
 
 **Lot 3, éditeur « Ma boutique ».**
 - D'abord la maquette de 3 thèmes, à valider avant tout code.

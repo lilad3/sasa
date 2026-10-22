@@ -98,9 +98,9 @@ export async function callApi<T>(path: string, options: CallOptions): Promise<Ap
  * Image publique servie par Django (le logo d'une boutique) : la réponse brute, pour la relayer telle quelle.
  * null si le serveur ne répond pas.
  */
-export async function fetchPublicImage(path: string, context: RequestContext): Promise<Response | null> {
+export async function fetchPublicImage(path: string, context: RequestContext, accept = "image/png"): Promise<Response | null> {
   const { apiUrl, secret } = settings();
-  const headers = new Headers({ Accept: "image/png", "X-Akwaba-Bff": secret, "X-Request-ID": newRequestId() });
+  const headers = new Headers({ Accept: accept, "X-Akwaba-Bff": secret, "X-Request-ID": newRequestId() });
   if (context.ip) headers.set("X-Client-IP", context.ip);
   try {
     return await fetch(`${apiUrl}/api/v1/${path}`, { headers, cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(10_000) });

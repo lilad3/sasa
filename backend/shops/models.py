@@ -101,6 +101,8 @@ class Product(models.Model):
     low_stock_threshold = models.PositiveIntegerField("seuil d'alerte de stock", default=5)
     is_active = models.BooleanField(default=True)
     image_url = models.URLField(blank=True)
+    # Le produit de la couverture de la vitrine, choisi par la boutique (docs/chantier-p5.md §2.1).
+    is_featured = models.BooleanField("à la une", default=False)
     is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -111,6 +113,7 @@ class Product(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["shop", "sku"], name="unique_product_sku"),
             models.UniqueConstraint(fields=["shop", "slug"], name="unique_product_slug"),
+            models.UniqueConstraint(fields=["shop"], condition=models.Q(is_featured=True), name="one_featured_product_per_shop"),
         ]
 
     def __str__(self):
@@ -415,6 +418,30 @@ class ShopLogo(models.Model):
     image = models.BinaryField()
     version = models.CharField(max_length=12)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class ProductPhoto(models.Model):
+    """
+    Une photo de produit, réencodée en WebP par le serveur (docs/chantier-p5.md §2.2). Trois au plus
+    par produit : la contrainte (produit, rang) empêche deux envois simultanés de dépasser la limite.
+    """
+
+    MAX_PER_PRODUCT = 3
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="product_photos")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="photos")
+    position = models.PositiveSmallIntegerField()
+    image = models.BinaryField()
+    version = models.CharField(max_length=12)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["position"]
+        constraints = [models.UniqueConstraint(fields=["product", "position"], name="unique_photo_position")]
 
 
 class IdempotencyRecord(models.Model):

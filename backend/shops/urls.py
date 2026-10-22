@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import activity, api_keys, catalog, customers, discounts, goals, logo, presence, shop_settings, storefront, team, views
+from . import activity, api_keys, catalog, customers, discounts, goals, logo, photos, presence, shop_settings, storefront, team, views
 
 urlpatterns = [
     path("shops/<slug:slug>/dashboard", views.DashboardView.as_view()),
@@ -15,6 +15,10 @@ urlpatterns = [
     path("shops/<slug:slug>/products/overview", catalog.ProductOverviewView.as_view()),
     path("shops/<slug:slug>/products/import", catalog.ProductImportView.as_view()),
     path("shops/<slug:slug>/products/<uuid:product_id>", catalog.ProductDetailView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/photos", photos.ProductPhotoListView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/photos/<uuid:photo_id>", photos.ProductPhotoDetailView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/photos/<uuid:photo_id>/main", photos.ProductPhotoMainView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/featured", photos.ProductFeaturedView.as_view()),
     # Équipe et mot du patron
     path("shops/<slug:slug>/members", team.MemberListView.as_view()),
     path("shops/<slug:slug>/members/<uuid:user_id>", team.MemberDetailView.as_view()),
@@ -50,4 +54,5 @@ urlpatterns = [
     path("storefront/<slug:slug>/track", storefront.StorefrontTrackView.as_view()),
     path("storefront/<slug:slug>/discounts/check", storefront.StorefrontDiscountCheckView.as_view()),
     path("storefront/<slug:slug>/logo", logo.StorefrontLogoView.as_view()),
+    path("storefront/<slug:slug>/photos/<uuid:photo_id>", photos.StorefrontPhotoView.as_view()),
 ]

@@ -67,6 +67,7 @@ ACTIONS = {
     "customer_vip_removed": (B, INFO, "Client retiré des fidèles"),
     "loyalty_threshold_changed": (B, INFO, "Seuil de fidélité modifié"),
     "shop_logo_changed": (B, INFO, "Logo de la boutique modifié"),
+    "product_featured": (B, INFO, "Produit mis à la une"),
     # Administration de la plateforme
     "admin_login_succeeded": (A, INFO, "Connexion à l'administration"),
     "admin_login_failed": (A, WARNING, "Connexion à l'administration refusée"),
