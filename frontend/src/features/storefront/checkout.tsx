@@ -9,9 +9,10 @@ import { formatFcfa, PAYMENT_LABEL } from "@/lib/format";
 import { formatWait } from "@/lib/messages";
 import type { PaymentMethod, PlacedOrder, Storefront } from "@/lib/types";
 
-import { type CheckoutInput, placeOrder } from "./actions";
+import { type CheckoutInput, checkDiscount, placeOrder } from "./actions";
 import { subtotalOf } from "./basket";
 import { type Line, Price } from "./catalogue";
+import { readChannel } from "./channel";
 import { ZonePicker } from "./zone-picker";
 
 // Champs en pêche translucide (plus de blanc). Indice gris-brun à 4,6:1, anneau de focus indigo.
@@ -37,7 +38,10 @@ function isIvorianPhone(raw: string) {
   return /^(0[157]|2[157])\d{8}$/.test(digits);
 }
 
-export type Receipt = { order: PlacedOrder; name: string; phone: string; zone: string; payment: PaymentMethod };
+export type Receipt = { order: PlacedOrder; name: string; phone: string; zone: string; payment: PaymentMethod; discountCode: string };
+
+/** Un code vérifié, pour ce numéro et ce panier-là (articles et prix) : changer l'un des deux demande de le vérifier à nouveau. */
+type AppliedDiscount = { code: string; label: string; amount: number; phone: string; basket: string };
 
 export function Checkout({
   shop,
@@ -62,6 +66,11 @@ export function Checkout({
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [applied, setApplied] = useState<AppliedDiscount | null>(null);
+  const [codeMessage, setCodeMessage] = useState<string | null>(null);
+  const [checking, startChecking] = useTransition();
   // Même contenu → même clé : si le réseau coupe et que le client renvoie, Django rend la commande déjà créée.
   const attempt = useRef<{ key: string; signature: string } | null>(null);
   const honeypot = useRef<HTMLInputElement>(null);
@@ -75,7 +84,39 @@ export function Checkout({
   };
   const subtotal = subtotalOf(lines);
   const fee = zone?.fee ?? 0;
-  const total = subtotal + fee;
+  const items = lines.map((line) => ({ product_id: line.product.id, quantity: line.quantity }));
+  // Le sous-total en fait partie : après un changement de prix, une remise en % n'a plus le même montant.
+  const basketSignature = JSON.stringify({ items, subtotal });
+  // Le code a été vérifié pour un numéro et un panier : si l'un change, la remise affichée ne compte plus.
+  const discount = applied && applied.phone === phone && applied.basket === basketSignature ? applied : null;
+  const staleDiscount = applied !== null && discount === null;
+  const total = subtotal - (discount?.amount ?? 0) + fee;
+
+  function checkCode() {
+    setCodeMessage(null);
+    if (!isIvorianPhone(phone)) {
+      setCodeMessage("Indiquez d’abord votre numéro : le code ne marche qu’avec celui donné à la boutique.");
+      return;
+    }
+    if (!codeInput.trim()) return;
+    startChecking(async () => {
+      const result = await checkDiscount({ slug: shop.slug, code: codeInput, phone, items });
+      if (result.ok) {
+        setApplied({ code: result.discount.code, label: result.discount.label, amount: result.discount.discount_amount, phone, basket: basketSignature });
+        setCodeInput(result.discount.code);
+        setCodeMessage(`Code accepté : ${result.discount.label}, soit ${formatFcfa(result.discount.discount_amount)} de moins.`);
+      } else {
+        setApplied(null);
+        setCodeMessage(result.message);
+      }
+    });
+  }
+
+  function removeCode() {
+    setApplied(null);
+    setCodeInput("");
+    setCodeMessage(null);
+  }
 
   function validate() {
     const found: Partial<Record<FieldName, string>> = {};
@@ -91,13 +132,22 @@ export function Checkout({
     setErrors(found);
     setNotice(null);
     if (Object.keys(found).length || !zone || lines.length === 0) return;
+    // Un code saisi doit être vérifié avant la commande : le client voit le prix qu'il paiera, ou rien.
+    if (codeInput.trim() && !discount) {
+      setCodeOpen(true);
+      setCodeMessage(staleDiscount ? "Vérifiez à nouveau le code : le numéro ou le panier a changé." : "Vérifiez le code avant de commander, ou retirez-le.");
+      return;
+    }
 
     const payload: Omit<CheckoutInput, "idempotencyKey"> = {
       slug: shop.slug,
-      items: lines.map((line) => ({ product_id: line.product.id, quantity: line.quantity })),
+      items,
       customer: { name: name.trim(), phone, city: zone.city, commune: zone.commune, landmark: landmark.trim() },
       payment_method: payment,
       expected_total: total,
+      // Le code entre dans la signature : un autre code donne une autre clé d'idempotence.
+      discount_code: discount?.code ?? "",
+      channel: readChannel(shop.slug),
       website: honeypot.current?.value ?? "",
     };
     const signature = JSON.stringify(payload);
@@ -107,8 +157,14 @@ export function Checkout({
     startTransition(async () => {
       const result = await placeOrder({ ...payload, idempotencyKey });
       if (result.ok) {
-        onPlaced({ order: result.order, name: name.trim(), phone, zone: zone.label, payment });
+        onPlaced({ order: result.order, name: name.trim(), phone, zone: zone.label, payment, discountCode: discount?.code ?? "" });
         return;
+      }
+      if (result.code === "discount_invalid") {
+        // Utilisé ou annulé entre la vérification et la commande : on retire la remise affichée.
+        setApplied(null);
+        setCodeOpen(true);
+        setCodeMessage(result.message);
       }
       const fieldErrors: Partial<Record<FieldName, string>> = {};
       for (const [key, message] of Object.entries(result.fields ?? {})) {
@@ -207,11 +263,69 @@ export function Checkout({
                 <dd className="whitespace-nowrap">{formatFcfa(product.price * quantity)}</dd>
               </div>
             ))}
+            {discount ? (
+              <div className="flex justify-between gap-3 font-semibold">
+                <dt>
+                  Remise · <span className="font-mono">{discount.code}</span>
+                </dt>
+                <dd className="whitespace-nowrap">−{formatFcfa(discount.amount)}</dd>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-3">
               <dt className="text-encre-doux">Livraison{zone ? ` · ${zone.label}` : ""}</dt>
               <dd>{zone ? formatFcfa(fee) : "selon la commune"}</dd>
             </div>
           </dl>
+
+          <div className="flex flex-col gap-2">
+            {codeOpen || codeInput ? (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={`${id}-code`} className="text-[13px] font-semibold">
+                  Code de réduction
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id={`${id}-code`}
+                    className={cn(INPUT, "font-mono tracking-[0.1em] uppercase")}
+                    value={codeInput}
+                    onChange={(e) => {
+                      setCodeInput(e.target.value);
+                      if (applied) setApplied(null);
+                    }}
+                    onKeyDown={(e) => {
+                      // Entrée vérifie le code au lieu d'envoyer la commande.
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        checkCode();
+                      }
+                    }}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    maxLength={12}
+                    placeholder="AYA-7K2Q"
+                    aria-describedby={`${id}-code-etat`}
+                  />
+                  {discount ? (
+                    <button type="button" onClick={removeCode} className="bouton-verre shrink-0 rounded-full px-4 text-sm font-semibold">
+                      Retirer
+                    </button>
+                  ) : (
+                    <button type="button" onClick={checkCode} disabled={checking} aria-busy={checking || undefined} className="bouton-nuit shrink-0 rounded-full px-4 text-sm font-bold disabled:opacity-60">
+                      {checking ? "…" : "Vérifier"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setCodeOpen(true)} className="self-start text-[13px] font-semibold underline decoration-encre/40 underline-offset-[3px] hover:decoration-encre">
+                J’ai un code de réduction
+              </button>
+            )}
+            <p id={`${id}-code-etat`} aria-live="polite" className="text-xs text-encre-doux">
+              {codeMessage ?? (staleDiscount ? "Vérifiez à nouveau le code : le numéro ou le panier a changé." : "")}
+            </p>
+          </div>
           <div className="flex items-baseline justify-between border-t border-trait-clair pt-3">
             <span className="text-[13px] text-encre-doux">Total à payer</span>
             <Price value={total} className="text-[clamp(30px,4vw,40px)]" />
@@ -278,6 +392,11 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
           <dd className="text-2xl">
             <Price value={receipt.order.total} />
           </dd>
+          {receipt.order.discount_amount > 0 ? (
+            <dd className="text-xs text-encre-doux">
+              dont {formatFcfa(receipt.order.discount_amount)} de remise ({receipt.discountCode})
+            </dd>
+          ) : null}
         </div>
         <div>
           <dt className="text-xs text-encre-doux">Paiement</dt>

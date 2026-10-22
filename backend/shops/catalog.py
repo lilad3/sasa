@@ -14,6 +14,7 @@ from .csv_import import import_products
 from .models import Product
 from .permissions import ShopScopedView
 from .serializers import ProductSerializer
+from .storefront import photo_prefetch
 
 
 def product_queryset(shop, params):
@@ -29,7 +30,7 @@ def product_queryset(shop, params):
         products = products.filter(stock=0)
     elif stock:
         raise ValidationError({"stock": [ErrorDetail("Filtre attendu : low ou out.", code="invalid_choice")]})
-    return products.order_by("category", "name")
+    return products.prefetch_related(photo_prefetch()).order_by("category", "name")
 
 
 class ProductListView(ShopScopedView):

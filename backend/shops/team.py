@@ -65,6 +65,7 @@ def member_payload(membership, *, with_email):
         data["email"] = user.email
         if membership.role == Role.MANAGER:
             data["grants"] = sorted(membership.grants or [])
+            data["discount_cap_percent"] = membership.discount_cap_percent
     return data
 
 
@@ -153,7 +154,7 @@ class MemberDetailView(ShopScopedView):
 
     def patch(self, request, slug, user_id):
         membership = staff_membership(self.shop, user_id, self.membership)
-        if "role" not in request.data and "grants" not in request.data:
+        if not {"role", "grants", "discount_cap_percent"} & set(request.data):
             raise ValidationError({"role": [ErrorDetail("Indiquez le poste ou les droits.", code="required")]})
         role = request.data.get("role", membership.role)
         if role not in (Role.MANAGER, Role.SELLER):
@@ -168,24 +169,53 @@ class MemberDetailView(ShopScopedView):
                 )
             if role != Role.MANAGER:
                 raise ValidationError({"grants": [ErrorDetail("Seul un gérant reçoit des droits en plus.", code="manager_only")]})
+        previous_grants = set(membership.grants or [])
+        # Repasser vendeur retire tous les droits accordés ; sinon, les droits envoyés remplacent les anciens.
+        new_grants = set() if role == Role.SELLER else set(grants) if grants is not None else previous_grants
+        new_cap = self._discount_cap(request.data, membership, role, new_grants)
         require_reauth(request)
 
         target = ("user", membership.user.pk, membership.user.email)
-        previous_grants = set(membership.grants or [])
         if membership.role != role:
             previous = membership.role
             membership.role = role
             record("member_role_changed", request, actor=request.user, shop=self.shop, target=target, previous_role=previous, new_role=role)
-        # Repasser vendeur retire tous les droits accordés ; sinon, les droits envoyés remplacent les anciens.
-        new_grants = set() if role == Role.SELLER else set(grants) if grants is not None else previous_grants
-        if new_grants != previous_grants:
-            record(
-                "member_grants_changed", request, actor=request.user, shop=self.shop, target=target,
-                added=sorted(new_grants - previous_grants), removed=sorted(previous_grants - new_grants),
-            )
+        previous_cap = membership.discount_cap_percent
+        if new_grants != previous_grants or new_cap != previous_cap:
+            details = {"added": sorted(new_grants - previous_grants), "removed": sorted(previous_grants - new_grants)}
+            if new_cap != previous_cap:
+                details["discount_cap_percent"] = {"previous": previous_cap, "new": new_cap}
+            record("member_grants_changed", request, actor=request.user, shop=self.shop, target=target, **details)
         membership.grants = sorted(new_grants)
-        membership.save(update_fields=["role", "grants"])
+        membership.discount_cap_percent = new_cap
+        membership.save(update_fields=["role", "grants", "discount_cap_percent"])
         return Response(member_payload(membership, with_email=True))
+
+    @staticmethod
+    def _discount_cap(data, membership, role, new_grants):
+        """
+        Le plafond des remises d'un gérant (docs/chantier-p5.md §1.3) : obligatoire avec discounts.give,
+        remis à zéro sans ce droit. Vérifié avant la confirmation renforcée, comme le reste du corps.
+        """
+        if "discount_cap_percent" in data and data["discount_cap_percent"] is not None:
+            if role != Role.MANAGER:
+                raise ValidationError(
+                    {"discount_cap_percent": [ErrorDetail("Seul un gérant a un plafond de remise.", code="manager_only")]}
+                )
+            field = serializers.IntegerField(min_value=1, max_value=90)
+            try:
+                cap = field.run_validation(data["discount_cap_percent"])
+            except serializers.ValidationError as error:
+                raise ValidationError({"discount_cap_percent": error.detail}) from None
+        else:
+            cap = membership.discount_cap_percent
+        if "discounts.give" not in new_grants:
+            return None
+        if cap is None:
+            raise ValidationError(
+                {"discount_cap_percent": [ErrorDetail("Fixez le plafond des remises de ce gérant (1 à 90 %).", code="cap_required")]}
+            )
+        return cap
 
     def delete(self, request, slug, user_id):
         membership = staff_membership(self.shop, user_id, self.membership)

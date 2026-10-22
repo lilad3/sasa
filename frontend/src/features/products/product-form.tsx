@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { FormAlert } from "@/features/auth/form-alert";
 import { cn } from "@/lib/cn";
+import { photoUrl } from "@/lib/photos";
 
 import { type ProductFormState, saveProduct } from "./actions";
 import { ProductThumb } from "./product-rows";
@@ -32,7 +33,10 @@ export function ProductForm({ slug, product, categories }: ProductFormProps) {
     startTransition(() => formAction(data));
   }
 
-  const preview = /^https:\/\/\S+$/i.test(imageUrl.trim()) ? imageUrl.trim() : "";
+  const external = /^https:\/\/\S+$/i.test(imageUrl.trim()) ? imageUrl.trim() : "";
+  // Une photo envoyée passe avant l'adresse externe, comme sur la vitrine.
+  const firstPhoto = product?.photos[0];
+  const preview = firstPhoto ? photoUrl(slug, firstPhoto) : external;
 
   return (
     <form onSubmit={submit} noValidate className="col-span-full grid grid-cols-subgrid gap-y-2.5 md:gap-y-3 lg:gap-y-3.5">
@@ -99,14 +103,17 @@ export function ProductForm({ slug, product, categories }: ProductFormProps) {
             Dans la vitrine
           </h2>
           <div className="flex items-center gap-3">
-            <ProductThumb product={{ name: name || "?", image_url: preview }} className="size-16 rounded-[16px] text-xl" />
-            <p className="min-w-0 text-[13px] text-texte-3">{preview ? "Aperçu de la photo." : "Sans photo, la vitrine affiche l’initiale du produit."}</p>
+            <ProductThumb name={name || "?"} src={preview || null} className="size-16 rounded-[16px] text-xl" />
+            <p className="min-w-0 text-[13px] text-texte-3">
+              {firstPhoto ? "Photo principale, choisie dans « Photos »." : preview ? "Aperçu de la photo." : "Sans photo, la vitrine affiche l’initiale du produit."}
+            </p>
           </div>
           <Field
             id="image"
             name="image_url"
             type="url"
-            label="Adresse de la photo"
+            label="Ou l’adresse d’une photo en ligne"
+            hint="Utilisée seulement sans photo envoyée."
             defaultValue={product?.image_url}
             onChange={(event) => setImageUrl(event.target.value)}
             placeholder="https://…"

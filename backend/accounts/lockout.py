@@ -14,7 +14,7 @@ from django.core.cache import cache
 
 from audit.services import record
 from core.exceptions import ProblemError
-from core.ratelimit import fingerprint, incr
+from core.ratelimit import fingerprint, incr, reset
 
 from . import emails, policy
 from .models import User
@@ -46,7 +46,7 @@ def register_failure(email):
         return policy.LOGIN_LOCK_THRESHOLD - failures
     duration = int(policy.LOGIN_LOCK_DURATION.total_seconds())
     cache.set(lock_key, time.time() + duration, timeout=duration)
-    cache.delete(fail_key)
+    reset(fail_key)
     return 0
 
 
@@ -79,11 +79,13 @@ def unlock(token):
 
 
 def clear(email):
-    cache.delete_many(_keys(email))
+    fail_key, lock_key = _keys(email)
+    cache.delete(lock_key)
+    reset(fail_key)
 
 
 def reset_failures(email):
-    cache.delete(_keys(email)[0])
+    reset(_keys(email)[0])
 
 
 def locked_error(seconds):

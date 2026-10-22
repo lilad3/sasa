@@ -13,11 +13,11 @@ from audit.services import record
 from core.exceptions import ProblemError
 from core.pagination import PagePagination
 from core.ratelimit import enforce
-from core.spreadsheet import excel_csv
+from core.spreadsheet import excel_csv, phone_cell
 
 from .dashboard import PERIODS, dashboard_summary, order_counts
 from .demo import generate_demo_data
-from .models import Order, OrderNote, OrderStatus, PaymentMethod
+from .models import STATUS_TIMESTAMP, Channel, Order, OrderNote, OrderStatus, PaymentMethod
 from .permissions import ShopScopedView
 from .serializers import OrderDetailSerializer, OrderNoteSerializer, OrderSerializer, OrderStatusSerializer
 from .team import full_name
@@ -89,7 +89,13 @@ class OrderDetailView(ShopScopedView):
                     )
                 previous_status = order.status
                 order.status = new_status
-                order.save(update_fields=["status", "updated_at"])
+                changed = ["status", "updated_at"]
+                # L'heure de chaque étape, une seule fois : elle sert à mesurer les livraisons à temps.
+                stamp = STATUS_TIMESTAMP.get(new_status)
+                if stamp and getattr(order, stamp) is None:
+                    setattr(order, stamp, timezone.now())
+                    changed.append(stamp)
+                order.save(update_fields=changed)
                 record(
                     "order_status_changed",
                     request,
@@ -152,26 +158,30 @@ class OrderExportView(ShopScopedView):
         )
         payments = dict(PaymentMethod.choices)
         statuses = dict(OrderStatus.choices)
+        channels = dict(Channel.choices)
         rows = [
             [
                 order.reference,
                 timezone.localtime(order.created_at).strftime("%d/%m/%Y %H:%M"),
                 statuses[order.status],
                 order.customer_name,
-                order.customer_phone,
+                phone_cell(order.customer_phone),
                 order.customer_city,
                 order.customer_commune,
                 order.customer_landmark,
                 payments[order.payment_method],
                 " | ".join(f"{item.quantity} × {item.name}" for item in order.items.all()),
                 order.subtotal,
+                order.discount_amount,
                 order.delivery_fee,
                 order.total,
+                order.discount_code,
+                channels.get(order.channel, order.channel),
             ]
             for order in orders
         ]
         header = ["Référence", "Date", "Statut", "Client", "Téléphone", "Ville", "Commune", "Repère", "Paiement",
-                  "Articles", "Sous-total (F)", "Livraison (F)", "Total (F)"]
+                  "Articles", "Sous-total (F)", "Remise (F)", "Livraison (F)", "Total (F)", "Code de réduction", "Canal"]
         record("orders_exported", request, actor=request.user, shop=self.shop, rows=len(rows), first=str(first), last=str(last))
         response = HttpResponse(excel_csv(header, rows), content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="akwaba-{self.shop.slug}-{first}-{last}.csv"'

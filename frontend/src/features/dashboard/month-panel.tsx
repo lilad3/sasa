@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
-import { compactFcfa, formatNumber, formatVariation, PAYMENT_LABEL, variation } from "@/lib/format";
+import { CHANNEL_LABEL, compactFcfa, formatNumber, formatVariation, variation } from "@/lib/format";
 import type { ApiResult } from "@/lib/server/api";
 import type { DashboardSummary, Goal, Kpi, ShopMembership } from "@/lib/types";
 import { ofMonth, type Voice } from "@/lib/voice";
@@ -59,13 +59,26 @@ function grid(children: ReactNode) {
 }
 
 function buildTabs(summary: DashboardSummary, chip: string, slug: string, canSeeCustomers: boolean): MonthTab[] {
-  const { kpis, statuses, payment_methods, places, customers, top_customers } = summary;
-  const placed = Object.values(statuses).reduce((sum, n) => sum + n, 0);
+  const { kpis, payment_methods, channels, places, customers, top_customers, on_time } = summary;
+  const late = on_time.measured - on_time.on_time;
   const mobileRevenue = payment_methods.filter((row) => row.method !== "cash_on_delivery").reduce((sum, row) => sum + row.revenue, 0);
   const cashShare = percent(kpis.revenue.value - mobileRevenue, kpis.revenue.value);
   const totalCustomers = customers.new + customers.returning;
   const best = top_customers[0];
-  const payments = [...payment_methods].sort((a, b) => b.revenue - a.revenue).slice(0, 4);
+  // Les 3 premiers canaux, puis « Autres » s'il en reste : 4 tuiles au plus.
+  const byRevenue = [...channels].sort((a, b) => b.revenue - a.revenue);
+  const sources =
+    byRevenue.length <= 4
+      ? byRevenue.map((row) => ({ key: row.channel, label: CHANNEL_LABEL[row.channel], orders: row.orders, revenue: row.revenue }))
+      : [
+          ...byRevenue.slice(0, 3).map((row) => ({ key: row.channel, label: CHANNEL_LABEL[row.channel], orders: row.orders, revenue: row.revenue })),
+          {
+            key: "autres",
+            label: "Autres",
+            orders: byRevenue.slice(3).reduce((sum, row) => sum + row.orders, 0),
+            revenue: byRevenue.slice(3).reduce((sum, row) => sum + row.revenue, 0),
+          },
+        ];
   const topPlaces = places.slice(0, 4);
   const highestPlace = Math.max(...topPlaces.map((place) => place.revenue), 1);
 
@@ -82,8 +95,20 @@ function buildTabs(summary: DashboardSummary, chip: string, slug: string, canSee
           <Tile label="Panier moyen" chip={chip} foot={versus(kpis.average_basket)}>
             <TwoTone value={formatNumber(kpis.average_basket.value)} unit=" F" className="text-[clamp(32px,3vw,44px)]" />
           </Tile>
-          <Tile label="Livrées" chip={chip} foot={`sur ${formatNumber(placed)} commandes passées`}>
-            <TwoTone value={String(percent(statuses.delivered, placed))} unit=" %" className="text-[clamp(32px,3vw,44px)]" />
+          <Tile
+            label="Livrées à temps"
+            chip={chip}
+            foot={
+              on_time.measured > 0
+                ? `${formatNumber(on_time.measured)} livraison${on_time.measured > 1 ? "s" : ""} mesurée${on_time.measured > 1 ? "s" : ""} · ${formatNumber(late)} en retard`
+                : "Pas encore de livraison mesurée sur la période."
+            }
+          >
+            {on_time.measured > 0 ? (
+              <TwoTone value={String(percent(on_time.on_time, on_time.measured))} unit=" %" className="text-[clamp(32px,3vw,44px)]" />
+            ) : (
+              <TwoTone value="—" className="text-[clamp(32px,3vw,44px)]" />
+            )}
           </Tile>
           <Tile label="Paiement" chip={chip}>
             <div className="mt-1 flex flex-col gap-3.5">
@@ -135,18 +160,18 @@ function buildTabs(summary: DashboardSummary, chip: string, slug: string, canSee
       ),
     },
     {
-      id: "paiements",
-      label: "Paiements",
-      hint: "Comment vos clients paient",
+      id: "canaux",
+      label: "Canaux",
+      hint: "D’où viennent les ventes",
       content: grid(
-        payments.length === 0 ? (
-          <p className="text-sm text-texte-3">Aucun paiement sur la période.</p>
+        sources.length === 0 ? (
+          <p className="text-sm text-texte-3">Aucune vente sur la période.</p>
         ) : (
-          payments.map((row) => (
-            <Tile key={row.method} label={PAYMENT_LABEL[row.method]} chip={chip} foot={`${formatNumber(row.orders)} commande${row.orders > 1 ? "s" : ""}`}>
+          sources.map((row, index) => (
+            <Tile key={row.key} label={row.label} chip={chip} foot={`${formatNumber(row.orders)} commande${row.orders > 1 ? "s" : ""}`}>
               <TwoTone value={String(percent(row.revenue, kpis.revenue.value))} unit=" %" className="text-[clamp(32px,3vw,44px)]" />
               <div className="h-1 rounded-full bg-white/10" aria-hidden>
-                <div className={cn("barre-pousse h-full rounded-full", row.method === "cash_on_delivery" ? "bg-orange-clair" : "bg-indigo-clair")} style={{ width: `${Math.max(percent(row.revenue, kpis.revenue.value), 2)}%` }} />
+                <div className={cn("barre-pousse h-full rounded-full", index === 0 ? "bg-orange-clair" : "bg-indigo-clair")} style={{ width: `${Math.max(percent(row.revenue, kpis.revenue.value), 2)}%` }} />
               </div>
             </Tile>
           ))

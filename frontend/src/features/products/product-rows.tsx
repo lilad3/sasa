@@ -3,19 +3,20 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatFcfa, formatNumber } from "@/lib/format";
+import { mainImage } from "@/lib/photos";
 
 import type { Product } from "./types";
 
-/** Vignette : la photo du produit, sinon son initiale. */
-export function ProductThumb({ product, className }: { product: Pick<Product, "name" | "image_url">; className?: string }) {
+/** Vignette : la photo du produit (envoyée, ou à une adresse externe), sinon son initiale. */
+export function ProductThumb({ name, src, className }: { name: string; src: string | null; className?: string }) {
   return (
     <span aria-hidden className={cn("grid size-10 shrink-0 place-items-center overflow-hidden rounded-[12px] border border-trait-doux bg-encre/60 text-sm font-bold text-texte-2", className)}>
-      {product.image_url ? (
-        // Images hébergées ailleurs (https uniquement, vérifié par Django) : pas d'optimisation Next.
+      {src ? (
+        // Photo relayée par /boutique/[slug]/photo, ou hébergée ailleurs (https vérifié par Django) : pas d'optimisation Next.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={product.image_url} alt="" loading="lazy" className="size-full object-cover" />
+        <img src={src} alt="" loading="lazy" className="size-full object-cover" />
       ) : (
-        product.name.trim().charAt(0).toUpperCase()
+        name.trim().charAt(0).toUpperCase()
       )}
     </span>
   );
@@ -66,11 +67,11 @@ export function ProductRows({ products, slug, canWrite, empty }: ProductRowsProp
           <li key={product.id} className="border-b border-trait-doux last:border-0">
             {canWrite ? (
               <Link href={`/app/${slug}/produits/${product.id}`} className={cn(columns, "-mx-2 rounded-xl px-2 py-2.5 transition-colors hover:bg-white/[0.05]")}>
-                <ProductCells product={product} />
+                <ProductCells product={product} slug={slug} />
               </Link>
             ) : (
               <div className={cn(columns, "py-2.5")}>
-                <ProductCells product={product} />
+                <ProductCells product={product} slug={slug} />
               </div>
             )}
           </li>
@@ -80,13 +81,16 @@ export function ProductRows({ products, slug, canWrite, empty }: ProductRowsProp
   );
 }
 
-function ProductCells({ product }: { product: Product }) {
+function ProductCells({ product, slug }: { product: Product; slug: string }) {
   return (
     <>
       <span className="flex min-w-0 items-center gap-3">
-        <ProductThumb product={product} />
+        <ProductThumb name={product.name} src={mainImage(slug, product)} />
         <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold">{product.name}</span>
+          <span className="flex items-baseline gap-2">
+            <span className="truncate text-sm font-semibold">{product.name}</span>
+            {product.is_featured ? <span className="shrink-0 text-[12px] font-semibold text-sable">à la une</span> : null}
+          </span>
           <span className="block truncate text-xs text-texte-3">
             <span className="font-mono">{product.sku}</span>
             {product.category ? ` · ${product.category}` : null}

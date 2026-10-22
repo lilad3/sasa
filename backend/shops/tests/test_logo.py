@@ -37,7 +37,8 @@ class LogoTests(ApiTestCase):
         self.assertEqual(response.status_code, 200, response.content)
         version = response.json()["logo_version"]
 
-        served = self.client.get("/api/v1/storefront/maison-test/logo")
+        # Le BFF demande une image (Accept: image/png) : DRF ne doit pas répondre 406.
+        served = self.client.get("/api/v1/storefront/maison-test/logo", HTTP_ACCEPT="image/png")
         self.assertEqual(served["Content-Type"], "image/png")
         self.assertEqual(served["X-Content-Type-Options"], "nosniff")
         image = Image.open(io.BytesIO(served.content))

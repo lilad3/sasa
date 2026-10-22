@@ -16,7 +16,9 @@ from django.utils import timezone
 from core.exceptions import ProblemError
 
 from .delivery import find_zone
-from .models import Customer, IdempotencyRecord, Order, OrderItem, OrderStatus, Product, new_reference
+from .discount_codes import invalid as discount_invalid
+from .discount_codes import usable_discount
+from .models import Channel, Customer, Discount, IdempotencyRecord, Order, OrderItem, OrderStatus, Product, new_reference
 
 IDEMPOTENCY_TTL = timedelta(hours=24)
 
@@ -29,7 +31,7 @@ def request_hash(data):
 
 def fake_response(data):
     """Réponse donnée à un robot (champ piège rempli) : elle ressemble à une vraie, rien n'est créé."""
-    return {"reference": new_reference(), "total": data.get("expected_total") or 0, "status": OrderStatus.PENDING}
+    return {"reference": new_reference(), "total": data.get("expected_total") or 0, "status": OrderStatus.PENDING, "discount_amount": 0}
 
 
 def place_order(shop, data, idempotency_key):
@@ -50,10 +52,13 @@ def place_order(shop, data, idempotency_key):
                 )
             return previous.response, None
 
-        lines = _priced_lines(shop, data["items"])
+        lines = priced_lines(shop, data["items"])
         zone = find_zone(data["customer"]["city"], data["customer"].get("commune", ""))
         subtotal = sum(line["line_total"] for line in lines)
-        total = subtotal + zone.fee
+        # Le code ne vaut qu'avec le téléphone de la commande ; tout refus donne la même erreur.
+        discount = usable_discount(shop, data["discount_code"], data["customer"]["phone"]) if data.get("discount_code") else None
+        discount_amount = discount.amount_for(subtotal) if discount else 0
+        total = subtotal - discount_amount + zone.fee
 
         expected = data.get("expected_total")
         if expected is not None and expected != total:
@@ -62,9 +67,19 @@ def place_order(shop, data, idempotency_key):
                 "price_changed",
                 "Le total a changé depuis l'affichage de votre panier.",
                 subtotal=subtotal,
+                discount_amount=discount_amount,
                 delivery_fee=zone.fee,
                 total=total,
             )
+
+        if discount is not None:
+            # Décompte conditionnel : deux commandes simultanées ne peuvent pas user deux fois un code à usage unique.
+            # Un échec annule toute la transaction, stock compris.
+            used = Discount.objects.filter(
+                pk=discount.pk, uses__lt=F("max_uses"), revoked_at__isnull=True, ends_on__gte=timezone.localdate()
+            ).update(uses=F("uses") + 1)
+            if used != 1:
+                raise discount_invalid()
 
         customer = data["customer"]
         order = Order.objects.create(
@@ -77,8 +92,12 @@ def place_order(shop, data, idempotency_key):
             customer_commune=zone.commune,
             customer_landmark=customer.get("landmark", ""),
             subtotal=subtotal,
+            discount=discount,
+            discount_code=discount.code if discount else "",
+            discount_amount=discount_amount,
             delivery_fee=zone.fee,
             total=total,
+            channel=data.get("channel") or Channel.DIRECT,
         )
         # La fiche client suit le dernier nom donné avec ce numéro ; un fidèle nommé le reste.
         Customer.objects.update_or_create(shop=shop, phone=customer["phone"], defaults={"name": customer["name"]})
@@ -101,12 +120,12 @@ def place_order(shop, data, idempotency_key):
             if updated != 1:
                 raise ProblemError(409, "out_of_stock", "Un article vient d'être épuisé.")
 
-        response = {"reference": order.reference, "total": order.total, "status": order.status}
+        response = {"reference": order.reference, "total": order.total, "status": order.status, "discount_amount": order.discount_amount}
         IdempotencyRecord.objects.create(shop=shop, key=idempotency_key, request_hash=fingerprint, response=response)
     return response, order
 
 
-def _priced_lines(shop, items):
+def priced_lines(shop, items):
     """Lignes au prix du serveur. Produit inconnu ou masqué : erreur de saisie. Stock insuffisant : 409."""
     wanted = {item["product_id"]: item["quantity"] for item in items}
     # Clés en texte : les identifiants arrivent en texte dans `data` (forme stable pour l'empreinte).

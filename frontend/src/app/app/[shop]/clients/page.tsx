@@ -5,11 +5,14 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { NameVipForm, ThresholdForm } from "@/features/customers/forms";
+import { CustomerExportPanel } from "@/features/customers/export-panel";
+import { GiveDiscount } from "@/features/customers/discounts";
 import { CustomerTags, LoyalCard, Reliability } from "@/features/customers/parts";
 import { TwoTone } from "@/features/dashboard/parts";
 import { cn } from "@/lib/cn";
 import { compactFcfa, formatNumber, formatSince, formatVariation, variation } from "@/lib/format";
-import { getCustomers, getCustomerSummary, getMyShops } from "@/lib/server/session";
+import { getCustomerSummary, getCustomers, getMe, getMyShops } from "@/lib/server/session";
+import { storefrontLink } from "@/lib/server/storefront-link";
 import type { CustomerSegment } from "@/lib/types";
 import { voice } from "@/lib/voice";
 
@@ -55,10 +58,12 @@ async function CustomersFromRoute({ params, searchParams }: Pick<PageProps<"/app
     page: Math.max(1, Number.parseInt(first(query.page) ?? "1", 10) || 1),
   };
 
-  const [list, summary, shops] = await Promise.all([
+  const [list, summary, shops, me, link] = await Promise.all([
     getCustomers(shop, { ...filters, sort: filters.segment === "loyal" ? "spent" : "recent" }),
     getCustomerSummary(shop),
     getMyShops(),
+    getMe(),
+    storefrontLink(shop),
   ]);
   // Le vendeur n'a pas accès aux clients (403) : la page n'existe pas pour lui, comme le menu.
   if (!list.ok || !summary.ok) {
@@ -107,6 +112,7 @@ async function CustomersFromRoute({ params, searchParams }: Pick<PageProps<"/app
             </button>
           </Form>
           {can("customers.vip") ? <NameVipForm slug={shop} /> : null}
+          {can("customers.export") ? <CustomerExportPanel slug={shop} mfaEnabled={me.ok && me.data.mfa_enabled} segment={filters.segment} /> : null}
         </div>
       </header>
 
@@ -139,7 +145,25 @@ async function CustomersFromRoute({ params, searchParams }: Pick<PageProps<"/app
           </div>
           <ol className="cascade grid gap-2.5 sm:grid-cols-2 md:gap-3 xl:grid-cols-3">
             {s.loyal_top.map((customer) => (
-              <LoyalCard key={customer.id} customer={customer} slug={shop} />
+              <LoyalCard
+                key={customer.id}
+                customer={customer}
+                slug={shop}
+                action={
+                  can("discounts.give") ? (
+                    <GiveDiscount
+                      compact
+                      slug={shop}
+                      customerId={customer.id}
+                      customerName={customer.name}
+                      shopName={membership.name}
+                      shopUrl={link.url}
+                      cap={membership.role === "owner" ? null : (membership.discount_cap_percent ?? 0)}
+                      mfaEnabled={me.ok && me.data.mfa_enabled}
+                    />
+                  ) : null
+                }
+              />
             ))}
           </ol>
         </section>

@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/cn";
+import { CHANNEL_LABEL } from "@/lib/format";
+import type { Channel } from "@/lib/types";
+
+/** Un lien par réseau : chaque commande dira d'où elle vient (onglet « Canaux »). */
+const READY: Channel[] = ["facebook", "instagram", "tiktok", "sms"];
 
 type ShareCardProps = {
   url: string;
@@ -20,6 +25,7 @@ type ShareCardProps = {
  */
 export function ShareCard({ url, display, title, hint, shopName }: ShareCardProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedVia, setCopiedVia] = useState<Channel | null>(null);
   const timer = useRef(0);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
@@ -42,7 +48,18 @@ export function ShareCard({ url, display, title, hint, shopName }: ShareCardProp
     timer.current = window.setTimeout(() => setCopied(false), 2200);
   }
 
-  const whatsapp = `https://wa.me/?text=${encodeURIComponent(`Découvrez ${shopName} et commandez en ligne : ${url}`)}`;
+  async function copyVia(channel: Channel) {
+    try {
+      await navigator.clipboard.writeText(`${url}?via=${channel}`);
+    } catch {
+      return;
+    }
+    setCopiedVia(channel);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setCopiedVia(null), 2200);
+  }
+
+  const whatsapp = `https://wa.me/?text=${encodeURIComponent(`Découvrez ${shopName} et commandez en ligne : ${url}?via=whatsapp`)}`;
 
   return (
     <section aria-labelledby="titre-lien" className="carte-une flex h-full flex-col gap-5 rounded-[28px] p-6">
@@ -80,7 +97,7 @@ export function ShareCard({ url, display, title, hint, shopName }: ShareCardProp
           {copied ? "Lien copié" : "Copier le lien"}
         </button>
         <span aria-live="polite" className="sr-only">
-          {copied ? "Le lien de la boutique est copié." : ""}
+          {copied ? "Le lien de la boutique est copié." : copiedVia ? `Le lien pour ${CHANNEL_LABEL[copiedVia]} est copié.` : ""}
         </span>
         <div className="grid grid-cols-2 gap-2.5">
           <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="bouton-contour flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold">
@@ -96,6 +113,22 @@ export function ShareCard({ url, display, title, hint, shopName }: ShareCardProp
               <path d="M7 17L17 7M9 7h8v8" />
             </svg>
           </a>
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-1 gap-y-1 pt-1 text-[13px]">
+          <span className="mr-1 text-texte-3">Liens prêts :</span>
+          {READY.map((channel, index) => (
+            <span key={channel} className="inline-flex items-baseline">
+              <button
+                type="button"
+                onClick={() => copyVia(channel)}
+                aria-label={`Copier le lien pour ${CHANNEL_LABEL[channel]}`}
+                className="rounded px-1 font-semibold text-texte-2 underline decoration-white/25 underline-offset-[3px] hover:text-texte hover:decoration-sable"
+              >
+                {copiedVia === channel ? `${CHANNEL_LABEL[channel]} copié` : CHANNEL_LABEL[channel]}
+              </button>
+              {index < READY.length - 1 ? <span aria-hidden className="text-texte-3">·</span> : null}
+            </span>
+          ))}
         </div>
       </div>
     </section>

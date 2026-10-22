@@ -56,6 +56,7 @@ type MemberRowProps = {
 export function MemberRow({ slug, member, mfaEnabled, viewer = { isOwner: true, canManageSellers: true }, presence }: MemberRowProps) {
   const [state, formAction, pending] = useActionState(memberAction, initial);
   const [mode, setMode] = useState<Mode | null>(null);
+  const [givesDiscounts, setGivesDiscounts] = useState(member.grants?.includes("discounts.give") ?? false);
   const editable = member.role !== "owner" && !member.is_you && (viewer.isOwner || (viewer.canManageSellers && member.role === "seller"));
   const firstName = member.first_name || member.name;
 
@@ -97,7 +98,14 @@ export function MemberRow({ slug, member, mfaEnabled, viewer = { isOwner: true, 
           {presence ? <PresenceLine presence={presence} /> : null}
           {member.role === "manager" && member.grants && member.grants.length > 0 ? (
             <p className="mt-1 text-[12.5px] text-indigo-clair">
-              Pouvoirs en plus : {member.grants.map((grant) => GRANT_TEXT[grant as keyof typeof GRANT_TEXT]?.label.toLowerCase() ?? grant).join(", ")}
+              Pouvoirs en plus :{" "}
+              {member.grants
+                .map((grant) =>
+                  grant === "discounts.give" && member.discount_cap_percent
+                    ? `offrir des réductions (jusqu’à ${member.discount_cap_percent} %)`
+                    : (GRANT_TEXT[grant as keyof typeof GRANT_TEXT]?.label.toLowerCase() ?? grant),
+                )
+                .join(", ")}
             </p>
           ) : null}
           <p className="mt-1 text-[12.5px] text-texte-3">
@@ -175,13 +183,40 @@ export function MemberRow({ slug, member, mfaEnabled, viewer = { isOwner: true, 
                   key={grant}
                   className="flex cursor-pointer items-start gap-2.5 rounded-[14px] border border-trait-doux bg-encre/40 px-3 py-2 has-checked:border-indigo-clair/50 has-checked:bg-white/10"
                 >
-                  <input type="checkbox" name="grants" value={grant} defaultChecked={member.grants?.includes(grant)} className="mt-1 accent-indigo" />
+                  <input
+                    type="checkbox"
+                    name="grants"
+                    value={grant}
+                    defaultChecked={member.grants?.includes(grant)}
+                    onChange={grant === "discounts.give" ? (event) => setGivesDiscounts(event.target.checked) : undefined}
+                    className="mt-1 accent-indigo"
+                  />
                   <span>
                     <span className="text-[14px] font-semibold">{GRANT_TEXT[grant].label}</span>
                     <span className="block text-[12.5px] text-texte-3">{GRANT_TEXT[grant].help}</span>
                   </span>
                 </label>
               ))}
+              {/* Le plafond n'a de sens qu'avec le droit : Django l'exige alors, et l'efface sans lui. */}
+              {givesDiscounts ? (
+                <div className="ml-7 flex items-center gap-2.5 text-[13px]">
+                  <label htmlFor={`plafond-${member.user_id}`} className="text-texte-2">
+                    Plafond des remises
+                  </label>
+                  <input
+                    id={`plafond-${member.user_id}`}
+                    name="discount_cap_percent"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={90}
+                    defaultValue={member.discount_cap_percent ?? 10}
+                    required
+                    className="w-16 rounded-[10px] border border-white/15 bg-encre/45 px-2 py-1 text-center text-texte tabular-nums outline-none focus-visible:border-orange"
+                  />
+                  <span className="text-texte-3">%</span>
+                </div>
+              ) : null}
             </fieldset>
           ) : panel === "password" ? (
             <p className="text-[13.5px] text-texte-2">

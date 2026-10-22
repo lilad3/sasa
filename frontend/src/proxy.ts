@@ -8,6 +8,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { accessExpiresAt, callApi, clientIpFrom } from "@/lib/server/api";
 import { clearSessionCookies, COOKIE, setSessionCookies } from "@/lib/server/cookies";
+import { sessionIsOver } from "@/lib/server/refresh";
 import type { TokenPair } from "@/lib/types";
 
 const RENEW_BEFORE_MS = 30_000;
@@ -44,7 +45,9 @@ export async function proxy(request: NextRequest) {
   });
 
   if (!result.ok) {
-    if (result.problem.code === "network_error") return NextResponse.next();
+    // Panne passagère (réseau, 429, 5xx) : on laisse passer sans rien effacer ; la page renverra vers
+    // /session/renouveler si l'accès a vraiment expiré. Seul un refus définitif déconnecte.
+    if (!sessionIsOver(result.problem)) return NextResponse.next();
     const login = new URL("/connexion", request.url);
     login.searchParams.set("raison", result.problem.code === "session_revoked" ? "session_fermee" : "session_expiree");
     const response = NextResponse.redirect(login);
@@ -65,5 +68,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app", "/app/:path*", "/connexion", "/premiere-connexion"],
+  matcher: ["/app", "/app/:path*", "/apercu/:path*", "/connexion", "/premiere-connexion"],
 };

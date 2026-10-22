@@ -5,6 +5,8 @@ import { Suspense } from "react";
 
 import { getProduct, getProductOverview } from "@/features/products/data";
 import { DeleteProduct } from "@/features/products/delete-product";
+import { FeaturedCard } from "@/features/products/featured";
+import { ProductPhotos } from "@/features/products/photos";
 import { ProductForm } from "@/features/products/product-form";
 import { formatDateTime } from "@/lib/format";
 import { getMyShops } from "@/lib/server/session";
@@ -45,6 +47,10 @@ async function ProductFromRoute({ params }: Pick<PageProps<"/app/[shop]/produits
         <p className="mt-1 text-[13px] text-texte-3">Modifié le {formatDateTime(product.updated_at)}</p>
       </header>
       <ProductForm slug={shop} product={product} categories={overview.ok ? overview.data.categories : []} />
+      <ProductPhotos slug={shop} productId={product.id} productName={product.name} photos={product.photos} />
+      {membership.permissions.includes("storefront.edit") ? (
+        <FeaturedCard slug={shop} productId={product.id} isFeatured={product.is_featured} isActive={product.is_active} inStock={product.stock > 0} />
+      ) : null}
       <DeleteProduct slug={shop} productId={product.id} name={product.name} />
     </>
   );

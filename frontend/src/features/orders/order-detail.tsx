@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { StatusPill, TwoTone } from "@/features/dashboard/parts";
 import { cn } from "@/lib/cn";
-import { formatDateTime, formatFcfa, formatNumber, formatPhone, PAYMENT_LABEL } from "@/lib/format";
+import { CHANNEL_LABEL, formatDateTime, formatFcfa, formatNumber, formatPhone, PAYMENT_LABEL } from "@/lib/format";
 import type { OrderDetail as OrderDetailData, OrderStatus } from "@/lib/types";
 
 import { OrderNotes } from "./order-notes";
@@ -40,7 +40,7 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
         </div>
       </header>
 
-      <StatusTrack status={order.status} />
+      <StatusTrack order={order} />
 
       <section aria-labelledby="titre-articles" className="vitre col-span-full flex flex-col gap-4 rounded-[24px] p-[18px] lg:col-span-6">
         <h2 id="titre-articles" className="text-sm text-texte-2">
@@ -62,6 +62,14 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
         <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 px-1 text-sm">
           <dt className="text-texte-2">Sous-total</dt>
           <dd className="text-right tabular-nums">{formatFcfa(order.subtotal)}</dd>
+          {order.discount_amount > 0 ? (
+            <>
+              <dt className="text-texte-2">
+                Remise{order.discount_code ? <> · <span className="font-mono tracking-[0.06em]">{order.discount_code}</span></> : null}
+              </dt>
+              <dd className="text-right tabular-nums">−{formatFcfa(order.discount_amount)}</dd>
+            </>
+          ) : null}
           <dt className="text-texte-2">Livraison · {customer.commune || customer.city}</dt>
           <dd className="text-right tabular-nums">{order.delivery_fee ? formatFcfa(order.delivery_fee) : "offerte"}</dd>
           <dt className="self-end pt-2 text-texte-2">Total</dt>
@@ -124,6 +132,10 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
                 <dd>{customer.landmark}</dd>
               </div>
             ) : null}
+            <div>
+              <dt className="text-xs text-texte-3">Venue de</dt>
+              <dd>{CHANNEL_LABEL[order.channel]}</dd>
+            </div>
           </dl>
         </section>
 
@@ -142,8 +154,45 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
   );
 }
 
-/** Le circuit d'une commande : les étapes franchies s'allument, une commande annulée s'éteint. */
-function StatusTrack({ status }: { status: OrderStatus }) {
+/** « 18 h », « 2 j 3 h » : la durée d'une livraison, arrondie à l'heure. */
+function formatHours(hours: number) {
+  const rounded = Math.max(1, Math.round(hours));
+  if (rounded < 48) return `${rounded} h`;
+  const days = Math.floor(rounded / 24);
+  const rest = rounded % 24;
+  return rest ? `${days} j ${rest} h` : `${days} j`;
+}
+
+/** Livrée à temps ou en retard, par rapport au délai promis pour la zone (chantier-p5.md §4.3). */
+function DeliveryVerdict({ order }: { order: OrderDetailData }) {
+  if (order.delivery_hours === null) {
+    if (order.status === "cancelled" || order.status === "delivered") return null;
+    return <p className="text-[13px] text-texte-3">Livraison promise sous {order.promised_hours} h pour cette zone, à compter de la commande.</p>;
+  }
+  const late = order.delivery_hours - order.promised_hours;
+  return (
+    <p className="text-[13px]">
+      <span className="font-semibold">Livrée en {formatHours(order.delivery_hours)}</span>
+      {late <= 0 ? (
+        <span className="text-indigo-clair"> · à temps</span>
+      ) : (
+        <span className="text-ocre"> · {formatHours(late)} de retard</span>
+      )}
+      <span className="text-texte-3"> (promis : {order.promised_hours} h)</span>
+    </p>
+  );
+}
+
+/** Le circuit d'une commande : les étapes franchies s'allument, avec leur heure ; une commande annulée s'éteint. */
+function StatusTrack({ order }: { order: OrderDetailData }) {
+  const { status } = order;
+  const times: Record<OrderStatus, string | null> = {
+    pending: order.created_at,
+    confirmed: order.confirmed_at,
+    shipped: order.shipped_at,
+    delivered: order.delivered_at,
+    cancelled: null,
+  };
   const cancelled = status === "cancelled";
   const reached = cancelled ? -1 : STEPS.findIndex((step) => step.status === status);
 
@@ -169,11 +218,12 @@ function StatusTrack({ status }: { status: OrderStatus }) {
                 {step.label}
                 {done && !current ? <span className="sr-only"> (fait)</span> : null}
               </span>
-              <span className="text-xs text-texte-3">{step.detail}</span>
+              <span className="text-xs text-texte-3">{done && times[step.status] ? formatDateTime(times[step.status] as string) : step.detail}</span>
             </li>
           );
         })}
       </ol>
+      <DeliveryVerdict order={order} />
       {cancelled ? <p className="text-sm text-danger-clair">Commande annulée : elle ne compte ni dans le chiffre d’affaires ni dans les commandes.</p> : null}
     </section>
   );

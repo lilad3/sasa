@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import activity, api_keys, catalog, customers, goals, logo, presence, shop_settings, storefront, team, views
+from . import activity, api_keys, catalog, customers, design, discounts, goals, logo, photos, presence, shop_settings, storefront, team, views
 
 urlpatterns = [
     path("shops/<slug:slug>/dashboard", views.DashboardView.as_view()),
@@ -15,6 +15,10 @@ urlpatterns = [
     path("shops/<slug:slug>/products/overview", catalog.ProductOverviewView.as_view()),
     path("shops/<slug:slug>/products/import", catalog.ProductImportView.as_view()),
     path("shops/<slug:slug>/products/<uuid:product_id>", catalog.ProductDetailView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/photos", photos.ProductPhotoListView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/photos/<uuid:photo_id>", photos.ProductPhotoDetailView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/photos/<uuid:photo_id>/main", photos.ProductPhotoMainView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/featured", photos.ProductFeaturedView.as_view()),
     # Équipe et mot du patron
     path("shops/<slug:slug>/members", team.MemberListView.as_view()),
     path("shops/<slug:slug>/members/<uuid:user_id>", team.MemberDetailView.as_view()),
@@ -22,13 +26,21 @@ urlpatterns = [
     path("shops/<slug:slug>/team/presence", presence.TeamPresenceView.as_view()),
     path("shops/<slug:slug>/goal", goals.GoalView.as_view()),
     path("shops/<slug:slug>/logo", logo.ShopLogoView.as_view()),
+    path("shops/<slug:slug>/storefront", design.DesignView.as_view()),
+    path("shops/<slug:slug>/storefront/draft", design.DesignDraftView.as_view()),
+    path("shops/<slug:slug>/storefront/publish", design.DesignPublishView.as_view()),
+    path("shops/<slug:slug>/storefront/versions", design.DesignVersionsView.as_view()),
+    path("shops/<slug:slug>/storefront/versions/<int:number>/restore", design.DesignRestoreView.as_view()),
     # Clients : les routes nommées avant l'identifiant de fiche.
     path("shops/<slug:slug>/customers", customers.CustomerListView.as_view()),
     path("shops/<slug:slug>/customers/summary", customers.CustomerSummaryView.as_view()),
+    path("shops/<slug:slug>/customers/export", customers.CustomerExportView.as_view()),
     path("shops/<slug:slug>/customers/settings", customers.LoyaltySettingsView.as_view()),
     path("shops/<slug:slug>/customers/vip", customers.CustomerVipView.as_view()),
     path("shops/<slug:slug>/customers/<str:customer_id>", customers.CustomerDetailView.as_view()),
     path("shops/<slug:slug>/customers/<str:customer_id>/vip", customers.CustomerVipRemoveView.as_view()),
+    path("shops/<slug:slug>/customers/<str:customer_id>/discounts", discounts.CustomerDiscountView.as_view()),
+    path("shops/<slug:slug>/discounts/<uuid:discount_id>", discounts.DiscountDetailView.as_view()),
     path("shops/<slug:slug>/notes", team.TeamNoteListView.as_view()),
     path("shops/<slug:slug>/notes/<uuid:note_id>", team.TeamNoteDetailView.as_view()),
     path("shops/<slug:slug>/notes/<uuid:note_id>/read", team.TeamNoteReadView.as_view()),
@@ -46,5 +58,7 @@ urlpatterns = [
     path("storefront/<slug:slug>/products/<slug:product_slug>", storefront.StorefrontProductDetailView.as_view()),
     path("storefront/<slug:slug>/orders", storefront.StorefrontOrderView.as_view()),
     path("storefront/<slug:slug>/track", storefront.StorefrontTrackView.as_view()),
+    path("storefront/<slug:slug>/discounts/check", storefront.StorefrontDiscountCheckView.as_view()),
     path("storefront/<slug:slug>/logo", logo.StorefrontLogoView.as_view()),
+    path("storefront/<slug:slug>/photos/<uuid:photo_id>", photos.StorefrontPhotoView.as_view()),
 ]

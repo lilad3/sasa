@@ -11,14 +11,19 @@ from collections import Counter
 from datetime import timedelta
 
 from django.db.models import Sum
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ErrorDetail, NotFound, ValidationError
 from rest_framework.response import Response
 
+from accounts.sessions import require_reauth
 from audit.services import record
 from core.pagination import PagePagination
+from core.ratelimit import enforce
+from core.spreadsheet import excel_csv, phone_cell
 
+from .discounts import customer_discounts
 from .models import Customer, Order, OrderItem, OrderStatus
 from .permissions import ShopScopedView
 from .storefront import normalize_phone, plain_text
@@ -149,6 +154,59 @@ class CustomerListView(ShopScopedView):
         return paginator.get_paginated_response(page)
 
 
+FLAG_LABELS = {"new": "nouveau", "win_back": "à relancer", "at_risk": "à risque"}
+EXPORT_LIMIT = (10, 3600)  # par membre
+
+
+class CustomerExportView(ShopScopedView):
+    """
+    Export des clients en CSV pour Excel (docs/chantier-p5.md §4.1). Tous les téléphones sortent en
+    clair : droit à part (customers.export, que le propriétaire peut confier), confirmation
+    renforcée, limite de débit et journal.
+    """
+
+    permission_by_method = {"GET": "customers.export"}
+
+    def get(self, request, slug):
+        segment = request.query_params.get("segment", "all")
+        if segment not in SEGMENTS:
+            raise ValidationError({"segment": [ErrorDetail("Segment inconnu.", code="invalid_choice")]})
+        require_reauth(request)
+        enforce("customers_export:member", str(self.membership.pk), EXPORT_LIMIT)
+
+        customers, _, items = all_customers(self.shop)
+        found = [(item, customer) for item, customer in zip(items, customers, strict=True) if matches(item, customer, segment, "")]
+        found.sort(key=lambda pair: -pair[0]["spent"])
+
+        def day(moment):
+            return timezone.localtime(moment).strftime("%d/%m/%Y") if moment else ""
+
+        rows = [
+            [
+                item["name"],
+                phone_cell(customer.phone),
+                item["city"],
+                item["commune"],
+                item["orders"],
+                item["delivered"],
+                item["cancelled"],
+                item["spent"],
+                item["average_basket"],
+                day(item["first_order_at"]),
+                day(item["last_order_at"]),
+                "oui" if item["loyal"] else "non",
+                ", ".join(FLAG_LABELS[flag] for flag in item["flags"]),
+            ]
+            for item, customer in found
+        ]
+        header = ["Nom", "Téléphone", "Ville", "Commune", "Commandes", "Livrées", "Annulées", "Total dépensé (F)",
+                  "Panier moyen (F)", "Première commande", "Dernière commande", "Fidèle", "Repères"]
+        record("customers_exported", request, actor=request.user, shop=self.shop, rows=len(rows), segment=segment)
+        response = HttpResponse(excel_csv(header, rows), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="akwaba-{self.shop.slug}-clients-{timezone.localdate()}.csv"'
+        return response
+
+
 class CustomerSummaryView(ShopScopedView):
     permission_by_method = {"GET": "customers.view"}
 
@@ -241,6 +299,11 @@ def customer_detail(shop, customer):
     }
 
 
+def with_discounts(payload, customer, view):
+    """La fiche et ses réductions (docs/chantier-p5.md §1.4), écrites pour le lecteur : code masqué sans le droit."""
+    return {**payload, "discounts": customer_discounts(customer, view.membership, view.permissions)}
+
+
 def shop_customer(shop, customer_id):
     # Une fiche d'une autre boutique donne 404, comme une fiche inexistante.
     customer = Customer.objects.for_shop(shop).select_related("vip_set_by").filter(public_id=customer_id).first()
@@ -253,7 +316,8 @@ class CustomerDetailView(ShopScopedView):
     permission_by_method = {"GET": "customers.view"}
 
     def get(self, request, slug, customer_id):
-        return Response(customer_detail(self.shop, shop_customer(self.shop, customer_id)))
+        customer = shop_customer(self.shop, customer_id)
+        return Response(with_discounts(customer_detail(self.shop, customer), customer, self))
 
 
 class LoyaltySettingsView(ShopScopedView):
@@ -296,7 +360,7 @@ class CustomerVipView(ShopScopedView):
         customer.is_vip, customer.vip_set_by, customer.vip_set_at = True, request.user, timezone.now()
         customer.save()
         record("customer_vip_set", request, actor=request.user, shop=self.shop, target=("customer", customer.public_id, customer.name))
-        return Response(customer_detail(self.shop, customer))
+        return Response(with_discounts(customer_detail(self.shop, customer), customer, self))
 
 
 class CustomerVipRemoveView(ShopScopedView):
@@ -308,4 +372,4 @@ class CustomerVipRemoveView(ShopScopedView):
             customer.is_vip, customer.vip_set_by, customer.vip_set_at = False, None, None
             customer.save(update_fields=["is_vip", "vip_set_by", "vip_set_at"])
             record("customer_vip_removed", request, actor=request.user, shop=self.shop, target=("customer", customer.public_id, customer.name))
-        return Response(customer_detail(self.shop, customer))
+        return Response(with_discounts(customer_detail(self.shop, customer), customer, self))

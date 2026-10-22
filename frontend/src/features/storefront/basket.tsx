@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/cn";
 import { formatFcfa } from "@/lib/format";
 import type { PublicProduct } from "@/lib/types";
 
@@ -75,18 +76,39 @@ export function Basket({
   );
 }
 
-/** Barre flottante sur téléphone : total et bouton Commander, toujours à portée de pouce. */
-export function MobileBar({ lines, onCheckout, closed = false }: { lines: Line[]; onCheckout: () => void; closed?: boolean }) {
+/**
+ * Barre flottante : total et bouton Commander, toujours à portée de pouce. Sur ordinateur, la vitrine
+ * Essentiel a son panier latéral ; les autres thèmes gardent la barre (`always`).
+ */
+export function MobileBar({
+  lines,
+  onCheckout,
+  closed = false,
+  always = false,
+  preview = false,
+}: {
+  lines: Line[];
+  onCheckout: () => void;
+  closed?: boolean;
+  always?: boolean;
+  /** Aperçu de « Ma boutique » : on ne commande pas. */
+  preview?: boolean;
+}) {
   const count = articleCount(lines);
   if (count === 0) return null;
   return (
-    <div className="zone-sombre fixed inset-x-3 bottom-3 z-20 flex items-center justify-between gap-3 rounded-[22px] border border-white/15 bg-nuit/90 py-2.5 pr-2.5 pl-4 text-creme shadow-[0_14px_40px_rgb(0_0_0/0.35)] backdrop-blur-lg lg:hidden">
+    <div
+      className={cn(
+        "zone-sombre fixed inset-x-3 bottom-3 z-20 flex items-center justify-between gap-3 rounded-[22px] border border-white/15 bg-nuit/90 py-2.5 pr-2.5 pl-4 text-creme shadow-[0_14px_40px_rgb(0_0_0/0.35)] backdrop-blur-lg",
+        always ? "mx-auto max-w-[560px]" : "lg:hidden",
+      )}
+    >
       <p className="flex flex-col leading-tight">
         <strong className="large text-lg font-extrabold">{formatFcfa(subtotalOf(lines))}</strong>
         <span className="text-xs text-texte-2">{articles(count)} · hors livraison</span>
       </p>
-      <button type="button" onClick={onCheckout} disabled={closed} className="bouton-nuit rounded-full px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-50">
-        {closed ? "En congé" : "Commander"}
+      <button type="button" onClick={onCheckout} disabled={closed || preview} className="bouton-nuit rounded-full px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-50">
+        {closed ? "En congé" : preview ? "Aperçu" : "Commander"}
       </button>
     </div>
   );

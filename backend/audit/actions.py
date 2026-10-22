@@ -47,9 +47,13 @@ ACTIONS = {
     "member_removed": (S, INFO, "Membre retiré de la boutique"),
     "member_password_reset": (S, WARNING, "Nouveau mot de passe provisoire"),
     "member_grants_changed": (S, WARNING, "Droits d'un gérant modifiés"),
+    # De l'argent sort de la boutique : les réductions vont dans la catégorie Sécurité (vue « Sensible »).
+    "discount_created": (S, WARNING, "Réduction offerte"),
+    "discount_revoked": (S, INFO, "Réduction annulée"),
     "api_key_created": (S, WARNING, "Clé API créée"),
     "api_key_revoked": (S, INFO, "Clé API révoquée"),
     "orders_exported": (S, WARNING, "Ventes exportées"),
+    "customers_exported": (S, WARNING, "Clients exportés"),
     # Activité des boutiques
     "shop_created": (B, INFO, "Boutique créée"),
     "order_placed": (B, INFO, "Commande passée en boutique"),
@@ -64,6 +68,9 @@ ACTIONS = {
     "customer_vip_removed": (B, INFO, "Client retiré des fidèles"),
     "loyalty_threshold_changed": (B, INFO, "Seuil de fidélité modifié"),
     "shop_logo_changed": (B, INFO, "Logo de la boutique modifié"),
+    "product_featured": (B, INFO, "Produit mis à la une"),
+    "storefront_published": (B, INFO, "Vitrine publiée"),
+    "storefront_restored": (B, INFO, "Ancienne version de la vitrine reprise"),
     # Administration de la plateforme
     "admin_login_succeeded": (A, INFO, "Connexion à l'administration"),
     "admin_login_failed": (A, WARNING, "Connexion à l'administration refusée"),

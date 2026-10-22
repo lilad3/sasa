@@ -7,6 +7,7 @@ from django.db.models import Count, F, Max, Sum
 from django.db.models.functions import ExtractHour, ExtractIsoWeekDay, TruncDate
 from django.utils import timezone
 
+from .delivery import promised_hours
 from .goals import MONTHS
 from .models import Order, OrderItem, OrderStatus, Product
 from .serializers import OrderSerializer
@@ -38,7 +39,9 @@ def dashboard_summary(shop, label):
         # Le travail en attente ne dépend pas de la période : une commande d'il y a 10 jours reste à traiter.
         "to_process": {status: counts[status] for status in ("pending", "confirmed", "shipped")},
         "statuses": _status_counts(placed),
+        "on_time": _on_time(placed),
         "payment_methods": _by_payment(current),
+        "channels": _by_channel(current),
         "places": _by_place(current),
         "order_hours": _order_hours(current),
         "customers": _customer_split(shop, current, start),
@@ -167,9 +170,31 @@ def _status_counts(orders):
     return {status: counts.get(status, 0) for status in OrderStatus.values}
 
 
+def _on_time(orders):
+    """
+    Livrées à temps (docs/chantier-p5.md §4.4) : parmi les commandes livrées et horodatées, combien
+    l'ont été dans le délai promis pour leur zone, de la commande à la livraison.
+    """
+    rows = orders.filter(delivered_at__isnull=False).values_list("created_at", "delivered_at", "customer_city", "customer_commune")
+    measured, on_time, hours = 0, 0, 0.0
+    for created_at, delivered_at, city, commune in rows:
+        took = (delivered_at - created_at).total_seconds() / 3600
+        measured += 1
+        hours += took
+        if took <= promised_hours(city, commune):
+            on_time += 1
+    return {"measured": measured, "on_time": on_time, "average_hours": round(hours / measured, 1) if measured else None}
+
+
 def _by_payment(orders):
     rows = orders.order_by().values("payment_method").annotate(orders=Count("id"), revenue=Sum("total")).order_by("-revenue")
     return [{"method": row["payment_method"], "orders": row["orders"], "revenue": row["revenue"]} for row in rows]
+
+
+def _by_channel(orders):
+    """D'où viennent les ventes (lien ?via= de la vitrine), hors annulées comme les paiements."""
+    rows = orders.order_by().values("channel").annotate(orders=Count("id"), revenue=Sum("total")).order_by("-revenue")
+    return [{"channel": row["channel"], "orders": row["orders"], "revenue": row["revenue"]} for row in rows]
 
 
 def _by_place(orders):

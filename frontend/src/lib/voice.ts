@@ -30,6 +30,8 @@ export function voice(role: Role, shopName: string) {
       : role === "manager"
         ? `Tout est à jour pour ${shopName}.`
         : "Aucune commande à traiter pour l’instant.",
+    /** Sous « Offrir une réduction », pour un gérant : le plafond vient du propriétaire. */
+    discountCap: (cap: number) => `En % seulement, jusqu’à ${cap} % : c’est votre plafond.`,
     goalSetBy: (goal: NonNullable<Goal["goal"]>) =>
       goal.set_by.is_you ? "Vous l’avez fixé" : `Fixé par ${goal.set_by.name}, ${ROLE_LABEL[goal.set_by.role].toLowerCase()}`,
   };

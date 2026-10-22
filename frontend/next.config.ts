@@ -29,6 +29,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // L'aperçu de « Ma boutique » s'affiche dans l'éditeur, et seulement chez Akwaba (docs/chantier-p5.md §3.5).
+      {
+        source: "/apercu/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
       // La page du nouveau mot de passe arrive avec un jeton dans l'URL : il ne doit fuiter vers aucun autre site.
       { source: "/nouveau-mot-de-passe", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
     ];

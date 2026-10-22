@@ -139,7 +139,7 @@ export function ZonePicker({ id, zones, value, onChange, className, invalid, des
                   <span aria-hidden className={cn("size-1.5 rounded-full", zone.id === value ? "bg-indigo" : "bg-transparent")} />
                   {zone.label}
                 </span>
-                <span className="text-[13px] whitespace-nowrap text-encre-doux">livraison {formatFcfa(zone.fee)}</span>
+                <span className="text-[13px] whitespace-nowrap text-encre-doux">livraison {formatFcfa(zone.fee)} · sous {zone.delay_hours} h</span>
               </li>
             ))
           )}

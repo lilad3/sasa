@@ -2,6 +2,7 @@ import "server-only";
 
 import { connection } from "next/server";
 
+import { mainImage } from "@/lib/photos";
 import type { PublicProduct, Storefront } from "@/lib/types";
 import { callApi } from "./api";
 import { requestContext } from "./session";
@@ -16,5 +17,8 @@ export async function getStorefront(slug: string) {
 
 export async function getStorefrontProducts(slug: string) {
   await connection();
-  return callApi<PublicProduct[]>(`storefront/${encodeURIComponent(slug)}/products`, { context: await requestContext() });
+  const result = await callApi<PublicProduct[]>(`storefront/${encodeURIComponent(slug)}/products`, { context: await requestContext() });
+  if (!result.ok) return result;
+  // La photo envoyée passe avant l'adresse externe : les composants de la vitrine n'ont qu'une adresse à lire.
+  return { ...result, data: result.data.map((product) => ({ ...product, image_url: mainImage(slug, product) })) };
 }

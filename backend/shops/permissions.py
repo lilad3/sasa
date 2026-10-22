@@ -21,7 +21,7 @@ ROLE_PERMISSIONS = {
     | frozenset(
         {
             "shop.manage", "goals.manage", "customers.vip",
-            "team.manage_sellers", "team.presence", "storefront.edit",
+            "team.manage_sellers", "team.presence", "storefront.edit", "discounts.give", "customers.export",
         }
     ),
     Role.MANAGER: MANAGER_DEFAULT,
@@ -32,7 +32,8 @@ ROLE_PERMISSIONS = {
 # Ce que le propriétaire peut confier à un gérant, en plus de ses droits par défaut (docs/chantier-p4.md §A).
 # Jamais : shop.manage (plan, réglages, clés API), goals.manage, customers.vip.
 # team.manage_sellers ne vise que les vendeurs : un gérant ne nomme jamais un gérant.
-GRANTABLE = frozenset({"team.manage_sellers", "team.presence", "storefront.edit"})
+# discounts.give : en % seulement, jusqu'au plafond Membership.discount_cap_percent (docs/chantier-p5.md §1.3).
+GRANTABLE = frozenset({"team.manage_sellers", "team.presence", "storefront.edit", "discounts.give", "customers.export"})
 
 
 def effective_permissions(membership):

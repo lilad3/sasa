@@ -25,6 +25,8 @@ export type ShopMembership = {
   grants?: string[];
   /** Empreinte du logo (null : pas de logo), pour invalider le cache de l'image. */
   logo_version?: string | null;
+  /** Plafond des remises d'un gérant qui a le droit discounts.give (docs/chantier-p5.md §1.3), sinon null. */
+  discount_cap_percent?: number | null;
 };
 
 export type AuthResult = {
@@ -66,10 +68,18 @@ export type Order = {
   customer: { name: string; phone: string; city: string; commune: string; landmark: string };
   items: { product_id: string; name: string; unit_price: number; quantity: number; line_total: number }[];
   subtotal: number;
+  /** Code de réduction utilisé (vide sans réduction) et remise sur le sous-total (docs/chantier-p5.md §1.6). */
+  discount_code: string;
+  discount_amount: number;
   delivery_fee: number;
   total: number;
+  channel: Channel;
   created_at: string;
 };
+
+/** D'où vient une commande (lien ?via= de la vitrine). Liste fermée, comme côté Django. */
+export const CHANNELS = ["whatsapp", "facebook", "instagram", "tiktok", "sms", "direct", "autre"] as const;
+export type Channel = (typeof CHANNELS)[number];
 
 export type OrderCounts = Record<OrderStatus, number>;
 
@@ -88,7 +98,11 @@ export type DashboardSummary = {
   to_process: Record<"pending" | "confirmed" | "shipped", number>;
   /** Commandes passées sur la période, annulées comprises. */
   statuses: OrderCounts;
+  /** Livrées à temps (chantier-p5.md §4.4) : commandes livrées et horodatées de la période. */
+  on_time: { measured: number; on_time: number; average_hours: number | null };
   payment_methods: { method: PaymentMethod; orders: number; revenue: number }[];
+  /** D'où viennent les ventes de la période, hors annulées. */
+  channels: { channel: Channel; orders: number; revenue: number }[];
   places: { city: string; commune: string; orders: number; revenue: number }[];
   /** 7 lignes (lundi d'abord) de 24 heures. */
   order_hours: number[][];
@@ -183,7 +197,35 @@ export type CustomerDetail = Omit<CustomerRow, "orders"> & {
   orders: { id: string; reference: string; created_at: string; total: number; status: OrderStatus; payment_method: PaymentMethod }[];
   vip_set_by: { name: string } | null;
   vip_set_at: string | null;
+  /** Les 20 dernières réductions, celles en cours d'abord. Code masqué sans le droit discounts.give. */
+  discounts: Discount[];
 };
+
+/* ---------- Réductions personnelles (docs/chantier-p5.md §1) ---------- */
+
+export type DiscountKind = "percent" | "amount";
+export type DiscountStatus = "active" | "used" | "expired" | "revoked";
+
+export type Discount = {
+  id: string;
+  code: string;
+  kind: DiscountKind;
+  value: number;
+  /** « −15 % » ou « −2 000 F ». */
+  label: string;
+  ends_on: string;
+  max_uses: number;
+  uses: number;
+  status: DiscountStatus;
+  created_at: string;
+  created_by: { name: string; is_you: boolean };
+  can_revoke: boolean;
+};
+
+/** Réponse de la création : le code en clair et le numéro, pour préparer le message WhatsApp. */
+export type CreatedDiscount = Discount & { customer: { name: string; phone: string } };
+
+export type DiscountCheck = { code: string; label: string; subtotal: number; discount_amount: number };
 
 /* ---------- Mon personnel : présence (docs/chantier-p4.md §B) ---------- */
 
@@ -225,7 +267,16 @@ export type MfaSetup = { otpauth_uri: string; secret: string; qr_svg: string };
 export type OrderNote = { id: string; author_name: string; body: string; created_at: string };
 
 /** La fiche d'une commande : la commande et les notes internes de l'équipe. */
-export type OrderDetail = Order & { notes: OrderNote[] };
+export type OrderDetail = Order & {
+  /** L'heure de chaque étape (null : pas encore, ou commande passée avant qu'on les note). */
+  confirmed_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  /** Le délai promis pour sa zone, et le temps réel de la commande à la livraison (en heures). */
+  promised_hours: number;
+  delivery_hours: number | null;
+  notes: OrderNote[];
+};
 
 /* ---------- Équipe et mot du patron ---------- */
 
@@ -242,6 +293,8 @@ export type Member = {
   is_you: boolean;
   /** Droits accordés à un gérant, visibles du propriétaire. */
   grants?: string[];
+  /** Plafond de ses remises (avec discounts.give), visible du propriétaire. */
+  discount_cap_percent?: number | null;
 };
 
 export type NoteAudience = "all" | "managers" | "sellers" | "member";
@@ -277,6 +330,8 @@ export type Problem = {
   request_id?: string;
   /** Total recalculé par le serveur, sur `price_changed`. */
   total?: number;
+  /** Remise recalculée par le serveur, sur `price_changed` avec un code de réduction. */
+  discount_amount?: number;
   /** Limite du plan, sur `plan_limit_reached`. */
   limit?: number;
 };
@@ -285,7 +340,52 @@ export type Problem = {
 
 export type Accent = "orange" | "indigo" | "ocre" | "lagune" | "corail";
 
-export type DeliveryZone = { id: string; city: string; commune: string; label: string; fee: number };
+/** `delay_hours` : le délai de livraison promis (24 h Grand Abidjan, 48 h Bingerville et Grand-Bassam, 72 h ailleurs). */
+export type DeliveryZone = { id: string; city: string; commune: string; label: string; fee: number; delay_hours: number };
+
+/* ---------- Vitrine : thèmes et versions (docs/chantier-p5.md §3) ---------- */
+
+export const THEME_IDS = ["essentiel", "epicerie", "beaute", "artisanat", "piece-phare"] as const;
+export type ThemeId = (typeof THEME_IDS)[number];
+export const SECTION_IDS = ["livraison", "demandes", "collection", "histoire", "suivi"] as const;
+export type SectionId = (typeof SECTION_IDS)[number];
+export const MOTIONS = ["full", "soft", "none"] as const;
+export type Motion = (typeof MOTIONS)[number];
+
+/** La configuration de la vitrine : un JSON fermé, validé par Django (et par zod pour l'aperçu). */
+export type StorefrontDesign = {
+  version: 1;
+  theme: ThemeId;
+  motion: Motion;
+  cover: "featured" | "name";
+  sections: SectionId[];
+  texts: { tagline: string; story: string };
+};
+
+export type DesignVersion = {
+  number: number;
+  status: "draft" | "published" | "archived";
+  config: StorefrontDesign;
+  updated_at: string;
+  created_by_name: string;
+  published_at: string | null;
+  published_by_name: string;
+};
+
+export type DesignOverview = {
+  draft: DesignVersion | null;
+  published: DesignVersion | null;
+  default: StorefrontDesign;
+  limits: { plan: Plan; plan_name: string; custom_sections: boolean; story: boolean; versions_kept: number };
+  accent: Accent;
+  themes: { id: ThemeId; label: string; plan: Plan; allowed: boolean; sections: SectionId[] }[];
+};
+
+/** Une photo envoyée par la boutique : l'image passe par /boutique/{slug}/photo/{id}?v={version}. */
+export type ProductPhoto = { id: string; version: string };
+
+/** D'où vient le produit de la couverture (docs/chantier-p5.md §2.4). */
+export type CoverSource = "chosen" | "best_seller" | "price";
 
 export type Storefront = {
   slug: string;
@@ -299,6 +399,12 @@ export type Storefront = {
   product_count: number;
   /** Empreinte du logo (null : pas de logo) ; l'image passe par /boutique/{slug}/logo?v=. */
   logo_version?: string | null;
+  /** Le produit de la couverture : à la une, sinon le plus vendu sur 30 jours, sinon le plus cher (null : aucun en stock). */
+  featured: { product_id: string; source: CoverSource } | null;
+  /** Les 3 produits les plus vendus sur 30 jours (« Les plus demandés »). */
+  popular: string[];
+  /** La version en ligne de « Ma boutique », sinon Essentiel. */
+  design: StorefrontDesign;
   delivery_zones: DeliveryZone[];
   payment_methods: { id: PaymentMethod; label: string }[];
 };
@@ -310,13 +416,15 @@ export type PublicProduct = {
   description: string;
   category: string;
   price: number;
+  /** L'adresse de l'image : la première photo envoyée (relayée par Next), sinon l'adresse externe. */
   image_url: string | null;
+  photos: ProductPhoto[];
   in_stock: boolean;
   low_stock: boolean;
   max_quantity: number;
 };
 
-export type PlacedOrder = { reference: string; total: number; status: OrderStatus };
+export type PlacedOrder = { reference: string; total: number; status: OrderStatus; discount_amount: number };
 
 /** Suivi d'une commande par le client : l'état seulement, ni adresse ni téléphone (contrat §4.4). */
 export type TrackedOrder = {
@@ -324,6 +432,10 @@ export type TrackedOrder = {
   status: OrderStatus;
   created_at: string;
   updated_at: string;
+  subtotal: number;
+  /** La remise, sans le code : il pourrait encore servir. */
+  discount_amount: number;
+  delivery_fee: number;
   total: number;
   payment_method: PaymentMethod;
   items: { name: string; quantity: number }[];

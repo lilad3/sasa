@@ -85,10 +85,13 @@ def rotate_refresh(raw_token, request):
         and session.rotated_at is not None
         and now - session.rotated_at <= policy.REFRESH_GRACE_PERIOD
     ):
-        # Deux requêtes du même navigateur ont rafraîchi en même temps : celle-ci reçoit
-        # un access token, et Next garde le refresh posé par la requête gagnante.
-        _, access = _mint(session, now)
-        return token_pair(None, access)
+        # Deux requêtes du même navigateur ont rafraîchi en même temps (docs/chantier-p5.md §5).
+        # Celle-ci reçoit le refresh courant, réémis avec le même identifiant que celui de la requête
+        # gagnante : si la réponse gagnante se perd (requête annulée, réseau coupé), le navigateur
+        # repart quand même avec un refresh valable, au lieu de garder l'ancien et d'être pris pour
+        # un voleur 10 secondes plus tard.
+        refresh, access = _mint(session, now, jti=session.refresh_jti)
+        return token_pair(refresh, access)
 
     revoke(session, UserSession.RevokeReason.REFRESH_REUSE)
     record("refresh_reuse_detected", request, actor=session.user, session=str(session.pk))
@@ -134,8 +137,11 @@ def token_pair(refresh, access):
     return pair
 
 
-def _mint(session, now):
+def _mint(session, now, jti=None):
+    """Une paire de tokens pour la session ; `jti` réémet un refresh déjà en cours plutôt qu'un nouveau."""
     refresh = RefreshToken()
+    if jti is not None:
+        refresh[api_settings.JTI_CLAIM] = jti
     lifetime = policy.SHARED_REFRESH_TOKEN_LIFETIME if session.shared_device else api_settings.REFRESH_TOKEN_LIFETIME
     # Un refresh ne survit jamais à sa session.
     refresh.set_exp(from_time=now, lifetime=min(lifetime, session.expires_at - now))

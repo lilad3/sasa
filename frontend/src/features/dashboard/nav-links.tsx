@@ -26,6 +26,7 @@ const ICONS = {
   products: "M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8",
   import: "M12 4v10M8 10.5l4 4 4-4M5 19h14",
   settings: "M4 7h9M17 7h3M15 5v4M4 17h3M11 17h9M9 15v4",
+  storefront: "M4 9.5 5.5 4h13L20 9.5M4 9.5c0 1.4 1.1 2.5 2.7 2.5s2.6-1.1 2.6-2.5c0 1.4 1.1 2.5 2.7 2.5s2.7-1.1 2.7-2.5c0 1.4 1 2.5 2.6 2.5S20 10.9 20 9.5M5.5 12v8h13v-8M10 20v-4.5h4V20",
   security: "M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5M5.5 10.5h13v10h-13zM12 14.5v2.5",
 };
 
@@ -46,7 +47,7 @@ export function NavLinks({ slug, role, permissions, unreadNotes, toProcess }: Na
   const base = `/app/${slug}`;
 
   // Le groupe affiché suit la page : on ouvre « Boutique » sur le catalogue et les réglages.
-  const inShop = /\/(produits|parametres)(\/|$)/.test(pathname);
+  const inShop = /\/(produits|ma-boutique|parametres)(\/|$)/.test(pathname);
   const [group, setGroup] = useState<Group>(inShop ? "boutique" : "ventes");
   useEffect(() => {
     // La page a changé (lien, retour arrière) : le groupe suit, sans attendre un clic.
@@ -70,6 +71,7 @@ export function NavLinks({ slug, role, permissions, unreadNotes, toProcess }: Na
     boutique: [
       ...(can("products.view") ? [{ href: `${base}/produits`, label: "Produits", icon: ICONS.products }] : []),
       ...(can("products.write") ? [{ href: `${base}/produits/import`, label: "Import", icon: ICONS.import, exact: true }] : []),
+      ...(can("storefront.edit") ? [{ href: `${base}/ma-boutique`, label: "Ma boutique", icon: ICONS.storefront }] : []),
       ...(can("shop.manage")
         ? [{ href: `${base}/parametres`, label: "Paramètres", icon: ICONS.settings }]
         : can("storefront.edit")

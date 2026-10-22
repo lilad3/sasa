@@ -1,5 +1,5 @@
 // Mise en forme pour la Côte d'Ivoire : montants entiers en FCFA, dates à l'heure d'Abidjan (UTC+0).
-import type { OrderStatus, PaymentMethod, Role } from "./types";
+import type { Channel, OrderStatus, PaymentMethod, Role } from "./types";
 
 const integer = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 const oneDecimal = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1, minimumFractionDigits: 0 });
@@ -81,6 +81,17 @@ export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   mtn_momo: "MTN MoMo",
   moov_money: "Moov Money",
   wave: "Wave",
+};
+
+/** D'où vient la commande (?via=…) : des mots, jamais les logos des marques. */
+export const CHANNEL_LABEL: Record<Channel, string> = {
+  whatsapp: "WhatsApp",
+  facebook: "Facebook",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  sms: "SMS",
+  direct: "Lien direct",
+  autre: "Autre lien",
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
