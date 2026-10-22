@@ -373,9 +373,11 @@ Branche `claude/p5-export-delais`, **empilée sur `claude/p5-une-photos`** (migr
 - Page Clients : bouton « Exporter » (si `customers.export`), sur le modèle de l'export des ventes : segment, confirmation renforcée à la demande, téléchargement dans le navigateur, mention « noté dans le journal de sécurité ».
 - Mon personnel : le pouvoir « Exporter les clients » (« Fichier avec noms et téléphones, après confirmation de son identité »).
 
-### 4.6 Écart
+### 4.6 Le téléphone dans le CSV (décidé : « +225 »)
 
-- Dans le CSV, un téléphone commence par « + » : comme dans l'export des ventes, `csv_safe` le précède d'une apostrophe (`'+2250707…`), sinon Excel le lirait comme une formule. Excel montre cette apostrophe à l'ouverture d'un CSV. C'est le prix de la protection ; on pourrait plus tard écrire le numéro sans « + » (« 225 07 07 … »), à décider.
+- Écrit tel quel, « +2250707… » serait lu par Excel comme une formule ; précédé d'une apostrophe (la neutralisation habituelle), Excel montre l'apostrophe.
+- `core.spreadsheet.phone_cell` écrit donc la formule texte `="+2250707000001"` : Excel affiche le numéro exact, sans rien calculer. Elle n'est construite que pour un « + » suivi de chiffres seulement ; toute autre valeur retombe dans la neutralisation habituelle (test `SpreadsheetTests`).
+- Appliqué aux deux exports : ventes et clients.
 
 ### 4.7 Tests prévus
 

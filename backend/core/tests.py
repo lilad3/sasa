@@ -38,3 +38,15 @@ class ErrorFormatTests(ApiTestCase):
     def test_malformed_request_id_is_replaced(self):
         response = self.client.get("/api/v1/me", HTTP_X_REQUEST_ID="<script>")
         self.assertTrue(response["X-Request-ID"].startswith("req_"))
+
+
+class SpreadsheetTests(ApiTestCase):
+    def test_phone_cells_show_plus_225_and_nothing_else_slips_through(self):
+        from core.spreadsheet import csv_safe, excel_csv, phone_cell
+
+        self.assertEqual(csv_safe(phone_cell("+2250707000001")), '="+2250707000001"')
+        # Tout ce qui n'est pas un « + » suivi de chiffres retombe dans la neutralisation habituelle.
+        for trap in ['+225" & HYPERLINK("x', "+225 07 07", "=CMD()", "-1+1"]:
+            with self.subTest(trap=trap):
+                self.assertTrue(csv_safe(phone_cell(trap)).startswith("'"))
+        self.assertIn('"=""+2250707000001"""', excel_csv(["Téléphone"], [[phone_cell("+2250707000001")]]))
