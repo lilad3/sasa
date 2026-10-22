@@ -13,7 +13,7 @@ from audit.services import record
 from core.exceptions import ProblemError
 from core.pagination import PagePagination
 from core.ratelimit import enforce
-from core.spreadsheet import excel_csv
+from core.spreadsheet import excel_csv, phone_cell
 
 from .dashboard import PERIODS, dashboard_summary, order_counts
 from .demo import generate_demo_data
@@ -165,7 +165,7 @@ class OrderExportView(ShopScopedView):
                 timezone.localtime(order.created_at).strftime("%d/%m/%Y %H:%M"),
                 statuses[order.status],
                 order.customer_name,
-                order.customer_phone,
+                phone_cell(order.customer_phone),
                 order.customer_city,
                 order.customer_commune,
                 order.customer_landmark,
