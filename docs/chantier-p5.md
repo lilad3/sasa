@@ -13,7 +13,7 @@ Rappels communs (ceux de `chantier-p4.md`) :
 |---|---|---|
 | 1. Réductions et canaux de vente | `claude/p5-reductions-canaux` | fait (décisions de §1.11 appliquées) |
 | 2. Produit à la une et photos | `claude/p5-une-photos` (sur le lot 1) | fait |
-| 3. Éditeur « Ma boutique » | `claude/p5-ma-boutique` | esquisse (maquette d'abord) |
+| 3. Éditeur « Ma boutique » | `claude/p5-ma-boutique` (sur le lot 5) | **maquette à valider**, rien n'est codé |
 | 4. Export des clients et « Livrées à temps » | `claude/p5-export-delais` (sur le lot 2) | fait |
 | 5. Renouvellement des sessions | `claude/p5-sessions` (sur le lot 4) | fait : course confirmée, 3 correctifs |
 
@@ -432,9 +432,61 @@ Tests Django : `accounts/tests/test_refresh_race.py` rejoue la course (le perdan
 
 ---
 
-## Lot 3 : esquisse (maquette d'abord)
+## Lot 3 : éditeur « Ma boutique » (maquette à valider, rien n'est codé)
 
-**Lot 3, éditeur « Ma boutique ».**
-- D'abord la maquette de 3 thèmes, à valider avant tout code.
-- Ensuite : un modèle `StorefrontVersion` (brouillon, versions publiées), une configuration JSON validée par un schéma fermé côté Django, et les limites par plan.
-- Une clé `pages` dans la configuration, pour plus tard (fiche produit, panier, suivi), refusée tant qu'elle n'est pas codée.
+Branche `claude/p5-ma-boutique`, **empilée sur `claude/p5-sessions`**. Elle ne contient pour l'instant que ce contrat : la maquette des 3 thèmes est à valider avant tout code.
+
+**Maquette** : https://claude.ai/artifact/LxB5w9VNKdu6jxobkaYxU1 (page privée ; le réglage « accent » de chaque écran essaie les 5 couleurs). La boutique de démo Maison Adjoua y apparaît dans les trois thèmes, avec ses vrais produits et ses vrais prix. Les photos sont des emplacements, car le dossier de photos n'est pas dans le dépôt.
+
+### 3.1 Les trois thèmes
+
+| Thème | Pour qui | Ce qui change |
+|---|---|---|
+| **Magazine** (la vitrine actuelle) | une boutique qui a une pièce signature | couverture sombre, nom en très grand, produit à la une avec son prix en pastille, collection en cartes sur fond orangé |
+| **Marché** | une épicerie : beaucoup d'articles, des commandes qui reviennent | fond crème, bandeau du délai de livraison, recherche, rayons avec leur nombre, « Les plus demandés », liste compacte avec quantité en place, barre de panier fixe |
+| **Atelier** | des pièces faites main | fond nuit, grande photo pleine largeur, bloc « L'atelier » avec l'histoire de la boutique, grandes fiches une par une |
+
+Les trois réutilisent la palette (nuit, orange, indigo, ocre, corail, lagune, sans vert), Archivo et IBM Plex Mono, des icônes dessinées. Le texte des boutons passe en encre ou en blanc selon l'accent, pour rester lisible : lagune et indigo prennent le blanc, les autres l'encre.
+
+### 3.2 La configuration (JSON fermé, validé par Django)
+
+```json
+{
+  "version": 1,
+  "theme": "marche",
+  "accent": "lagune",
+  "cover": "featured",
+  "sections": ["livraison", "demandes", "collection", "suivi"],
+  "texts": { "tagline": "Le meilleur d'ici, livré en 24 h dans le Grand Abidjan.", "story": "" }
+}
+```
+
+- `theme` : `magazine`, `marche` ou `atelier`. `accent` : l'une des 5 couleurs. `cover` : `featured` (le produit à la une, sinon le plus vendu) ou `name`.
+- `sections` : un ordre choisi dans une liste fermée (`livraison`, `demandes`, `collection`, `histoire`, `suivi`), sans doublon. `collection` est obligatoire.
+- `texts.tagline` : 80 caractères au plus. `texts.story` : 400 au plus. Les deux passent par `plain_text` : aucun HTML.
+- **Toute clé inconnue est refusée** (400). Aucune valeur n'entre telle quelle dans une balise, un style ou un script : le front choisit dans des listes fermées. `pages`, prévue pour plus tard, est refusée tant qu'elle n'est pas codée.
+
+### 3.3 Brouillon, publication, versions
+
+- `StorefrontVersion` : boutique, numéro, configuration, état (`draft`, `published`, `archived`), qui, quand. Un seul brouillon et une seule version en ligne par boutique, garantis par des contraintes uniques conditionnelles.
+- Routes (droit `storefront.edit`) : `GET/PUT shops/{slug}/storefront/draft`, `POST …/publish`, `GET …/versions`, `POST …/versions/{n}/restore` (remet une ancienne version en brouillon). La vitrine publique lit la version en ligne ; sans version, c'est Magazine en orange, c'est-à-dire la vitrine actuelle.
+- Journal : `storefront_published` (numéro, thème) et `storefront_restored`.
+
+### 3.4 Limites par plan (proposition)
+
+| | Gratuit | Pro | Business |
+|---|---|---|---|
+| Thèmes | Magazine | les 3 | les 3 |
+| Couleur | orange | 5 au choix | 5 au choix |
+| Sections | fixes | à choisir et ordonner | à choisir et ordonner |
+| Notre histoire | non | oui | oui |
+| Versions gardées | 1 | 5 | 20 |
+
+Un plan qui baisse garde la vitrine en ligne telle quelle. Le brouillon refuse ce que le nouveau plan ne permet pas, avec `plan_limit_reached`.
+
+### 3.5 À trancher avant de coder
+
+1. Les 3 thèmes (idée, noms, ce qu'ils montrent) conviennent-ils ?
+2. Les limites par plan du §3.4.
+3. Faut-il une confirmation renforcée pour publier ? Je propose **non** : la publication se défait en un clic (versions), et elle est journalisée.
+4. Les boutiques existantes restent en Magazine orange, donc rien ne change pour elles sans action de leur part.
