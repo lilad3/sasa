@@ -436,59 +436,82 @@ Tests Django : `accounts/tests/test_refresh_race.py` rejoue la course (le perdan
 
 ## Lot 3 : éditeur « Ma boutique » (maquette à valider, rien n'est codé)
 
-Branche `claude/p5-ma-boutique`, **empilée sur `claude/p5-sessions`**. Elle ne contient pour l'instant que ce contrat : la maquette des 3 thèmes est à valider avant tout code.
+Branche `claude/p5-ma-boutique`, **empilée sur `claude/p5-sessions`**. Elle ne contient que ce contrat : aucun code de thème n'est écrit avant la validation de la maquette.
 
-**Maquette** : https://claude.ai/artifact/LxB5w9VNKdu6jxobkaYxU1 (page privée ; le réglage « accent » de chaque écran essaie les 5 couleurs). La boutique de démo Maison Adjoua y apparaît dans les trois thèmes, avec ses vrais produits et ses vrais prix. Les photos sont des emplacements, car le dossier de photos n'est pas dans le dépôt.
+**Maquette** : https://claude.ai/artifact/LxB5w9VNKdu6jxobkaYxU1 (page privée). Elle montre Maison Adjoua dans les 10 thèmes, avec ses vrais produits et ses vrais prix. Dans chaque écran, le réglage « accent » essaie les 5 couleurs et « rejouer » relance les animations. Les photos sont des illustrations de remplacement : le dossier de photos n'est pas dans le dépôt.
 
-### 3.1 Les trois thèmes
+### 3.1 Les dix thèmes (version 2, après le retour du 22 octobre)
 
-| Thème | Pour qui | Ce qui change |
-|---|---|---|
-| **Magazine** (la vitrine actuelle) | une boutique qui a une pièce signature | couverture sombre, nom en très grand, produit à la une avec son prix en pastille, collection en cartes sur fond orangé |
-| **Marché** | une épicerie : beaucoup d'articles, des commandes qui reviennent | fond crème, bandeau du délai de livraison, recherche, rayons avec leur nombre, « Les plus demandés », liste compacte avec quantité en place, barre de panier fixe |
-| **Atelier** | des pièces faites main | fond nuit, grande photo pleine largeur, bloc « L'atelier » avec l'histoire de la boutique, grandes fiches une par une |
+| # | Thème | Plan | Pour qui | Animation signature |
+|---|---|---|---|---|
+| 1 | **Plateau** (ex-Magazine) | Gratuit | une pièce signature | le nom monte lettre par lettre, la photo se lève comme un rideau puis zoome lentement, une pastille de prix entourée d'un texte qui tourne |
+| 2 | **Adjamé** (ex-Marché) | Gratuit | une épicerie, beaucoup d'articles | bandeau de livraison qui défile, étiquettes de prix qui tombent et rebondissent, barre de panier qui monte |
+| 3 | **Kita** | Pro | textile, fait main | la couverture se tisse (fils de chaîne puis de trame), les photos se dévoilent bande par bande |
+| 4 | **Korhogo** | Pro | artisans, créateurs | dessins au trait (oiseau, poisson, cadres) qui se tracent à l'encre, prix posé d'un coup de tampon |
+| 5 | **Assinie** | Pro | beauté et soins | soleil qui se lève, vagues qui roulent, produits qui flottent, nom qui sort du flou |
+| 6 | **Bassam** | Business | boutique d'objets | enseigne qui tombe et se balance, persiennes qui s'ouvrent sur les produits |
+| 7 | **Maquis** | Business | épicerie, cuisine | guirlande qui scintille, nom qui s'allume, carte écrite à la craie ligne après ligne, entourage tracé autour de la une |
+| 8 | **Décalé** | Business | mode, jeunesse | mots géants venus de côtés opposés, photos posées en collage, cartes décalées qui tombent en place |
+| 9 | **Comoé** (ex-Atelier) | Business | produits premium | grande image qui dérive, grain, mots qui sortent du flou, photos dévoilées comme un rideau |
+| 10 | **Sassandra** | Business | un arrivage à montrer | soleil sur l'horizon, pirogues qui tanguent, nom qui ondule, rangée de produits à faire défiler |
 
-Les trois réutilisent la palette (nuit, orange, indigo, ocre, corail, lagune, sans vert), Archivo et IBM Plex Mono, des icônes dessinées. Le texte des boutons passe en encre ou en blanc selon l'accent, pour rester lisible : lagune et indigo prennent le blanc, les autres l'encre.
+Règles communes :
+- la palette (nuit, orange, indigo, ocre, corail, lagune, sans vert), Archivo et IBM Plex Mono, des icônes dessinées ;
+- le texte d'un bouton passe en encre ou en blanc selon la couleur, pour rester lisible ;
+- les animations n'utilisent que `transform`, `opacity`, `clip-path` et le tracé des traits : rien n'est recalculé en page, donc elles restent fluides sur un téléphone d'entrée de gamme ;
+- **`prefers-reduced-motion` coupe tout**. Un nom découpé en lettres garde son `aria-label` : un lecteur d'écran lit « Maison Adjoua », pas M-A-I-S-O-N.
 
 ### 3.2 La configuration (JSON fermé, validé par Django)
 
 ```json
 {
   "version": 1,
-  "theme": "marche",
-  "accent": "lagune",
+  "theme": "kita",
+  "accent": "corail",
+  "motion": "full",
   "cover": "featured",
-  "sections": ["livraison", "demandes", "collection", "suivi"],
+  "sections": ["livraison", "une", "collection", "suivi"],
   "texts": { "tagline": "Le meilleur d'ici, livré en 24 h dans le Grand Abidjan.", "story": "" }
 }
 ```
 
-- `theme` : `magazine`, `marche` ou `atelier`. `accent` : l'une des 5 couleurs. `cover` : `featured` (le produit à la une, sinon le plus vendu) ou `name`.
-- `sections` : un ordre choisi dans une liste fermée (`livraison`, `demandes`, `collection`, `histoire`, `suivi`), sans doublon. `collection` est obligatoire.
-- `texts.tagline` : 80 caractères au plus. `texts.story` : 400 au plus. Les deux passent par `plain_text` : aucun HTML.
-- **Toute clé inconnue est refusée** (400). Aucune valeur n'entre telle quelle dans une balise, un style ou un script : le front choisit dans des listes fermées. `pages`, prévue pour plus tard, est refusée tant qu'elle n'est pas codée.
+- `theme` : l'un des 10 identifiants (`plateau`, `adjame`, `kita`, `korhogo`, `assinie`, `bassam`, `maquis`, `decale`, `comoe`, `sassandra`).
+- `accent` : l'une des 5 couleurs.
+- `motion` : `full` (tout), `soft` (les entrées seulement, rien en boucle) ou `none` (vitrine immobile). Il est ouvert à tous les plans, et `prefers-reduced-motion` passe toujours avant.
+- `cover` : `featured` ou `name`.
+- `sections` : un ordre choisi dans une liste fermée (`livraison`, `une`, `demandes`, `collection`, `histoire`, `suivi`), sans doublon. `collection` est obligatoire.
+- `texts.tagline` : 80 caractères au plus. `texts.story` : 400 au plus. Les deux passent par `plain_text`.
+- **Toute clé inconnue est refusée** (400). Le front choisit dans des listes fermées : aucune valeur n'entre telle quelle dans une balise, un style ou un script. `pages` reste refusée tant qu'elle n'est pas codée.
 
 ### 3.3 Brouillon, publication, versions
 
-- `StorefrontVersion` : boutique, numéro, configuration, état (`draft`, `published`, `archived`), qui, quand. Un seul brouillon et une seule version en ligne par boutique, garantis par des contraintes uniques conditionnelles.
-- Routes (droit `storefront.edit`) : `GET/PUT shops/{slug}/storefront/draft`, `POST …/publish`, `GET …/versions`, `POST …/versions/{n}/restore` (remet une ancienne version en brouillon). La vitrine publique lit la version en ligne ; sans version, c'est Magazine en orange, c'est-à-dire la vitrine actuelle.
+- `StorefrontVersion` : boutique, numéro, configuration, état (`draft`, `published`, `archived`), qui, quand. Un seul brouillon et une seule version en ligne par boutique (contraintes uniques conditionnelles).
+- Routes (droit `storefront.edit`) :
+  - `GET/PUT shops/{slug}/storefront/draft` ;
+  - `POST …/publish` ;
+  - `GET …/versions` ;
+  - `POST …/versions/{n}/restore`, qui remet une ancienne version en brouillon.
+- La vitrine publique lit la version en ligne. Sans version, c'est Plateau en orange, la vitrine actuelle : rien ne change pour les boutiques existantes.
 - Journal : `storefront_published` (numéro, thème) et `storefront_restored`.
 
-### 3.4 Limites par plan (proposition)
+### 3.4 Limites par plan (décidées)
 
 | | Gratuit | Pro | Business |
 |---|---|---|---|
-| Thèmes | Magazine | les 3 | les 3 |
+| Thèmes | 2 (Plateau, Adjamé) | 5 (+ Kita, Korhogo, Assinie) | les 10 |
 | Couleur | orange | 5 au choix | 5 au choix |
+| Mouvement | au choix | au choix | au choix |
 | Sections | fixes | à choisir et ordonner | à choisir et ordonner |
 | Notre histoire | non | oui | oui |
 | Versions gardées | 1 | 5 | 20 |
 
-Un plan qui baisse garde la vitrine en ligne telle quelle. Le brouillon refuse ce que le nouveau plan ne permet pas, avec `plan_limit_reached`.
+- Les thèmes d'un plan supérieur restent visibles **en aperçu**, pour donner envie, mais ne se publient pas : `plan_limit_reached`.
+- Un plan qui baisse garde la vitrine en ligne telle quelle. Le brouillon refuse ce que le nouveau plan ne permet pas.
 
-### 3.5 À trancher avant de coder
+### 3.5 Décisions
 
-1. Les 3 thèmes (idée, noms, ce qu'ils montrent) conviennent-ils ?
-2. Les limites par plan du §3.4.
-3. Faut-il une confirmation renforcée pour publier ? Je propose **non** : la publication se défait en un clic (versions), et elle est journalisée.
-4. Les boutiques existantes restent en Magazine orange, donc rien ne change pour elles sans action de leur part.
+1. **10 thèmes, nouveaux noms** : faits dans la maquette, à valider.
+2. **Plans** : Gratuit 2, Pro 5, Business 10.
+3. **Pas de confirmation d'identité pour publier** : on ne redemande pas le mot de passe, car une publication se défait en un clic et elle est journalisée.
+4. **Téléphone du CSV** : « +225… », fait (lot 4, §4.6).
+5. **Fenêtre de grâce du renouvellement** : 10 s, gardée (lot 5, §5.2).
