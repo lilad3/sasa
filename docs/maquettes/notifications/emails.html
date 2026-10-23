@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette · E-mails de notification</title>
+<style>
+:root{--nuit:#0e0c0a;--nuit2:#1c1713;--texte:#f6f0e7;--texte2:#ccc2b4;--texte3:#9a8f81;--orange-clair:#ff9b52;--indigo-clair:#a3abff;--trait:rgb(240 221 186/.14)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--nuit);color:var(--texte);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--trait);background:var(--nuit2)}
+.bar fieldset{border:0;margin:0;padding:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.bar legend{float:left;margin-right:8px;color:var(--texte3);font-size:13px}
+.bar label{cursor:pointer}.bar input{position:absolute;opacity:0}
+.bar label span{display:inline-block;padding:6px 12px;border-radius:999px;border:1px solid var(--trait);font-size:13px;color:var(--texte2)}
+.bar input:checked+span{background:rgb(240 221 186/.14);color:var(--texte);border-color:var(--orange-clair)}
+.bar input:focus-visible+span{outline:2px solid var(--indigo-clair);outline-offset:2px}
+.meta{max-width:640px;margin:16px auto 0;padding:0 12px;color:var(--texte2);font-size:13.5px}
+.meta b{color:var(--texte)}
+.frame{max-width:640px;margin:12px auto 40px;padding:0 12px}
+/* L'e-mail lui-même : styles en ligne dans la vraie version, aucune image distante */
+.mail{background:#faf4ea;color:#17110a;border-radius:14px;overflow:hidden;font-family:Georgia,'Times New Roman',serif}
+.mail .band{background:#17110a;color:#faf4ea;padding:16px 24px;border-bottom:3px solid #ff7a1f;font:700 18px system-ui,sans-serif;letter-spacing:.02em}
+.mail .body{padding:22px 24px;font:15px/1.55 system-ui,-apple-system,sans-serif}
+.mail h2{font-size:18px;margin:0 0 10px;font-weight:600}
+.mail p{margin:0 0 12px}
+.mail .line{background:#f3e9d9;border-radius:10px;padding:12px 14px;margin:14px 0}
+.mail .cta{display:inline-block;background:#4a57d6;color:#faf4ea;text-decoration:none;font-weight:700;padding:11px 20px;border-radius:999px;margin:6px 0 14px}
+.mail .foot{border-top:1px solid #e3d6c2;margin-top:14px;padding-top:12px;font-size:12.5px;color:#5c5146}
+.mail .foot a{color:#4a57d6}
+.mail ul{margin:8px 0 0;padding-left:18px}
+.subject{font:600 14px system-ui,sans-serif;color:var(--texte);margin:0 0 8px}
+.mail-wrap[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="bar">
+ <b>Maquette · E-mails</b>
+ <fieldset><legend>Message</legend>
+  <label><input type="radio" name="m" value="new" checked><span>Nouvelle commande</span></label>
+  <label><input type="radio" name="m" value="group"><span>Plusieurs commandes</span></label>
+  <label><input type="radio" name="m" value="cancel"><span>Annulée</span></label>
+  <label><input type="radio" name="m" value="stock"><span>Stock bas</span></label>
+  <label><input type="radio" name="m" value="day"><span>Résumé du jour</span></label>
+ </fieldset>
+ <fieldset><legend>Lu par</legend>
+  <label><input type="radio" name="r" value="owner" checked><span>Propriétaire</span></label>
+  <label><input type="radio" name="r" value="manager"><span>Gérant (avec CA)</span></label>
+  <label><input type="radio" name="r" value="seller"><span>Vendeur (sans CA)</span></label>
+ </fieldset>
+</div>
+<p class="meta">Texte + HTML, aucune image distante ni pixel de suivi. Fond <b>crème</b> (pas de blanc pur), bandeau <b>encre</b> avec filet orange, bouton <b>indigo</b>. <b>Jamais</b> de téléphone, de nom ni d’adresse de client ; le lien demande la connexion et ne porte aucun jeton.</p>
+<div class="frame">
+ <p class="subject" id="subject"></p>
+ <div class="mail"><div class="band">Akwaba</div><div class="body" id="body"></div></div>
+</div>
+<script>
+const SHOP='Maison Adjoua',BASE='https://app.exemple.ci/app/maison-adjoua';
+const NAME={owner:'Adjoua',manager:'Fatou',seller:'Koffi'};
+const $=s=>document.querySelector(s);
+function hello(r){return `Bonjour ${NAME[r]},`}
+function who(r,own,other){return r==='owner'?own:other}
+function foot(r,ev){return `<div class="foot">Vous recevez ce message parce que « ${ev} » est activé pour vous dans ${SHOP}. <a href="${BASE}/parametres/notifications">Gérer mes notifications</a><br>L’équipe Akwaba</div>`}
+function render(){
+ const m=document.querySelector('input[name=m]:checked').value,r=document.querySelector('input[name=r]:checked').value;
+ let s,h;
+ if(m==='new'){s=`Nouvelle commande KRT-7P2 · ${SHOP}`;
+  h=`<p>${hello(r)}</p><p>${who(r,'Vous avez reçu une nouvelle commande.',SHOP+' a reçu une nouvelle commande.')}</p><div class="line"><b>KRT-7P2</b> · 3 articles · 17 500 F · Paiement à la livraison · Cocody</div><a class="cta" href="#">Ouvrir la commande</a>`+foot(r,'Nouvelle commande')}
+ if(m==='group'){s=`4 nouvelles commandes · ${SHOP}`;
+  h=`<p>${hello(r)}</p><p>${who(r,'Vous avez reçu 4 nouvelles commandes depuis 14 h 02.',SHOP+' a reçu 4 nouvelles commandes depuis 14 h 02.')}</p><div class="line">Les dernières : KRT-7P2, MNB-4X9, TZA-R22</div><a class="cta" href="#">Voir les commandes</a>`+foot(r,'Nouvelle commande')}
+ if(m==='cancel'){s=`Commande KRT-7P2 annulée · ${SHOP}`;
+  h=`<p>${hello(r)}</p><p>La commande <b>KRT-7P2</b> (17 500 F) a été annulée. Elle était « confirmée ».</p><a class="cta" href="#">Ouvrir la commande</a>`+foot(r,'Commande annulée')}
+ if(m==='stock'){s=`Stock bas · ${SHOP}`;
+  h=`<p>${hello(r)}</p><p>${who(r,'Deux produits de votre boutique passent sous leur seuil d’alerte :',' Deux produits de '+SHOP+' passent sous leur seuil d’alerte :')}</p><div class="line"><ul><li>Beurre de karité brut 500 g : 4 restants (seuil 5)</li><li>Savon noir artisanal 250 g : épuisé</li></ul></div><a class="cta" href="#">Voir le catalogue</a>`+foot(r,'Stock bas')}
+ if(m==='day'){s=`Résumé du jour · ${SHOP} · 23 oct.`;
+  const ca=r==='seller'?'':'<li><b>Chiffre d’affaires du jour : 87 500 F</b></li>';
+  h=`<p>${hello(r)}</p><p>${who(r,'Voici votre journée.','Voici la journée de '+SHOP+'.')}</p><div class="line"><ul><li>Commandes reçues : 7 (dont 1 annulée)</li><li>À traiter : 4</li><li>Livrées aujourd’hui : 2</li><li>Produits bientôt en rupture : 3</li>${ca}</ul></div><a class="cta" href="#">${r==='seller'?'Voir les commandes':'Ouvrir le tableau de bord'}</a>`+foot(r,'Résumé du jour')}
+ $('#subject').textContent='Objet : '+s;$('#body').innerHTML=h;
+}
+document.querySelectorAll('input').forEach(i=>i.onchange=render);render();
+</script>
+</body>
+</html>
