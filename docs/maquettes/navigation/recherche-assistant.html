@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recherche et Assistant · maquette Akwaba</title><style>
+:root{--nuit:#0e0c0a;--nuit-2:#1c1713;--encre:#17110a;--creme:#faf4ea;--texte:#f6f0e7;--texte-2:#ccc2b4;--texte-3:#9a8f81;
+--orange:#ff7a1f;--orange-clair:#ff9b52;--indigo:#4a57d6;--indigo-clair:#a3abff;--ocre:#f2b33d;--corail:#e8553f;
+--trait:rgba(240,221,186,.14);--trait-doux:rgba(240,221,186,.08)}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:dark}
+body{background:var(--nuit);color:var(--texte);font-family:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;padding:28px 16px 48px;min-height:100vh}
+:focus-visible{outline:2px solid var(--orange-clair);outline-offset:3px}
+h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.intro{color:var(--texte-2);max-width:68ch;font-size:14.5px;margin-bottom:26px}
+.row{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+figure{display:flex;flex-direction:column;gap:10px}
+figcaption{font-size:13px;color:var(--texte-3);max-width:390px}
+figcaption b{color:var(--texte);font-weight:600}
+.phone{position:relative;width:390px;max-width:100%;height:780px;overflow:hidden;background:var(--nuit);border:1px solid var(--trait);border-radius:34px;box-shadow:0 0 0 6px #14100c,0 18px 50px rgba(0,0,0,.5);isolation:isolate}
+.phone::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(60% 40% at 85% 0%,rgba(255,122,31,.16),transparent 70%),radial-gradient(50% 35% at 5% 55%,rgba(242,179,61,.06),transparent 70%)}
+.head{display:flex;align-items:center;gap:10px;padding:18px 18px 10px}
+.logo{font-weight:800;letter-spacing:.2px;font-size:19px}.logo i{color:var(--orange);font-style:normal}
+.head small{color:var(--texte-3);font-size:13px;margin-left:auto}
+.page{padding:6px 16px;display:flex;flex-direction:column;gap:10px}
+.card{border:1px solid var(--trait-doux);background:rgba(28,23,19,.7);border-radius:18px;padding:14px 16px}
+.card h2{font-size:12.5px;font-weight:600;color:var(--texte-3);margin-bottom:4px}
+.card p{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}.card p span{font-size:14px;color:var(--texte-2);font-weight:500}
+.sk{height:62px;border-radius:18px;border:1px solid var(--trait-doux);background:rgba(28,23,19,.45)}
+.bande{display:flex;gap:10px;align-items:center;margin:0 16px;padding:9px 12px;border-radius:14px;background:var(--ocre);color:var(--encre);font-size:13px;font-weight:600;line-height:1.3}
+.bande .ic{width:18px;height:18px;flex:none}
+.bande a{color:var(--encre);text-decoration:underline;white-space:nowrap}
+/* barre */
+.barre{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));background:rgba(14,12,10,.94);border-top:1px solid var(--trait-doux)}
+.rond{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;position:relative;overflow:hidden;isolation:isolate;color:var(--creme);background-color:#1a1613;background-image:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.2));border:1px solid rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 0 1px rgba(74,87,214,.22),0 6px 16px rgba(23,17,10,.3);cursor:pointer;font:inherit}
+.rond::before{content:"";position:absolute;z-index:-1;top:-30%;bottom:-30%;left:0;width:60%;background:radial-gradient(closest-side,rgba(74,87,214,.75),rgba(74,87,214,.25) 55%,transparent);opacity:.7;transform:translateX(-30%);animation:lueur 7s ease-in-out infinite alternate}
+@keyframes lueur{to{transform:translateX(110%)}}
+.rond .ic{width:21px;height:21px}
+.pilule{flex:1;min-width:0;display:flex;gap:2px;padding:4px;border-radius:26px;border:1px solid var(--trait);background:rgba(28,23,19,.85)}
+.pilule a,.pilule button{position:relative;flex:1;min-width:0;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;background:none;border-radius:22px;color:var(--texte-2);font:inherit;font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;padding:0 2px}
+.pilule .ic{width:20px;height:20px;opacity:.85}
+.pilule [aria-current="page"]{background:rgba(255,255,255,.1);color:var(--texte)}
+.pilule [aria-current="page"] .ic{color:var(--orange-clair);opacity:1}
+.pilule [aria-current="page"]::before{content:"";position:absolute;top:6px;left:7px;width:5px;height:5px;border-radius:50%;background:var(--orange);box-shadow:0 0 10px 2px rgba(255,122,31,.75)}
+.pastille{position:absolute;top:3px;right:calc(50% - 25px);min-width:19px;padding:0 5px;border-radius:99px;font-size:11px;line-height:18px;font-weight:700;font-variant-numeric:tabular-nums;text-align:center}
+.pastille.orange{background:#4a2a14;color:var(--orange-clair);border:1px solid rgba(255,122,31,.35)}
+.pastille.ocre{background:var(--ocre);color:var(--encre)}
+.point{position:absolute;top:8px;right:calc(50% - 20px);width:9px;height:9px;border-radius:50%;background:var(--ocre);border:2px solid #1c1713}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* feuilles */
+.voile{position:absolute;inset:0;background:rgba(8,6,4,.62)}
+.feuille{position:absolute;left:0;right:0;bottom:0;max-height:88%;display:flex;flex-direction:column;background:var(--nuit-2);border-top:1px solid var(--trait);border-radius:26px 26px 0 0;box-shadow:0 -18px 40px rgba(0,0,0,.5)}
+.poignee{width:42px;height:4px;border-radius:9px;background:var(--trait);margin:9px auto 2px;flex:none}
+.f-tete{display:flex;align-items:center;gap:10px;padding:8px 16px 8px 20px;flex:none}
+.f-tete h2{font-size:17px;font-weight:700;margin-right:auto}
+.x{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--trait-doux);background:rgba(255,255,255,.04);color:var(--texte-2);cursor:pointer}
+.x .ic{width:19px;height:19px}
+.f-corps{overflow:auto;padding:4px 12px 14px;display:flex;flex-direction:column;gap:2px}
+.ligne{display:flex;align-items:center;gap:13px;min-height:50px;padding:0 12px;border-radius:14px;color:var(--texte-2);text-decoration:none;font-size:15.5px;font-weight:500;position:relative}
+.ligne .ic{width:20px;height:20px;opacity:.85;flex:none}
+.ligne[aria-current="page"]{background:rgba(255,255,255,.1);color:var(--texte)}
+.ligne[aria-current="page"] .ic{color:var(--orange-clair);opacity:1}
+.ligne[aria-current="page"]::before{content:"";position:absolute;left:3px;top:50%;margin-top:-2.5px;width:5px;height:5px;border-radius:50%;background:var(--orange);box-shadow:0 0 10px 2px rgba(255,122,31,.75)}
+.ligne .pastille{position:static;margin-left:auto}
+.ligne small{display:block;color:var(--texte-3);font-size:12.5px;font-weight:500}
+.sous{margin:-4px 12px 4px 45px;display:inline-flex;gap:6px;align-items:center;color:var(--indigo-clair);font-size:13.5px;font-weight:600;text-decoration:none;min-height:36px}
+.sous .ic{width:15px;height:15px}
+.alerte{display:flex;gap:10px;align-items:flex-start;margin:2px 4px 8px;padding:11px 13px;border-radius:16px;background:var(--ocre);color:var(--encre);font-size:13.5px;font-weight:600;line-height:1.35}
+.alerte .ic{width:19px;height:19px;flex:none;margin-top:1px}.alerte a{color:var(--encre);text-decoration:underline}
+.bouton-nuit{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;margin:8px 4px 4px;border-radius:16px;position:relative;overflow:hidden;isolation:isolate;color:var(--creme);background-color:#1a1613;background-image:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.2));border:1px solid rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 0 1px rgba(74,87,214,.22);font:inherit;font-size:15.5px;font-weight:700;text-decoration:none;cursor:pointer}
+.bouton-nuit::before{content:"";position:absolute;z-index:-1;top:-30%;bottom:-30%;left:0;width:42%;background:radial-gradient(closest-side,rgba(74,87,214,.75),rgba(74,87,214,.25) 55%,transparent);opacity:.7;transform:translateX(-30%);animation:lueur 7s ease-in-out infinite alternate}
+.bouton-nuit .ic{width:20px;height:20px}
+.pied{display:flex;gap:6px;padding:6px 4px 0;margin-top:6px;border-top:1px solid var(--trait-doux)}
+.pied a,.pied button{flex:1;white-space:nowrap;padding:0 4px;display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:0;background:none;border-radius:14px;color:var(--texte-3);font:inherit;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer}
+.pied .ic{width:18px;height:18px}
+.chp{display:flex;align-items:center;gap:10px;margin:2px 12px 10px;padding:0 14px;min-height:50px;border-radius:16px;border:1px solid var(--trait);background:rgba(14,12,10,.7)}
+.chp .ic{width:20px;height:20px;color:var(--texte-3)}
+.chp span{font-size:16px}.chp .cur{width:1.5px;height:20px;background:var(--orange-clair);margin-left:-8px}
+.chp.off{opacity:.55;border-style:dashed}
+.grp{font-size:12.5px;font-weight:600;color:var(--texte-3);padding:10px 12px 4px}
+.res{display:flex;align-items:center;gap:12px;min-height:54px;padding:6px 12px;border-radius:14px;color:var(--texte);text-decoration:none}
+.res .ic{width:19px;height:19px;color:var(--texte-3);flex:none}
+.res b{display:block;font-size:15px;font-weight:600}.res small{display:block;color:var(--texte-3);font-size:12.5px}
+.res em{margin-left:auto;font-style:normal;font-size:13.5px;color:var(--texte-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.etat{display:inline-block;font-size:11.5px;font-weight:700;padding:0 8px;line-height:20px;border-radius:99px;margin-left:auto}
+.etat.i{background:rgba(74,87,214,.25);color:var(--indigo-clair)}
+.etat.o{background:#4a2a14;color:var(--orange-clair)}
+.bientot{display:inline-block;margin:0 0 10px;padding:0 12px;line-height:26px;border-radius:99px;background:var(--ocre);color:var(--encre);font-size:13px;font-weight:700}
+.texte-a{padding:6px 20px 12px;color:var(--texte-2);font-size:15px}
+.etoile{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;margin:8px 20px 10px;border:1px solid var(--trait);background:rgba(255,255,255,.04);color:var(--orange-clair)}
+.etoile .ic{width:26px;height:26px}
+.lg-note{color:var(--texte-3);font-size:13px;max-width:68ch;margin-top:26px}
+@media(prefers-reduced-motion:reduce){.rond::before,.bouton-nuit::before{animation:none}}
+@media(max-width:430px){body{padding:16px 8px 32px}.row{gap:26px}.phone{height:740px}}
+</style></head><body>
+<h1>Recherche et Assistant</h1><p class="intro">Les deux boutons ronds de la barre ouvrent la même feuille que le Menu. La recherche appelle le serveur d’Akwaba (route à créer, décrite au §7.2 du contrat) ; l’Assistant n’appelle rien.</p>
+<div class="row"><figure><div class="phone"><div class="head"><span class="logo">Akwa<i>ba</i></span><small>Maison Adjoua</small></div>
+<div class="page"><div class="card"><h2>Votre chiffre d’affaires du mois</h2><p>1 284 500 <span>F</span></p></div><div class="card"><h2>À traiter</h2><p>7 <span>commandes</span></p></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div><nav class="barre" aria-label="Navigation principale"><button class="rond" type="button" aria-label="Rechercher"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20"/></svg></button><div class="pilule"><a href="#" aria-current="page"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/></svg>Accueil</a><a href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>Commandes<span class="pastille orange">7<span class="sr"> à traiter</span></span></a><a href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8"/></svg>Produits</a><button type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Menu</button></div><button class="rond" type="button" aria-label="Assistant" aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.8 5.2 5.2 1.8-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8zM18.5 16.5v3.5M16.75 18.25h3.5"/></svg></button></nav><div class="voile"></div><div class="feuille" role="dialog" aria-modal="true" aria-label="Rechercher"><div class="poignee"></div>
+<div class="f-tete"><h2>Rechercher</h2><button class="x" type="button" aria-label="Fermer"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+<div class="chp" role="search"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20"/></svg><span>ayab</span><i class="cur"></i></div>
+<div class="f-corps"><div class="grp">Commandes</div>
+<a class="res" href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span><b>AKW-7K2Q9 · Ayaba Koné</b><small>Hier, 18 h 40</small></span><span class="etat o">À traiter</span></a>
+<a class="res" href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span><b>AKW-3M8PD · Ayabah Diallo</b><small>12 octobre</small></span><span class="etat i">Livrée</span></a>
+<div class="grp">Produits</div>
+<a class="res" href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8"/></svg><span><b>Pagne wax Ayaba</b><small>12 en stock</small></span><em>6 500 F</em></a>
+<div class="grp">Clients</div>
+<a class="res" href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 20c.4-3 2.7-5 5.5-5s5.1 2 5.5 5M15.5 5a3.3 3.3 0 0 1 0 6.3M17 15.3c2 .6 3.3 2.3 3.5 4.7"/></svg><span><b>Ayaba Koné</b><small>07 •• •• 42 18</small></span><em>4 commandes</em></a>
+<p class="texte-a" style="padding-top:10px;font-size:13px;color:var(--texte-3)">5 résultats au plus par groupe. Un groupe n’apparaît que si votre rôle y donne droit.</p></div></div></div><figcaption><b>Recherche, en cours de frappe.</b> Résultats groupés, 5 au plus par groupe, chaque ligne mène à la fiche. Le statut est écrit en toutes lettres (pas seulement une couleur).</figcaption></figure><figure><div class="phone"><div class="head"><span class="logo">Akwa<i>ba</i></span><small>Maison Adjoua</small></div>
+<div class="page"><div class="card"><h2>Votre chiffre d’affaires du mois</h2><p>1 284 500 <span>F</span></p></div><div class="card"><h2>À traiter</h2><p>7 <span>commandes</span></p></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div><nav class="barre" aria-label="Navigation principale"><button class="rond" type="button" aria-label="Rechercher"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20"/></svg></button><div class="pilule"><a href="#" aria-current="page"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/></svg>Accueil</a><a href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>Commandes<span class="pastille orange">7<span class="sr"> à traiter</span></span></a><a href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8"/></svg>Produits</a><button type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Menu</button></div><button class="rond" type="button" aria-label="Assistant" aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.8 5.2 5.2 1.8-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8zM18.5 16.5v3.5M16.75 18.25h3.5"/></svg></button></nav><div class="voile"></div><div class="feuille" role="dialog" aria-modal="true" aria-label="Rechercher"><div class="poignee"></div>
+<div class="f-tete"><h2>Rechercher</h2><button class="x" type="button" aria-label="Fermer"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+<div class="chp" role="search"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20"/></svg><span style="color:var(--texte-3)">Une commande, un produit, un client</span></div>
+<div class="f-corps"><p class="texte-a">Tapez au moins 2 caractères. Vous pouvez chercher une référence, un nom ou les 4 derniers chiffres d’un téléphone.</p></div></div></div><figcaption><b>Recherche, avant la frappe.</b> Rien n’est demandé au serveur sous 2 caractères.</figcaption></figure><figure><div class="phone"><div class="head"><span class="logo">Akwa<i>ba</i></span><small>Maison Adjoua</small></div>
+<div class="page"><div class="card"><h2>Votre chiffre d’affaires du mois</h2><p>1 284 500 <span>F</span></p></div><div class="card"><h2>À traiter</h2><p>7 <span>commandes</span></p></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div><nav class="barre" aria-label="Navigation principale"><button class="rond" type="button" aria-label="Rechercher"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20"/></svg></button><div class="pilule"><a href="#" aria-current="page"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/></svg>Accueil</a><a href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>Commandes<span class="pastille orange">7<span class="sr"> à traiter</span></span></a><a href="#"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8"/></svg>Produits</a><button type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Menu</button></div><button class="rond" type="button" aria-label="Assistant" aria-haspopup="dialog"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.8 5.2 5.2 1.8-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8zM18.5 16.5v3.5M16.75 18.25h3.5"/></svg></button></nav><div class="voile"></div><div class="feuille" role="dialog" aria-modal="true" aria-label="Assistant"><div class="poignee"></div>
+<div class="f-tete"><h2>Assistant</h2><button class="x" type="button" aria-label="Fermer"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+<div class="f-corps"><div style="padding:0 8px"><span class="etoile"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.8 5.2 5.2 1.8-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8zM18.5 16.5v3.5M16.75 18.25h3.5"/></svg></span><span class="bientot">Bientôt disponible</span></div>
+<p class="texte-a" style="padding-top:0">Posez vos questions sur vos ventes, en français. Pas encore ouvert : ce panneau ne contacte aucun service.</p>
+<div class="chp off" aria-disabled="true"><svg viewBox="0 0 24 24" class="ic " fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.8 5.2 5.2 1.8-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8zM18.5 16.5v3.5M16.75 18.25h3.5"/></svg><span style="color:var(--texte-3)">Écrire à l’Assistant</span></div></div></div></div><figcaption><b>Assistant.</b> Panneau d’annonce : aucun appel d’IA, champ désactivé.</figcaption></figure></div>
+</body></html>
