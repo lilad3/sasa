@@ -94,6 +94,10 @@ Chaque protection du contrat (§5) a son test :
 
 `manage.py flush` échoue volontairement : les triggers du journal refusent tout `DELETE`. Pour repartir de zéro en développement, supprimez `db.sqlite3` puis relancez `migrate`, `createcachetable` et `seed_demo`.
 
+## Exploitation
+
+Sauvegardes chiffrées (`backup_db`, `restore_db`), Sentry, PostgreSQL (`DATABASE_URL`, `copy_to_postgres`) et `/healthz` : voir [`../docs/exploitation.md`](../docs/exploitation.md). Pour lancer la suite sur PostgreSQL : `DATABASE_URL=postgres://… python manage.py test` (base de test dédiée, rôle autorisé à créer des bases) ; les tests de concurrence ne tournent que là.
+
 ## Où lire quoi
 
 | Fichier | Contenu |
@@ -116,3 +120,6 @@ Chaque protection du contrat (§5) a son test :
 | `shops/api_keys.py` · `shops/public_api.py` | Clés API (empreinte seule, temps constant) et API publique `/api/public/v1/` |
 | `shops/catalog.py` · `shops/csv_import.py` | Catalogue, alertes de stock, import CSV tout ou rien |
 | `core/spreadsheet.py` | Exports CSV pour Excel, formules neutralisées |
+| `core/backup.py` | Sauvegardes chiffrées et restauration |
+| `core/sentry.py` | Sentry sans donnée personnelle |
+| `shops/locks.py` | Verrous de ligne pour PostgreSQL |

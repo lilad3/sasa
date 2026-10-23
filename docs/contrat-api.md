@@ -171,6 +171,11 @@ Actions concernées :
 
 Pourquoi : un cookie volé ou un ordinateur laissé ouvert ne suffit pas pour vider les données de ventes ou ouvrir un accès permanent par clé API.
 
+### 2.7 bis Santé du service et PostgreSQL (A2 fondations)
+
+- `GET /healthz`, **hors de `/api/v1/`** (pas de secret BFF) : `200 {"ok": true}` si la base répond au `SELECT 1`, `503 {"ok": false}` sans aucun détail sinon, `429` au-delà de 60 appels par minute et par IP.
+- Sur PostgreSQL (`DATABASE_URL`), chaque lecture suivie d'une écriture prend son verrou : chaîne du journal (verrou consultatif), commandes et limites du plan (ligne de la boutique), statut d'une commande, rang des photos (ligne du produit). Le comportement visible ne change pas : deux commandes pour le dernier article → 201 puis 409 ; une même clé d'idempotence envoyée deux fois → la même réponse ; deux créations pour la dernière place du plan → 201 puis 403.
+
 ### 2.8 Rôles par boutique (sur mesure)
 
 Les droits sont vérifiés par Django. Le front masque ce qui est interdit, mais c'est le serveur qui décide.

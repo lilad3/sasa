@@ -283,6 +283,20 @@ Pas de nouvelle action. Une sauvegarde est une opération d'exploitation : son r
 
 ---
 
+## 10 bis. Écarts (réalisation backend, Koffi)
+
+- Tests rangés dans `core/test_backup.py`, `test_sentry.py`, `test_healthz.py`, `test_copy_to_postgres.py` et `shops/tests/test_concurrency.py` (et non `core/tests/…` : `core/tests.py` existe déjà).
+- PostgreSQL local de test : PostgreSQL **16** (Docker n'est pas disponible dans le bac à sable), pas 17.
+- Les sauvegardes SQLite remettent les octets 18-19 de l'en-tête à 1 : une base en WAL ne se rouvre pas autrement une fois sérialisée. Aucun effet sur la base en service.
+- `backup_db` refuse de tourner dans une transaction ouverte (l'API `backup` de SQLite y attend sans fin) ; sans effet en production.
+- Verrous : `FOR NO KEY UPDATE` plutôt que `FOR UPDATE` (ne bloque pas les insertions qui pointent vers la boutique ou le produit). L'import CSV prend aussi le verrou de la boutique, pour que son comptage de la limite du plan soit juste.
+- Le journal prend un verrou consultatif jusqu'à la fin de la transaction qui l'appelle : une `record()` suivie, dans la même transaction, du verrou d'une ligne déjà tenue par une autre peut produire un interblocage (PostgreSQL en annule un). Aucun parcours actuel ne le fait (`record()` vient en dernier).
+- Décision 6 : `TRUNCATE` est bloqué (migration audit 0010). Les tests de concurrence lèvent les triggers le temps du nettoyage ; à ne lancer que sur une base de test dédiée.
+- `copy_to_postgres` ne copie ni les sessions Django de l'admin, ni la table de cache, ni les permissions et groupes (régénérés par `migrate`) ; il refuse la copie si la source en utilise (jamais le cas aujourd'hui). Option ajoutée : `--check-only`.
+- Prix d'hébergement : non relevés (pas d'accès réseau), voir `docs/exploitation.md` §6.1. Le choix reste à l'utilisateur.
+- Q2 (domaine Sentry sur la liste blanche de PythonAnywhere) : non vérifiée, même raison.
+- Le BFF (partie B) et Sentry côté Next (4.2) ne sont pas faits : à Marc.
+
 ## 11. Revue sécurité (Alice)
 
 *À compléter par Alice : ce qui va, ce qui doit changer (bloquant), ce qu'elle testera.*
