@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette A2 · Paiements et livraison</title>
+<style>
+  :root {
+    --nuit: #0e0c0a; --nuit-2: #1c1713; --texte: #f6f0e7; --texte-2: #ccc2b4; --texte-3: #9a8f81;
+    --sable: #f0ddba; --orange: #ff7a1f; --indigo-clair: #a3abff; --ocre: #f2b33d; --encre: #17110a;
+    --corail: #e8553f; --danger-clair: #ffb3a8; --creme: #faf4ea; --trait: rgb(240 221 186 / 0.16);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--nuit); color: var(--texte); font: 15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  .note { color: var(--texte-3); font-size: 13px; margin: 0 0 28px; max-width: 70ch; }
+  .ecran { margin: 0 0 44px; }
+  .ecran > h2 { font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--orange); margin: 0 0 10px; font-weight: 600; }
+  .vitre { background: var(--nuit-2); border: 1px solid var(--trait); border-radius: 24px; padding: 22px; }
+  .vitre h3 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
+  .aide { color: var(--texte-2); font-size: 13.5px; margin: 0; max-width: 62ch; }
+  .petit { color: var(--texte-3); font-size: 12.5px; }
+  a { color: inherit; }
+  /* Deux lignes d'entrée dans Paramètres */
+  .entree { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 4px; border-top: 1px solid var(--trait); text-decoration: none; }
+  .entree:first-of-type { border-top: 0; }
+  .entree b { display: block; font-weight: 600; }
+  .entree span.etat { color: var(--texte-2); font-size: 13.5px; }
+  .entree.ocre { background: var(--ocre); color: var(--encre); border-radius: 14px; padding: 14px 16px; border: 0; margin: 4px 0; }
+  .entree.ocre span.etat { color: var(--encre); font-weight: 600; }
+  /* Formulaires */
+  .ligne { padding: 16px 0; border-top: 1px solid var(--trait); }
+  .ligne:first-of-type { border-top: 0; }
+  .tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .tete label { font-weight: 600; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--orange); }
+  .champs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0 0 30px; }
+  .champ label { display: block; font-size: 13px; color: var(--texte-2); margin-bottom: 4px; }
+  .champ input[type=text], .champ input[type=tel], .champ input[type=number] {
+    width: 100%; background: var(--nuit); color: var(--texte); border: 1px solid var(--trait); border-radius: 14px; padding: 10px 12px; font: inherit;
+  }
+  .champ input:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--indigo-clair); outline-offset: 2px; }
+  .prefixe { display: flex; align-items: center; }
+  .prefixe span { padding: 10px 10px 10px 12px; border: 1px solid var(--trait); border-right: 0; border-radius: 14px 0 0 14px; color: var(--texte-3); background: var(--nuit); }
+  .prefixe input { border-radius: 0 14px 14px 0 !important; }
+  .exemple { grid-column: 1 / -1; border-left: 3px solid var(--orange); padding: 2px 0 2px 12px; color: var(--texte-2); font-size: 13.5px; }
+  .exemple small { display: block; color: var(--texte-3); }
+  .avis-ocre { grid-column: 1 / -1; background: var(--ocre); color: var(--encre); border-radius: 12px; padding: 8px 12px; font-size: 13.5px; font-weight: 600; }
+  .garde { border: 1px solid var(--orange); border-radius: 16px; padding: 14px 16px; margin: 16px 0 0; }
+  .garde p { margin: 0 0 10px; }
+  .btn { background: var(--orange); color: var(--encre); border: 0; border-radius: 999px; padding: 10px 20px; font: inherit; font-weight: 700; cursor: pointer; }
+  .btn.sobre { background: transparent; color: var(--texte); border: 1px solid var(--trait); font-weight: 600; }
+  .btn.petit-b { padding: 6px 12px; font-size: 13px; }
+  .actions { display: flex; align-items: center; gap: 16px; margin-top: 18px; flex-wrap: wrap; }
+  /* Zones */
+  .ville { margin: 18px 0 4px; font-size: 12.5px; color: var(--texte-3); text-transform: uppercase; letter-spacing: .06em; }
+  .zone { display: grid; grid-template-columns: minmax(120px, 1.4fr) 110px 100px auto auto; gap: 10px; align-items: end; padding: 10px 0; border-top: 1px solid var(--trait); }
+  .zone .nom { font-weight: 600; padding-bottom: 8px; }
+  .zone.off .nom, .zone.off input { color: var(--texte-3); }
+  .zone label.l { font-size: 12px; color: var(--texte-3); display: block; margin-bottom: 3px; }
+  .zone input[type=number] { width: 100%; background: var(--nuit); color: var(--texte); border: 1px solid var(--trait); border-radius: 12px; padding: 8px 10px; font: inherit; }
+  .zone .ordre, .zone .act { display: flex; gap: 6px; padding-bottom: 2px; align-items: center; font-size: 13px; }
+  .sup { color: var(--danger-clair); background: none; border: 0; text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; }
+  details.ajout { margin-top: 18px; border-top: 1px solid var(--trait); padding-top: 14px; }
+  details.ajout summary { cursor: pointer; font-weight: 600; }
+  .grille4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+  .section { margin-top: 28px; border-top: 1px solid var(--trait); padding-top: 18px; }
+  /* Vitrine : fond crème, texte encre */
+  .vitrine { background: var(--creme); color: var(--encre); border-radius: 24px; padding: 22px; }
+  .vitrine h3 { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
+  .choix { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .choix label { border: 1.5px solid rgb(23 17 10 / .2); border-radius: 14px; padding: 12px 14px; display: flex; gap: 10px; cursor: pointer; }
+  .choix label.sel { border-color: var(--encre); background: rgb(240 221 186 / .55); }
+  .vitrine .petit { color: #5c5146; }
+  .retrait { border-left: 3px solid var(--orange); padding: 2px 0 2px 12px; margin: 0 0 14px; }
+  .recap { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid rgb(23 17 10 / .15); }
+  .recap dt { color: #5c5146; } .recap dd { margin: 0; text-align: right; }
+  .recap .tot { font-weight: 700; }
+  .paiement-bloc { border: 1.5px solid var(--encre); border-radius: 18px; padding: 16px; margin-top: 4px; }
+  .paiement-bloc .gros { font-family: ui-monospace, Consolas, monospace; font-size: 22px; letter-spacing: .02em; margin: 6px 0 2px; }
+  .paiement-bloc .btn { background: var(--encre); color: var(--creme); }
+  .paiement-bloc .btn.sobre { background: transparent; color: var(--encre); border-color: rgb(23 17 10 / .35); }
+  .serveur { font-size: 12px; color: #5c5146; margin-top: 10px; }
+  @media (max-width: 720px) {
+    .champs { grid-template-columns: 1fr; margin-left: 0; }
+    .zone { grid-template-columns: 1fr 1fr; }
+    .zone .nom { grid-column: 1 / -1; padding-bottom: 0; }
+    .grille4, .choix { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: no-preference) { .btn { transition: filter .15s; } .btn:hover { filter: brightness(1.08); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Maquette A2 · Paiements et livraison</h1>
+  <p class="note">Quatre écrans, HTML autonome. Les textes en <em>texte serveur</em> viennent de l'API et ne sont jamais recomposés par le front. Le contrat (docs/chantier-a2-paiements-livraison.md, §7) gagne en cas d'écart. Valeurs d'exemple uniquement.</p>
+
+  <section class="ecran" aria-labelledby="e1">
+    <h2 id="e1">1 · Paramètres, onglet Boutique : les deux lignes d'entrée</h2>
+    <div class="vitre">
+      <h3>Paramètres</h3>
+      <p class="aide">Ce qui change comment vos clients paient et reçoivent leur commande.</p>
+      <div style="margin-top:14px">
+        <a class="entree ocre" href="#e2"><div><b>Paiements</b><span class="etat">Ajoutez vos numéros Mobile Money</span></div><span aria-hidden="true">›</span></a>
+        <a class="entree" href="#e3"><div><b>Livraison</b><span class="etat">12 zones · dès 1 500 F · Retrait sur place</span></div><span aria-hidden="true">›</span></a>
+      </div>
+      <p class="petit" style="margin:14px 0 0">Ligne ocre : texte encre, et le texte dit le problème (le sens ne dépend pas de la couleur). Sans problème : « Livraison + Orange Money + Wave », comme les autres lignes.</p>
+    </div>
+  </section>
+
+  <section class="ecran" aria-labelledby="e2">
+    <h2 id="e2">2 · /parametres/paiements</h2>
+    <form class="vitre" onsubmit="return false">
+      <h3>Paiements</h3>
+      <p class="aide">Choisissez comment vos clients peuvent payer. Pour un Mobile Money, donnez le numéro qui reçoit l'argent : il s'affiche au client après sa commande.</p>
+
+      <div class="ligne">
+        <div class="tete"><label><input type="checkbox" checked> Paiement à la livraison</label></div>
+        <p class="aide" style="margin:4px 0 0 30px">Le client paie à la réception.</p>
+      </div>
+
+      <div class="ligne">
+        <div class="tete"><label><input type="checkbox" checked> Wave</label></div>
+        <div class="champs">
+          <div class="champ"><label for="wn">Numéro qui reçoit les paiements</label>
+            <div class="prefixe"><span>+225</span><input id="wn" type="tel" inputmode="tel" autocomplete="off" value="07 07 12 34 56"></div></div>
+          <div class="champ"><label for="wm">Nom affiché au client</label><input id="wm" type="text" maxlength="40" value="Aya Boutique">
+            <span class="petit">Le client le compare au nom affiché chez son opérateur avant de payer.</span></div>
+          <p class="exemple"><small>Ce que verra votre client (exemple)</small>Envoyez 12 500 F par Wave au +225 07 07 12 34 56 (Aya Boutique). Indiquez la référence K7F-92Q.</p>
+        </div>
+      </div>
+
+      <div class="ligne">
+        <div class="tete"><label><input type="checkbox" checked> Orange Money</label></div>
+        <div class="champs">
+          <div class="champ"><label for="on">Numéro qui reçoit les paiements</label>
+            <div class="prefixe"><span>+225</span><input id="on" type="tel" inputmode="tel" autocomplete="off" value=""></div></div>
+          <div class="champ"><label for="om">Nom affiché au client</label><input id="om" type="text" maxlength="40" value=""></div>
+          <p class="avis-ocre">Sans numéro, le client verra seulement que la boutique le contactera.</p>
+        </div>
+      </div>
+
+      <div class="ligne">
+        <div class="tete"><label><input type="checkbox"> MTN MoMo</label></div>
+      </div>
+      <div class="ligne">
+        <div class="tete"><label><input type="checkbox"> Moov Money</label></div>
+      </div>
+
+      <div class="garde" role="group" aria-labelledby="garde-t">
+        <p id="garde-t"><b>Vous changez le numéro qui reçoit l'argent de vos clients.</b> Pour votre sécurité, confirmez que c'est bien vous. Nous le notons dans le journal et nous vous écrivons par e-mail.</p>
+        <div class="champ" style="max-width:320px"><label for="mdp">Mot de passe</label><input id="mdp" type="text" placeholder="••••••••"></div>
+      </div>
+      <div class="actions"><button class="btn" type="submit">Enregistrer les paiements</button><span role="status" class="petit">Enregistré à 14 h 32.</span></div>
+      <p class="petit" style="margin-top:14px">Le bloc de confirmation n'apparaît que si un numéro ou un nom a changé (ou si le serveur répond « reauth_required »). Sans toucher aux numéros, activer ou désactiver un moyen ne demande rien.</p>
+    </form>
+  </section>
+
+  <section class="ecran" aria-labelledby="e3">
+    <h2 id="e3">3 · /parametres/livraison</h2>
+    <form class="vitre" onsubmit="return false">
+      <h3>Livraison</h3>
+      <p class="aide">Les zones où vous livrez, ce que cela coûte et en combien de temps. Le client ne voit que les zones actives.</p>
+      <p class="petit" style="margin:6px 0 0">12 zones · dès 1 500 F · Retrait sur place · 12 sur 20 zones</p>
+
+      <p class="ville">Abidjan</p>
+      <div class="zone">
+        <div class="nom">Cocody</div>
+        <div><label class="l" for="f1">Frais (F)</label><input id="f1" type="number" inputmode="numeric" value="2000"></div>
+        <div><label class="l" for="d1">Délai (h)</label><input id="d1" type="number" inputmode="numeric" value="24"></div>
+        <div class="act"><label><input type="checkbox" checked> Active</label></div>
+        <div class="ordre"><button class="btn sobre petit-b" type="button" aria-label="Monter Cocody">Monter</button><button class="btn sobre petit-b" type="button" aria-label="Descendre Cocody">Descendre</button></div>
+      </div>
+      <div class="zone">
+        <div class="nom">Yopougon<br><span class="petit">A déjà servi : désactivez-la plutôt</span></div>
+        <div><label class="l" for="f2">Frais (F)</label><input id="f2" type="number" value="1500"></div>
+        <div><label class="l" for="d2">Délai (h)</label><input id="d2" type="number" value="24"></div>
+        <div class="act"><label><input type="checkbox" checked> Active</label></div>
+        <div class="ordre"><button class="btn sobre petit-b" type="button" aria-label="Monter Yopougon">Monter</button><button class="btn sobre petit-b" type="button" aria-label="Descendre Yopougon">Descendre</button></div>
+      </div>
+      <div class="zone off">
+        <div class="nom">Port-Bouët <span class="petit">· Inactive</span></div>
+        <div><label class="l" for="f3">Frais (F)</label><input id="f3" type="number" value="2000"></div>
+        <div><label class="l" for="d3">Délai (h)</label><input id="d3" type="number" value="24"></div>
+        <div class="act"><label><input type="checkbox"> Active</label></div>
+        <div class="ordre"><button class="btn sobre petit-b" type="button" aria-label="Monter Port-Bouët">Monter</button><button class="sup" type="button">Supprimer Port-Bouët</button></div>
+      </div>
+      <p class="ville">Autres villes</p>
+      <div class="zone">
+        <div class="nom">Bouaké</div>
+        <div><label class="l" for="f4">Frais (F)</label><input id="f4" type="number" value="3000"></div>
+        <div><label class="l" for="d4">Délai (h)</label><input id="d4" type="number" value="72"></div>
+        <div class="act"><label><input type="checkbox" checked> Active</label></div>
+        <div class="ordre"><button class="btn sobre petit-b" type="button" aria-label="Monter Bouaké">Monter</button><button class="sup" type="button">Supprimer Bouaké</button></div>
+      </div>
+
+      <div class="actions"><span class="petit">1 zone modifiée</span><button class="btn" type="submit">Enregistrer les zones</button></div>
+
+      <details class="ajout">
+        <summary>Ajouter une zone</summary>
+        <div class="grille4">
+          <div class="champ"><label for="az1">Ville</label><input id="az1" type="text" maxlength="60"></div>
+          <div class="champ"><label for="az2">Commune (facultative)</label><input id="az2" type="text" maxlength="60"></div>
+          <div class="champ"><label for="az3">Frais (F)</label><input id="az3" type="number" inputmode="numeric"><span class="petit">0 à 100 000 F</span></div>
+          <div class="champ"><label for="az4">Délai (h)</label><input id="az4" type="number" inputmode="numeric"><span class="petit">1 à 240 h</span></div>
+        </div>
+        <div class="actions"><button class="btn sobre" type="button">Ajouter la zone</button></div>
+      </details>
+
+      <div class="section">
+        <div class="tete"><label style="font-weight:600;display:flex;gap:10px;align-items:center"><input type="checkbox" checked> Proposer le retrait sur place</label></div>
+        <div class="champs" style="margin-left:30px">
+          <div class="champ"><label for="ra">Adresse de retrait</label><input id="ra" type="text" maxlength="200" value="Rue des Jardins, Cocody"></div>
+          <div class="champ"><label for="rh">Horaires (facultatif)</label><input id="rh" type="text" maxlength="160" value="Lun-Sam, 9 h-18 h"></div>
+          <div class="champ"><label for="rp">Délai de préparation (h)</label><input id="rp" type="number" value="2"><span class="petit">Pas de frais de livraison pour un retrait.</span></div>
+        </div>
+        <div class="actions"><button class="btn sobre" type="button">Enregistrer le retrait</button></div>
+      </div>
+    </form>
+  </section>
+
+  <section class="ecran" aria-labelledby="e4">
+    <h2 id="e4">4 · Vitrine : commande, puis confirmation</h2>
+    <div class="vitrine">
+      <h3>Comment voulez-vous recevoir votre commande ?</h3>
+      <div class="choix" role="radiogroup" aria-label="Mode de remise">
+        <label><input type="radio" name="mode"> <span><b>Livraison</b><br><span class="petit">Frais selon votre commune</span></span></label>
+        <label class="sel"><input type="radio" name="mode" checked> <span><b>Retrait sur place</b><br><span class="petit">0 F</span></span></label>
+      </div>
+      <p class="retrait"><b>Retrait à Rue des Jardins, Cocody</b><br>Horaires : Lun-Sam, 9 h-18 h<br>Prête sous 2 h</p>
+      <p class="petit" style="margin:0 0 6px"><b style="color:var(--encre)">Paiement</b> · seuls les moyens de la boutique sont proposés</p>
+      <div class="choix">
+        <label class="sel"><input type="radio" name="pay" checked> <span><b>Wave</b></span></label>
+        <label><input type="radio" name="pay"> <span><b>Paiement à la livraison</b></span></label>
+      </div>
+      <p class="petit">Après votre commande, vous verrez le numéro auquel payer et la référence à indiquer.</p>
+      <dl class="recap"><dt>Sous-total</dt><dd>12 500 F</dd><dt>Retrait sur place</dt><dd>0 F</dd><dt class="tot">Total</dt><dd class="tot">12 500 F</dd></dl>
+    </div>
+
+    <div class="vitrine" style="margin-top:16px">
+      <h3>Commande K7F-92Q enregistrée</h3>
+      <div class="paiement-bloc">
+        <b>Il reste à payer 12 500 F</b>
+        <p style="margin:4px 0 0">Envoyez 12 500 F par Wave au +225 07 07 12 34 56 (Aya Boutique). Indiquez la référence K7F-92Q.</p>
+        <p class="gros">+225 07 07 12 34 56</p>
+        <p class="petit" style="margin:0">Titulaire : Aya Boutique · Référence : <span style="font-family:ui-monospace,monospace">K7F-92Q</span></p>
+        <div class="actions"><button class="btn petit-b" type="button">Copier le numéro</button><button class="btn sobre petit-b" type="button">Copier la référence</button></div>
+        <p class="serveur">Le paragraphe ci-dessus est le texte du serveur, affiché tel quel. Sans numéro enregistré : seulement « La boutique vous enverra la demande de paiement Wave au numéro indiqué lors de la commande. »</p>
+      </div>
+      <p style="margin:14px 0 0"><b>Retrait</b> : Rue des Jardins, Cocody · Lun-Sam, 9 h-18 h · prête sous 2 h.</p>
+    </div>
+  </section>
+</div>
+</body>
+</html>
