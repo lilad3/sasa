@@ -19,6 +19,8 @@ export function voice(role: Role, shopName: string) {
     topProducts: own ? "Vos produits phares" : `Les produits phares de ${shopName}`,
     bestSellers: "Ce qui se vend le mieux",
     online: own ? "Votre boutique est en ligne" : `${shopName} est en ligne`,
+    /** Sur la fiche d'un produit qui vient d'être créé, s'il est en vente. */
+    productOnline: own ? "Il est en ligne sur votre vitrine." : `Il est en ligne sur la vitrine de ${shopName}.`,
     shareHint: own
       ? "Partagez son lien sur WhatsApp et Instagram : vos clients commandent directement, vous suivez tout ici."
       : "Partagez son lien à vos contacts : chaque commande arrive ici, et l’équipe s’en occupe.",
