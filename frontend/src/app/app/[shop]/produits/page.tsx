@@ -19,8 +19,8 @@ const STOCK_TABS: { stock: StockFilter; label: string }[] = [
   { stock: "out", label: "En rupture" },
 ];
 
+// « Produit ajouté » s'affiche sur la fiche du produit créé (produits/[id]/page.tsx).
 const FLASH: Record<string, string> = {
-  ajoute: "Produit ajouté. S’il est en vente, il apparaît déjà dans la vitrine.",
   supprime: "Produit supprimé. Les commandes passées gardent son nom et son prix.",
 };
 
