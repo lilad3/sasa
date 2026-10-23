@@ -504,9 +504,12 @@ class SecurityEventsView(APIView):
 
 
 class MfaSetupView(APIView):
+    """Une session volée ne doit pas pouvoir activer la 2FA à la place du titulaire : confirmation renforcée d'abord."""
+
     def post(self, request):
         if request.user.is_demo:
             raise demo_error()
+        require_reauth(request)
         if mfa.is_enabled(request.user):
             raise ProblemError(409, "mfa_already_enabled", "La double authentification est déjà active.")
         return Response(mfa.start_setup(request.user))
@@ -518,6 +521,7 @@ class MfaConfirmView(APIView):
     def post(self, request):
         if request.user.is_demo:
             raise demo_error()
+        require_reauth(request)
         enforce("mfa_manage", str(request.auth.pk), policy.MFA_MANAGE_SESSION_LIMIT)
         serializer = MfaCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -528,7 +532,10 @@ class MfaConfirmView(APIView):
         codes = mfa.confirm_setup(request.user, serializer.validated_data["code"])
         if codes is None:
             raise code_error()
-        record("mfa_enabled", request, actor=request.user)
+        # Comme un changement de mot de passe : les autres sessions ne survivent pas à un changement de sécurité.
+        closed = revoke_all(request.user, UserSession.RevokeReason.MFA_ENABLED, keep=request.auth)
+        record("mfa_enabled", request, actor=request.user, others=closed)
+        emails.send_security_alert(request.user, "mfa_enabled", request)
         return Response({"recovery_codes": codes})
 
 

@@ -26,6 +26,7 @@ ACTIVITY_VISIBLE_FOR = timedelta(days=90)
 
 # Ce que chaque événement peut montrer de ses détails : rien d'autre ne sort du journal.
 DETAILS = {
+    "mfa_enabled": ("others",),
     "member_added": ("role",),
     "member_role_changed": ("previous_role", "new_role"),
     "orders_exported": ("rows", "first", "last"),
