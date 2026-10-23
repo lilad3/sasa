@@ -68,7 +68,7 @@ export function ProductForm({ slug, product, categories }: ProductFormProps) {
         const { sent, reason } = await sendDrafts(slug, id, drafts, (position) => setSending({ position, total: drafts.length }));
         if (sent < drafts.length) {
           query.set("photos", `${sent}-${drafts.length}`);
-          if (reason && reason in PHOTO_PROBLEMS) query.set("raison", reason);
+          if (reason && Object.hasOwn(PHOTO_PROBLEMS, reason)) query.set("raison", reason);
         }
       } else {
         setSending({ position: 0, total: 0 });
