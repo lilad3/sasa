@@ -127,6 +127,23 @@ La colonne « Écart » ne cite que la dette déjà publique (README, « Limites
 | I · effacer ses traces | ajout seul (ORM + triggers), chaîne HMAC, vérification | triggers à refaire pour PostgreSQL (P02) |
 | Marchand · voir l'IP de ses clients | liste blanche des détails, IP masquée | — |
 
+### 2.7 Exports, imports, éditeur de boutique et journal côté marchand
+| Attaquant · par où | Défense en place | Écart |
+|---|---|---|
+| S · formule piégée dans un export Excel | `csv_safe` neutralise `= + - @` à chaque cellule ; le numéro de téléphone n'est mis en forme que s'il suit `+` et des chiffres seulement | — |
+| M · fichier CSV piégé à l'import des produits | 512 Ko et 1 000 lignes au plus, extension `.csv`, octet nul refusé, aucune exécution ; chaque ligne passe par le sérialiseur produit (`plain_text`, plafond du plan) ; tout ou rien | — |
+| M · contenu actif dans la vitrine | la configuration de l'éditeur est un JSON fermé : listes de choix, champs inconnus refusés, deux textes seulement et ils passent par `plain_text` ; le plan est revérifié à la publication | — |
+| M · saturer l'éditeur | 120 enregistrements par heure et par membre ; un seul brouillon par boutique ; publication atomique | — |
+| M · voir plus que sa part du journal | le propriétaire lit son journal par liste blanche de détails, sur 90 jours, jamais l'IP ni l'appareil d'un client | — |
+| Quiconque · comptes de démonstration | `seed_demo` refuse de tourner hors mode développement ; un compte `is_demo` ne peut changer ni mot de passe, ni 2FA, ni clé API, et n'a pas de réinitialisation | voir le suivi des comptes de démo (A2-F5) |
+
+### 2.8 Front (Server Actions) et dépendances
+| Attaquant · par où | Défense en place | Écart |
+|---|---|---|
+| M · détourner une Server Action | chaque entrée est validée par zod (slug `^[a-z0-9-]{1,60}$`, identifiants UUID, longueurs) avant d'être placée dans un chemin d'API ; l'autorisation reste décidée par Django | — |
+| Quiconque · redirection ouverte après connexion | `safeNext` n'accepte qu'un chemin interne `/app…` (ni `//`, ni `\`, ni `://`) | — |
+| Dépendance vulnérable | `pip-audit` sur `requirements.txt` et `npm audit --omit=dev` : aucune vulnérabilité connue au 23/10/2026 | à refaire à chaque ajout de paquet (P02 : `sentry-sdk`, `psycopg`) |
+
 ---
 
 ## 3. Défense attendue des chantiers Akwaba 2.0 (à reporter dans chaque « Revue sécurité »)
@@ -135,7 +152,7 @@ Résumé ; le détail sera écrit dans la section « Revue sécurité » de chaq
 
 | Chantier | Exigences minimales d'Alice |
 |---|---|
-| P02 Fondations | sauvegardes chiffrées et testées (restauration) ; Sentry sans données personnelles (`send_default_pii=False`, filtrage des corps et en-têtes) ; triggers d'ajout seul du journal recréés sur PostgreSQL ; IP réelle derrière le proxy de l’hébergeur |
+| P02 Fondations | sauvegardes chiffrées et testées (restauration), avec une clé dédiée rangée hors du serveur et une restauration qui ne rouvre aucun accès fermé depuis la sauvegarde ; Sentry sans données personnelles (`send_default_pii=False`, filtrage des corps, en-têtes, chaînes de requête, textes d'exception) ; triggers d'ajout seul du journal recréés sur PostgreSQL, doublés par des droits de base séparés (rôle de migration, rôle d'exécution) ; chaîne du journal protégée par un verrou sur PostgreSQL ; IP réelle derrière le proxy de l’hébergeur |
 | P05 Paiements et livraison | changer un numéro Mobile Money de réception = reauth + alerte e-mail + journal Sécurité + délai avant effet ; numéros jamais dans une URL |
 | P10 Encaissements | montants entiers, transitions de statut fermées, mises à jour conditionnelles, stock cohérent après une annulation, journal de chaque encaissement |
 | P11 Remboursements et reçus | rembourser = reauth + plafond + journal Sécurité ; jeton de reçu aléatoire, sans donnée devinable, même 404 pour inconnu et expiré |

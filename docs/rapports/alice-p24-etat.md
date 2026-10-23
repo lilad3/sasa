@@ -30,10 +30,10 @@ Le détail (fichier, scénario, correction) **n'est pas dans le dépôt** : il e
 
 Aucune faille n'a été corrigée ni jouée : tout ceci vient de la lecture du code.
 
-## Reste à faire (volet B)
-- Relire : `shops/customers.py`, `shops/design.py`, `shops/shop_settings.py` (changement de plan), `shops/activity.py` (liste blanche), `audit/` (triggers, admin, chaîne HMAC), garde de `seed_demo`, fin de `shops/csv_import.py`, Server Actions du front (`frontend/src/features/*/actions.ts`).
-- `npm audit --omit=dev` (pas de `node_modules` dans le worktree : `npm ci` d'abord).
-- Compléter le modèle de menaces avec ce qui sortira de ces lectures, puis le rapport final à Kavin (format de `01-regles-communes.md` §10).
+## Volet B : relecture terminée (23/10/2026, session cloud)
+- Relu : `shops/customers.py`, `shops/design.py`, `shops/shop_settings.py`, `shops/activity.py`, `audit/` (modèle, services, admin, triggers), garde de `seed_demo`, `shops/csv_import.py`, `core/spreadsheet.py`, Server Actions du front.
+- `npm audit --omit=dev` : aucune vulnérabilité connue.
+- Les défenses constatées sont reportées dans `docs/securite/modele-menaces.md` (§2.7, §2.8). Les nouveaux écarts (à partir de A2-F14) sont dans le rapport de session adressé à Kavin, pas dans le dépôt.
 
 ## Ensuite (pas commencé, attend un oui de l'utilisateur dans la session d'Alice)
 - **Volet C** : tests d'abus en local, sur la base de démo. Les premiers à écrire prouveront A2-F1 à A2-F3 et l'isolation entre boutiques pour les trois rôles.
