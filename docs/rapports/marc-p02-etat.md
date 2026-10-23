@@ -9,7 +9,8 @@ Branche `claude/a2-fondations-front`, partie de `origin/claude/a2-fondations` (8
 | Appel | Délai par tentative | Relance |
 |---|---|---|
 | `GET` (pages marchandes, vitrine, `fetchPublicImage`) | 20 s | une seule, après 1 s, sur réseau coupé, délai dépassé ou 502/503/504, **seulement si la 1re tentative a échoué en moins de 5 s** |
-| `POST auth/token/refresh` (`proxy.ts`, `session/renouveler`) | 20 s | même règle |
+| `POST auth/token/refresh` (`proxy.ts`, `session/renouveler`) | 20 s, **3 s pour la relance** | même règle. Au pire, la relance se termine 9 s après le début, avant la fin de la fenêtre de grâce de 10 s (revue d'Alice) |
+| export (`GET …/export`, commandes et clients) | 20 s | **jamais** : Django inscrit chaque export au journal (`orders_exported`), et une relance le compterait deux fois (revue d'Alice) |
 | toute autre écriture (`POST`, `PUT`, `PATCH`, `DELETE`, commande, multipart) | 20 s (10 s avant) | jamais |
 
 Ce qui ne change pas :
@@ -18,19 +19,23 @@ Ce qui ne change pas :
 - la clé d'idempotence des commandes ;
 - l'écran « Akwaba ne répond pas ».
 
-La 2e tentative garde le même `X-Request-ID`, ce qui permet de rapprocher les deux lignes dans les journaux de Django.
+La 2e tentative garde le même `X-Request-ID` (vérifié par un test), ce qui permet de rapprocher les deux lignes dans les journaux de Django.
 
 Pire cas d'une lecture : 5 s + 1 s + 20 s = 26 s.
 
+Limite : abandonner la relance du refresh à 3 s empêche Next d'utiliser une réponse tardive. Mais si la requête est déjà partie, cela n'empêche pas Django de la traiter plus tard. Le risque de fausse alerte de vol baisse, il ne disparaît pas.
+
 ## Tests
 
-`frontend/tests/bff.test.mjs`, lancé par `npm test`. Il utilise le lanceur de Node 24, qui lit `api.ts` sans outil ajouté, contre un faux Django local. 8 sur 8 OK, en 21 s environ :
+`frontend/tests/bff.test.mjs`, lancé par `npm test`. Il utilise le lanceur de Node 24, qui lit `api.ts` sans outil ajouté, contre un faux Django local. 11 sur 11 OK, en 25 s environ :
 - un GET qui répond en 15 s passe, sans relance ;
 - un GET sans réponse abandonne au bout de 20 s (`network_error`), sans relance ;
 - un GET en 502 rapide est relancé une fois et réussit ; s'il échoue encore, il n'est pas relancé une 2e fois ;
 - un GET qui échoue après plus de 5 s n'est pas relancé ;
+- les deux tentatives portent le même `X-Request-ID` ;
+- un export (`GET …/export`) n'est jamais relancé ;
 - une commande (`POST`) n'est jamais envoyée deux fois ;
-- le refresh n'est pas relancé après un échec de plus de 5 s ; après un échec rapide, il est relancé une fois et réussit.
+- le refresh n'est pas relancé après un échec de plus de 5 s. Après un échec rapide, il est relancé une fois et réussit. Si cette relance traîne, elle est abandonnée au bout de 3 s.
 
 Essai manuel : `next start` de la branche, relié à Django par un relais qui le ralentit ou le coupe, sur `/boutique/maison-adjoua` :
 

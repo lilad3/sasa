@@ -13,7 +13,7 @@ cp .env.example .env.local   # BFF_SHARED_SECRET = la même valeur que dans back
 npm run dev                  # http://localhost:3000
 ```
 
-Avant de pousser : `npm run lint` et `npm run build` (le build vérifie aussi les types), et `npm test` si vous touchez à `lib/server/api.ts` (délais et relances du BFF face à un faux Django, environ 20 s).
+Avant de pousser : `npm run lint` et `npm run build` (le build vérifie aussi les types), et `npm test` si vous touchez à `lib/server/api.ts` (délais et relances du BFF face à un faux Django, environ 25 s).
 
 > **Piège connu.** Après une modification des couleurs dans `src/app/globals.css` (bloc `@theme`), relancez `npm run dev` : avec la règle Turbopack du projet, le serveur de développement ne recharge pas les nouveaux jetons. Si un ancien CSS persiste, supprimez le dossier `.next`.
 

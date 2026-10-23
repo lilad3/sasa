@@ -31,30 +31,40 @@ const SAFE_ID = /^[A-Za-z0-9_-]{8,64}$/;
 // Lenteurs de Django (docs/chantier-a2-fondations.md §3) : 20 s par tentative. Une seule relance, après 1 s,
 // pour une lecture ou le renouvellement de session, et seulement si le premier échec a été rapide : passé 5 s,
 // Django a peut-être déjà fait tourner le refresh, et une relance tomberait après sa fenêtre de grâce de 10 s
-// (il y verrait un vol). Une écriture n'est jamais relancée : elle a peut-être déjà eu lieu.
+// (il y verrait un vol). Pour la même raison, la relance du refresh n'attend que 3 s (5 + 1 + 3 < 10).
+// Jamais relancés : une écriture (elle a peut-être déjà eu lieu) et un export (Django l'inscrit au journal).
 const TIMEOUT_MS = 20_000;
+const REFRESH_RETRY_TIMEOUT_MS = 3_000;
 const RETRY_DELAY_MS = 1_000;
 const FAST_FAILURE_MS = 5_000;
 const RETRYABLE_STATUS = new Set([502, 503, 504]);
 const REFRESH_PATH = "auth/token/refresh";
 
+/** Le délai de la relance, ou null si l'appel ne doit jamais être relancé. */
+function retryTimeout(method: string, path: string) {
+  if (path === REFRESH_PATH) return REFRESH_RETRY_TIMEOUT_MS;
+  if (method !== "GET" || path.split("?")[0].endsWith("/export")) return null;
+  return TIMEOUT_MS;
+}
+
 /** La réponse de Django, ou null s'il n'a pas répondu à temps (réseau coupé, délai dépassé). */
-async function attempt(url: string, init: RequestInit): Promise<Response | null> {
+async function attempt(url: string, init: RequestInit, timeout: number): Promise<Response | null> {
   try {
-    return await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(timeout) });
   } catch {
     return null;
   }
 }
 
-async function send(url: string, init: RequestInit, retryable: boolean): Promise<Response | null> {
+/** La relance reprend les mêmes en-têtes, donc le même X-Request-ID : les deux tentatives se retrouvent dans les journaux. */
+async function send(url: string, init: RequestInit, retry: number | null): Promise<Response | null> {
   const started = Date.now();
-  const first = await attempt(url, init);
+  const first = await attempt(url, init, TIMEOUT_MS);
   const failed = first === null || RETRYABLE_STATUS.has(first.status);
-  if (!retryable || !failed || Date.now() - started >= FAST_FAILURE_MS) return first;
+  if (retry === null || !failed || Date.now() - started >= FAST_FAILURE_MS) return first;
   await first?.body?.cancel();
   await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-  return attempt(url, init);
+  return attempt(url, init, retry);
 }
 
 function settings() {
@@ -104,7 +114,7 @@ export async function callApi<T>(path: string, options: CallOptions): Promise<Ap
       cache: "no-store",
       redirect: "manual",
     },
-    method === "GET" || path === REFRESH_PATH,
+    retryTimeout(method, path),
   );
   if (!response) return { ok: false, problem: { status: 503, code: "network_error", detail: "Le serveur ne répond pas." } };
 
@@ -131,7 +141,7 @@ export async function fetchPublicImage(path: string, context: RequestContext, ac
   const { apiUrl, secret } = settings();
   const headers = new Headers({ Accept: accept, "X-Akwaba-Bff": secret, "X-Request-ID": newRequestId() });
   if (context.ip) headers.set("X-Client-IP", context.ip);
-  return send(`${apiUrl}/api/v1/${path}`, { headers, cache: "no-store", redirect: "manual" }, true);
+  return send(`${apiUrl}/api/v1/${path}`, { headers, cache: "no-store", redirect: "manual" }, retryTimeout("GET", path));
 }
 
 function toProblem(status: number, json: unknown): Problem {
