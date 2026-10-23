@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette · Paramètres, le cadre</title>
+<style>
+:root{--nuit:#0e0c0a;--nuit2:#1c1713;--texte:#f6f0e7;--texte2:#ccc2b4;--texte3:#9a8f81;--orange:#ff7a1f;--orange-clair:#ff9b52;--indigo:#4a57d6;--indigo-clair:#a3abff;--ocre:#f2b33d;--corail:#e8553f;--encre:#17110a;--trait:rgb(240 221 186/.14);--trait-doux:rgb(240 221 186/.08)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--nuit);color:var(--texte);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(60% 40% at 80% 0%,rgb(255 122 31/.16),transparent 70%),radial-gradient(50% 40% at 0% 100%,rgb(74 87 214/.14),transparent 70%);pointer-events:none}
+.bar{position:relative;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--trait);background:var(--nuit2)}
+.bar b{font-weight:600}.bar fieldset{border:0;margin:0;padding:0;display:flex;gap:6px;align-items:center}
+.bar legend{float:left;margin-right:8px;color:var(--texte3);font-size:13px}
+.bar label{cursor:pointer}.bar input{position:absolute;opacity:0}
+.bar label span{display:inline-block;padding:6px 12px;border-radius:999px;border:1px solid var(--trait);font-size:13px;color:var(--texte2)}
+.bar input:checked+span{background:rgb(240 221 186/.14);color:var(--texte);border-color:var(--orange-clair)}
+.bar input:focus-visible+span{outline:2px solid var(--indigo-clair);outline-offset:2px}
+.note{position:relative;margin:0;padding:10px 16px;font-size:13px;color:var(--texte3)}
+.app{position:relative;display:grid;grid-template-columns:1fr;gap:12px;max-width:1180px;margin:0 auto;padding:14px 12px 120px}
+@media(min-width:900px){.app{grid-template-columns:minmax(300px,4fr) 8fr;padding:20px 20px 40px}.list-col{position:sticky;top:12px;align-self:start;max-height:calc(100dvh - 24px);display:flex;flex-direction:column}}
+.vitre{background:linear-gradient(180deg,rgb(240 221 186/.07),rgb(240 221 186/.03));border:1px solid var(--trait);border-radius:24px}
+header.t{padding:4px 6px}header.t p{margin:0;font-size:12.5px;color:var(--texte2)}header.t h1{margin:6px 0 0;font-size:clamp(24px,2.6vw,30px);font-weight:500;letter-spacing:-.01em}
+.help{padding:0 6px;color:var(--texte3);font-size:13px;margin:0}
+ul.rows{list-style:none;margin:0;padding:6px;overflow:auto}
+.row{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 12px;border-radius:16px;color:inherit;text-decoration:none;cursor:pointer;border:0;background:none;width:100%;text-align:left;font:inherit}
+.row+.row{box-shadow:0 -1px 0 var(--trait-doux)}
+.row:hover{background:rgb(240 221 186/.06)}
+.row:focus-visible{outline:2px solid var(--indigo-clair);outline-offset:-2px}
+.row[aria-current=page]{background:rgb(240 221 186/.12)}
+.row svg.i{width:20px;height:20px;flex:none;color:var(--texte2)}
+.row[aria-current=page] svg.i{color:var(--orange-clair)}
+.row .tx{flex:1;min-width:0}.row .lb{display:block;font-weight:600}
+.row .st{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--texte2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ocre);flex:none}
+.row .ch{width:16px;height:16px;color:var(--texte3);flex:none}
+.pane{padding:18px;min-height:360px}.pane h2{margin:0 0 4px;font-size:20px;font-weight:500}
+.pane p{color:var(--texte2);margin:6px 0}.back{display:none;margin:0 0 10px;color:var(--indigo-clair);text-decoration:none;font-size:14px}
+.card{background:rgb(240 221 186/.05);border:1px solid var(--trait-doux);border-radius:18px;padding:14px;margin:12px 0}
+.card h3{margin:0 0 6px;font-size:14px;color:var(--texte2);font-weight:500}
+.tag{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;background:rgb(74 87 214/.28);color:var(--indigo-clair)}
+.tag.o{background:rgb(242 179 61/.18);color:var(--ocre)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{padding:7px 6px;text-align:left;border-bottom:1px solid var(--trait-doux)}th{color:var(--texte3);font-weight:500}td.you,th.you{background:rgb(255 122 31/.08)}
+.radios{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.radios label{border:1px solid var(--trait);border-radius:14px;padding:9px 12px;cursor:pointer;font-size:14px;display:block}
+.radios input{accent-color:var(--indigo)}
+.btn{display:inline-block;padding:9px 16px;border-radius:999px;background:var(--encre);color:var(--texte);border:1px solid var(--trait);box-shadow:0 0 18px rgb(74 87 214/.35);font:inherit;font-weight:600;font-size:14px;text-decoration:none}
+/* Recherche en bas */
+.search{position:relative;padding:8px}
+.search label{display:block;font-size:12px;color:var(--texte3);padding:0 6px 4px}
+.search input{width:100%;min-height:46px;border-radius:14px;border:1px solid var(--trait);background:var(--nuit2);color:var(--texte);font:inherit;padding:0 14px}
+.search input:focus-visible{outline:2px solid var(--indigo-clair);outline-offset:1px}
+.results{position:absolute;left:8px;right:8px;bottom:calc(100% - 6px);list-style:none;margin:0;padding:6px;background:var(--nuit2);border:1px solid var(--trait);border-radius:16px;box-shadow:0 -10px 30px rgb(0 0 0/.45)}
+.results[hidden]{display:none}.results li{padding:10px 12px;border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.results li[aria-selected=true]{background:rgb(240 221 186/.14)}.results li small{color:var(--texte3)}
+.empty{padding:10px 12px;color:var(--texte3)}
+@media(max-width:899px){
+ .search{position:fixed;left:0;right:0;bottom:0;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:var(--nuit2);border-top:1px solid var(--trait);z-index:5}
+ .results{left:12px;right:12px}
+ .app[data-screen=page] .list-col{display:none}
+ .app[data-screen=list] .page-col{display:none}
+ .back{display:inline-block}
+}
+@media(min-width:900px){.search{border-top:1px solid var(--trait);margin-top:auto}.app .results{bottom:calc(100% - 4px)}}
+@media(prefers-reduced-motion:no-preference){.row{transition:background .15s}}
+</style>
+</head>
+<body>
+<div class="bar">
+ <b>Maquette · Paramètres, le cadre</b>
+ <fieldset><legend>Voir comme</legend>
+  <label><input type="radio" name="role" value="owner" checked><span>Propriétaire</span></label>
+  <label><input type="radio" name="role" value="manager"><span>Gérant</span></label>
+  <label><input type="radio" name="role" value="seller"><span>Vendeur</span></label>
+ </fieldset>
+ <fieldset><legend>Gérant avec « Gérer la vitrine »</legend>
+  <label><input type="checkbox" id="sf"><span>oui</span></label>
+ </fieldset>
+</div>
+<p class="note">Réduisez la fenêtre sous 900 px pour voir le téléphone : la liste est la page, puis chaque rubrique s’ouvre en plein écran. Essayez « wave » (aucun résultat tant que Paiements n’existe pas), « logo », « mot de passe », « équipe ».</p>
+
+<div class="app" id="app" data-screen="list">
+ <section class="list-col vitre" aria-label="Rubriques des paramètres">
+  <header class="t" style="padding:16px 16px 4px"><p id="shopname">Maison Adjoua</p><h1>Paramètres</h1></header>
+  <p class="help" id="intro" style="padding:0 16px 6px"></p>
+  <ul class="rows" id="rows"></ul>
+  <div class="search">
+   <label for="q">Rechercher un paramètre</label>
+   <input id="q" type="text" role="combobox" aria-expanded="false" aria-controls="res" aria-autocomplete="list" autocomplete="off" placeholder="Wave, logo, mot de passe…">
+   <ul class="results" id="res" role="listbox" hidden></ul>
+   <p class="help" id="live" aria-live="polite" style="position:absolute;left:-9999px"></p>
+  </div>
+ </section>
+ <section class="page-col vitre pane" id="pane" aria-live="polite"></section>
+</div>
+
+<script>
+const I={
+ general:'M4 6.5h16V19H4zM4 10.5h16M7.5 14.5h4M7.5 8.5h2',
+ forfait:'M4 12.5V5h7.5L20 13.5 13.5 20zM8 8.5h.01',
+ utilisateurs:'M4 6.5h16V19H4zM9.5 6.5V4h5v2.5M9 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.3 16.5c.5-1.3 1.5-2 2.7-2s2.2.7 2.7 2.5M14.5 11h3M14.5 14h3',
+ clients:'M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 20c.4-3 2.7-5 5.5-5s5.1 2 5.5 5M15.5 5a3.3 3.3 0 0 1 0 6.3M17 15.3c2 .6 3.3 2.3 3.5 4.7',
+ securite:'M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5M5.5 10.5h13v10h-13zM12 14.5v2.5',
+ avance:'M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14',
+ paiements:'M3.5 7h17v11h-17zM3.5 11h17M7 15h3',
+ livraison:'M3 7h11v9H3zM14 10h4l3 3v3h-7zM7 18.5a1.5 1.5 0 1 0 0-.01M17 18.5a1.5 1.5 0 1 0 0-.01',
+ notifications:'M3.5 6.5h17v11h-17zM3.5 7l8.5 6.5L20.5 7',
+ politiques:'M6 3.5h8l4 4V20.5H6zM14 3.5v4h4M9 12h6M9 15.5h6',
+ canaux:'M4 7h6c3 0 3 10 6 10h4M4 17h6c1.5 0 2-2.5 3-5'
+};
+// ready:false = prévue, jamais affichée ni cherchée (comme entries.ts)
+const E=[
+ {id:'general',label:'Général',ready:true,kw:'nom description ville contact logo couleur vacances conge secteur metier'},
+ {id:'forfait',label:'Forfait et facturation',ready:true,kw:'plan forfait abonnement pro business prix facture facturation historique'},
+ {id:'utilisateurs',label:'Utilisateurs et rôles',ready:true,kw:'equipe personnel gerant vendeur role droit permission acces qui peut faire quoi'},
+ {id:'paiements',label:'Paiements',ready:false,kw:'wave orange money mtn moov mobile money paiement especes'},
+ {id:'livraison',label:'Livraison',ready:false,kw:'livraison zone frais delai commune retrait'},
+ {id:'clients',label:'Clients',ready:true,kw:'client fidele fidelite seuil consentement'},
+ {id:'notifications',label:'Notifications',ready:false,kw:'email alerte notification resume stock bas'},
+ {id:'politiques',label:'Politiques',ready:false,kw:'retour remboursement conditions confidentialite'},
+ {id:'canaux',label:'Canaux de vente',ready:false,kw:'whatsapp facebook instagram tiktok lien canal'},
+ {id:'securite',label:'Sécurité',ready:true,kw:'mot de passe double authentification 2fa appareil session journal connexion'},
+ {id:'avance',label:'Avancé',ready:true,kw:'cle api developpeur integration'}
+];
+// Ce que le serveur renverrait (GET settings/summary) selon le rôle
+function summary(role,sf){
+ if(role==='owner')return{general:['Logo manquant','a'],forfait:['Pro · 9 900 F par mois'],utilisateurs:['4 personnes · 1 n’a pas encore choisi son mot de passe','a'],clients:['Fidèle dès 3 commandes'],securite:['Activez la double authentification','a'],avance:['2 clés actives']};
+ if(role==='manager'){const s={utilisateurs:['4 personnes'],clients:['Fidèle dès 3 commandes'],securite:['Double authentification active']};return sf?{general:['Logo manquant','a'],...s}:s}
+ return{securite:['Double authentification active']}
+}
+const norm=t=>t.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const $=s=>document.querySelector(s);
+let role='owner',cur=null,sel=-1,shown=[];
+const intros={owner:'Les réglages de votre boutique, rubrique par rubrique.',manager:'Les réglages de Maison Adjoua auxquels vous avez accès.',seller:'Votre compte.'};
+function visible(){const s=summary(role,$('#sf').checked);return E.filter(e=>e.ready&&s[e.id]).map(e=>({...e,st:s[e.id]}))}
+function chev(){return'<svg class="ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'}
+function ico(id){return'<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+I[id]+'"/></svg>'}
+function render(){
+ const v=visible();
+ if(role==='seller'&&!cur)cur='securite';
+ if(!cur||!v.find(e=>e.id===cur))cur=(innerWidth>=900||role==='seller')?v[0].id:null;
+ $('#intro').textContent=intros[role];
+ $('#rows').innerHTML=v.map(e=>`<li><button class="row" data-id="${e.id}" ${e.id===cur?'aria-current="page"':''}>${ico(e.id)}<span class="tx"><span class="lb">${e.label}</span><span class="st">${e.st[1]?'<span class="dot" aria-hidden="true"></span>':''}${e.st[0]}</span></span>${chev()}</button></li>`).join('');
+ pane();
+ $('#app').dataset.screen=cur&&(innerWidth<900)&&window.__open?'page':'list';
+}
+function pane(){
+ const v=visible(),e=v.find(x=>x.id===cur);if(!e){$('#pane').innerHTML='';return}
+ const back='<a class="back" href="#" id="back">‹ Paramètres</a>';
+ const body={
+  general:()=>role==='manager'?'<p>Le logo de la boutique. Le propriétaire gère le reste.</p><div class="card"><h3>Logo</h3><p>Aucun logo pour l’instant.</p><span class="btn">Choisir un logo</span></div>':
+   '<div class="card"><h3>Nom, description, ville, couleur</h3><p>Formulaire existant (ProfileForm).</p></div><div class="card"><h3>Secteur</h3><p>Cela nous aide à vous proposer le bon thème et les bons réglages. Vos clients ne le voient pas.</p><div class="radios" role="radiogroup" aria-label="Secteur">'+[['restaurant','Restaurant'],['mode','Mode et vêtements'],['tech','Tech et électronique'],['beaute','Beauté et soins'],['epicerie','Épicerie et alimentation'],['maison','Maison et déco'],['artisanat','Artisanat'],['autre','Autre']].map(([v,l])=>`<label><input type="radio" name="sec" value="${v}" ${v==='autre'?'checked':''}> ${l}</label>`).join('')+'</div></div><div class="card"><h3>Logo</h3><p>Aucun logo pour l’instant.</p></div><div class="card"><h3>Mode vacances</h3><p>Panneau existant (VacationPanel).</p></div>',
+  forfait:()=>'<div class="card"><h3>Votre utilisation · plan Pro</h3><p>Produits 48 / 500 · Équipe 4 / 5 · Commandes ce mois-ci 212 / 2 000</p></div><div class="card"><h3>Changer de plan</h3><p>PlanPicker existant (confirmation renforcée).</p></div><div class="card"><h3>Historique des changements</h3><table><tr><td>12 oct. 2026</td><td>Gratuit → Pro</td><td>par Adjoua Koné</td></tr><tr><td>3 mars 2026</td><td>Pro → Gratuit</td><td>par Adjoua Koné</td></tr></table></div><div class="card"><h3>Facturation</h3><p>Le paiement de l’abonnement n’est pas encore en place : aucun prélèvement n’est fait, aucune facture n’est émise. Quand il le sera, vos factures apparaîtront ici.</p></div>',
+  utilisateurs:()=>'<div class="card"><h3>Votre équipe</h3><table><tr><td>Adjoua Koné</td><td><span class="tag">Propriétaire</span></td><td>vous</td></tr><tr><td>Fatou Diallo</td><td><span class="tag">Gérant</span></td><td></td></tr><tr><td>Koffi Aka</td><td><span class="tag">Vendeur</span></td><td></td></tr><tr><td>Mariam Traoré</td><td><span class="tag">Vendeur</span></td><td><span class="tag o">mot de passe provisoire</span></td></tr></table><p><a class="btn" href="#">Gérer mon personnel</a></p></div><div class="card"><h3>Qui peut faire quoi</h3><table><tr><th>Droit</th><th>Propriétaire</th><th>Gérant</th><th>Vendeur</th></tr><tr><td>Voir et traiter les commandes</td><td>Oui</td><td>Oui</td><td>Oui</td></tr><tr><td>Voir le chiffre d’affaires</td><td>Oui</td><td>Oui</td><td>Non</td></tr><tr><td>Gérer la vitrine</td><td>Oui</td><td>Si le propriétaire l’accorde</td><td>Non</td></tr><tr><td>Offrir des réductions</td><td>Oui</td><td>Si le propriétaire l’accorde</td><td>Non</td></tr><tr><td>Plan, clés API, réglages</td><td>Oui</td><td>Non</td><td>Non</td></tr></table></div>',
+  clients:()=>'<div class="card"><h3>Seuil de fidélité</h3><p>Un client devient fidèle à partir de <b>3</b> commandes livrées.</p><span class="btn">Enregistrer</span></div>',
+  securite:()=>'<div class="card"><h3>Mon compte</h3><p>Double authentification, mot de passe, appareils connectés, journal de mon compte.</p></div>'+(role==='owner'?'<div class="card"><h3>La boutique</h3><p>Carte « Sécurité de la boutique » et journal : qui a fait quoi, 90 jours.</p></div>':''),
+  avance:()=>'<div class="card"><h3>Clés API</h3><p>Formulaire, liste et aide inchangés. <span class="tag">2 clés actives</span></p></div>'
+ };
+ $('#pane').innerHTML=back+'<h2>'+e.label+'</h2>'+body[e.id]();
+ const b=$('#back');if(b)b.onclick=ev=>{ev.preventDefault();window.__open=false;cur=null;render()};
+}
+$('#rows').addEventListener('click',ev=>{const b=ev.target.closest('.row');if(!b)return;cur=b.dataset.id;window.__open=true;render()});
+document.querySelectorAll('input[name=role]').forEach(r=>r.onchange=()=>{role=r.value;cur=null;window.__open=false;$('#sf').disabled=role!=='manager';render()});
+$('#sf').disabled=true;$('#sf').onchange=()=>{cur=null;render()};
+// Recherche : seulement les entrées visibles, sans accents ni casse, par préfixe de mot
+function search(t){const q=norm(t).trim();if(!q)return[];return visible().filter(e=>(norm(e.label)+' '+e.kw).split(/[^a-z0-9]+/).some(w=>w.startsWith(q))||(norm(e.label)+' '+e.kw).includes(q)).slice(0,5)}
+const q=$('#q'),res=$('#res');
+function showRes(){shown=search(q.value);sel=shown.length?0:-1;
+ if(!q.value.trim()){res.hidden=true;q.setAttribute('aria-expanded','false');return}
+ res.hidden=false;q.setAttribute('aria-expanded','true');
+ res.innerHTML=shown.length?shown.map((e,i)=>`<li role="option" id="o${i}" data-id="${e.id}" aria-selected="${i===sel}">${e.label}<small>${e.st[0]}</small></li>`).join(''):'<li class="empty" role="presentation">Aucun paramètre ne correspond.</li>';
+ $('#live').textContent=shown.length?shown.length+' résultat'+(shown.length>1?'s':''):'Aucun paramètre ne correspond.'}
+function go(id){cur=id;window.__open=true;q.value='';res.hidden=true;q.setAttribute('aria-expanded','false');render()}
+q.addEventListener('input',showRes);
+q.addEventListener('keydown',ev=>{
+ if(ev.key==='Escape'){q.value='';showRes()}
+ else if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){ev.preventDefault();if(!shown.length)return;sel=(sel+(ev.key==='ArrowDown'?1:-1)+shown.length)%shown.length;[...res.children].forEach((li,i)=>li.setAttribute('aria-selected',i===sel));q.setAttribute('aria-activedescendant','o'+sel)}
+ else if(ev.key==='Enter'&&shown[sel]){ev.preventDefault();go(shown[sel].id)}});
+res.addEventListener('mousedown',ev=>{const li=ev.target.closest('[data-id]');if(li){ev.preventDefault();go(li.dataset.id)}});
+addEventListener('resize',render);
+render();
+</script>
+</body>
+</html>
