@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import activity, api_keys, catalog, customers, design, discounts, goals, logo, photos, presence, shop_settings, storefront, team, views
+from . import activity, api_keys, catalog, customers, delivery_settings, design, discounts, goals, logo, payment_settings, photos, presence, shop_settings, storefront, team, views
 
 urlpatterns = [
     path("shops/<slug:slug>/dashboard", views.DashboardView.as_view()),
@@ -48,6 +48,13 @@ urlpatterns = [
     path("shops/<slug:slug>/settings", shop_settings.ShopSettingsView.as_view()),
     path("shops/<slug:slug>/plans", shop_settings.PlanListView.as_view()),
     path("shops/<slug:slug>/plan", shop_settings.PlanChangeView.as_view()),
+    path("shops/<slug:slug>/payment-settings", payment_settings.PaymentSettingsView.as_view()),
+    path("shops/<slug:slug>/payment-settings/<str:method>/pending", payment_settings.PendingPayoutView.as_view()),
+    path("shops/<slug:slug>/delivery", delivery_settings.DeliveryView.as_view()),
+    path("shops/<slug:slug>/delivery/zones", delivery_settings.ZoneListView.as_view()),
+    path("shops/<slug:slug>/delivery/zones/order", delivery_settings.ZoneOrderView.as_view()),
+    path("shops/<slug:slug>/delivery/zones/<uuid:zone_id>", delivery_settings.ZoneDetailView.as_view()),
+    path("shops/<slug:slug>/delivery/pickup", delivery_settings.PickupView.as_view()),
     path("shops/<slug:slug>/api-keys", api_keys.ApiKeyListView.as_view()),
     path("shops/<slug:slug>/api-keys/<uuid:key_id>", api_keys.ApiKeyDetailView.as_view()),
     path("shops/<slug:slug>/activity", activity.ShopActivityView.as_view()),

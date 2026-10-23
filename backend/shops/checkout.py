@@ -10,6 +10,7 @@ import json
 from datetime import timedelta
 
 from django.db import transaction
+from rest_framework.exceptions import ErrorDetail, ValidationError
 from django.db.models import F
 from django.utils import timezone
 
@@ -18,7 +19,8 @@ from core.exceptions import ProblemError
 from .delivery import find_zone
 from .discount_codes import invalid as discount_invalid
 from .discount_codes import usable_discount
-from .models import Channel, Customer, Discount, IdempotencyRecord, Order, OrderItem, OrderStatus, Product, new_reference
+from .models import Channel, Customer, Discount, Fulfillment, IdempotencyRecord, Order, OrderItem, OrderStatus, Product, Shop, new_reference
+from .payments import is_enabled
 
 IDEMPOTENCY_TTL = timedelta(hours=24)
 
@@ -31,7 +33,14 @@ def request_hash(data):
 
 def fake_response(data):
     """Réponse donnée à un robot (champ piège rempli) : elle ressemble à une vraie, rien n'est créé."""
-    return {"reference": new_reference(), "total": data.get("expected_total") or 0, "status": OrderStatus.PENDING, "discount_amount": 0}
+    return {
+        "reference": new_reference(),
+        "total": data.get("expected_total") or 0,
+        "status": OrderStatus.PENDING,
+        "discount_amount": 0,
+        "fulfillment": data["fulfillment"],
+        "payment_method": data["payment_method"],
+    }
 
 
 def place_order(shop, data, idempotency_key):
@@ -52,13 +61,36 @@ def place_order(shop, data, idempotency_key):
                 )
             return previous.response, None
 
+        # Lu ICI, dans la transaction, côté serveur : jamais d'après ce que la vitrine affichait.
+        if not is_enabled(shop, data["payment_method"]):
+            raise ProblemError(
+                400,
+                "payment_method_unavailable",
+                "Ce moyen de paiement n'est plus proposé par la boutique.",
+                errors={"payment_method": [{"code": "payment_method_unavailable", "message": "Ce moyen de paiement n'est plus proposé par la boutique."}]},
+            )
+        pickup = data["fulfillment"] == Fulfillment.PICKUP
+        zone = None
+        if pickup:
+            if not Shop.objects.filter(pk=shop.pk, pickup_enabled=True).exists():
+                raise ProblemError(
+                    400,
+                    "pickup_unavailable",
+                    "Le retrait sur place n'est plus proposé.",
+                    errors={"fulfillment": [{"code": "pickup_unavailable", "message": "Le retrait sur place n'est plus proposé."}]},
+                )
+        else:
+            zone = find_zone(shop, data["customer"]["city"], data["customer"].get("commune", ""))
+            if zone is None:
+                raise ValidationError({"customer": {"city": [ErrorDetail("Nous ne livrons pas encore cette zone.", code="delivery_unavailable")]}})
+        fee = 0 if pickup else zone.fee
+
         lines = priced_lines(shop, data["items"])
-        zone = find_zone(data["customer"]["city"], data["customer"].get("commune", ""))
         subtotal = sum(line["line_total"] for line in lines)
         # Le code ne vaut qu'avec le téléphone de la commande ; tout refus donne la même erreur.
         discount = usable_discount(shop, data["discount_code"], data["customer"]["phone"]) if data.get("discount_code") else None
         discount_amount = discount.amount_for(subtotal) if discount else 0
-        total = subtotal - discount_amount + zone.fee
+        total = subtotal - discount_amount + fee
 
         expected = data.get("expected_total")
         if expected is not None and expected != total:
@@ -68,7 +100,7 @@ def place_order(shop, data, idempotency_key):
                 "Le total a changé depuis l'affichage de votre panier.",
                 subtotal=subtotal,
                 discount_amount=discount_amount,
-                delivery_fee=zone.fee,
+                delivery_fee=fee,
                 total=total,
             )
 
@@ -88,15 +120,18 @@ def place_order(shop, data, idempotency_key):
             payment_method=data["payment_method"],
             customer_name=customer["name"],
             customer_phone=customer["phone"],
-            customer_city=zone.city,
-            customer_commune=zone.commune,
-            customer_landmark=customer.get("landmark", ""),
+            customer_city="" if pickup else zone.city,
+            customer_commune="" if pickup else zone.commune,
+            customer_landmark="" if pickup else customer.get("landmark", ""),
             subtotal=subtotal,
             discount=discount,
             discount_code=discount.code if discount else "",
             discount_amount=discount_amount,
-            delivery_fee=zone.fee,
+            delivery_fee=fee,
             total=total,
+            fulfillment=data["fulfillment"],
+            # Copie du délai promis : changer une zone demain ne réécrit pas « livrées à temps » d'hier.
+            promised_hours=None if pickup else zone.delay_hours,
             channel=data.get("channel") or Channel.DIRECT,
         )
         # La fiche client suit le dernier nom donné avec ce numéro ; un fidèle nommé le reste.
@@ -120,7 +155,14 @@ def place_order(shop, data, idempotency_key):
             if updated != 1:
                 raise ProblemError(409, "out_of_stock", "Un article vient d'être épuisé.")
 
-        response = {"reference": order.reference, "total": order.total, "status": order.status, "discount_amount": order.discount_amount}
+        response = {
+            "reference": order.reference,
+            "total": order.total,
+            "status": order.status,
+            "discount_amount": order.discount_amount,
+            "fulfillment": order.fulfillment,
+            "payment_method": order.payment_method,
+        }
         IdempotencyRecord.objects.create(shop=shop, key=idempotency_key, request_hash=fingerprint, response=response)
     return response, order
 

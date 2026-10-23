@@ -8,6 +8,7 @@ from django.utils import timezone
 from accounts import lockout, mfa
 from accounts.models import User
 from shops.demo import generate_demo_data
+from shops.services import seed_payment_methods
 from shops.models import Membership, Plan, Role, Shop, TeamNote, TeamNoteReceipt
 
 DEMO_PASSWORD = "Demo-Vitrine-2026"
@@ -81,6 +82,8 @@ class Command(BaseCommand):
             for email, first_name, last_name, role in accounts:
                 user = self._demo_user(email, first_name, last_name, recovery)
                 Membership.objects.update_or_create(user=user, shop=shop, defaults={"role": role})
+            # Les boutiques de démo vendent par les 5 moyens (sans numéro de réception), comme avant les réglages.
+            seed_payment_methods(shop, mobile_money_enabled=True)
             summary = generate_demo_data(shop)
             self._demo_notes(shop)
             self.stdout.write(f"{name} : {summary['products']} produits, {summary['orders']} commandes sur {summary['days']} jours")

@@ -7,8 +7,10 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
 
-from .delivery import ZONES, promised_hours
-from .models import REFERENCE_ALPHABET, Channel, Order, OrderItem, OrderStatus, PaymentMethod, Product
+from .delivery import DEFAULT_ZONES
+from .models import REFERENCE_ALPHABET, Channel, DeliveryZone, Fulfillment, Order, OrderItem, OrderStatus, PaymentMethod, Product
+from .payments import active_methods
+from .services import seed_payment_methods, seed_zones
 
 DEMO_DAYS = 180  # deux fois 90 jours : la période précédente existe aussi pour le filtre 90d
 
@@ -39,9 +41,19 @@ LAST_NAMES = [
     "Diomandé", "Fofana", "Cissé", "Dosso", "Ehui", "Loukou",
 ]
 
-# Poids de chaque zone de livraison dans les commandes de démo (les frais viennent de delivery.ZONES).
+# Poids de chaque zone de départ dans les commandes de démo ; une zone ajoutée par la boutique pèse 1.
 ZONE_WEIGHTS = [14, 12, 7, 7, 5, 5, 5, 4, 3, 3, 4, 3, 2, 2, 2]
-LOCATIONS = [(zone.city, zone.commune, zone.fee, weight) for zone, weight in zip(ZONES, ZONE_WEIGHTS, strict=True)]
+DEFAULT_WEIGHT = {(zone.city, zone.commune): weight for zone, weight in zip(DEFAULT_ZONES, ZONE_WEIGHTS, strict=True)}
+PICKUP_SHARE = 0.10  # part des commandes en retrait quand la boutique le propose
+
+
+def shop_locations(shop):
+    """Les zones ACTIVES de la boutique : la démo respecte ses frais et ses délais, jamais une liste à part."""
+    zones = DeliveryZone.objects.for_shop(shop)
+    return [
+        (zone.city, zone.commune, zone.fee, DEFAULT_WEIGHT.get((zone.city, zone.commune), 1), zone.delay_hours)
+        for zone in zones.filter(is_active=True) or zones
+    ]
 
 # Rayon de chaque produit, affiché en vitrine.
 CATEGORY_BY_SKU = {
@@ -98,6 +110,14 @@ def generate_demo_data(shop):
     channel_rng = random.Random(shop.pk.int + 1)
     # Les horaires des étapes ont leur propre tirage : le reste de la démo ne change pas (chantier-p5.md §4.4).
     timing_rng = random.Random(shop.pk.int + 2)
+    pickup_rng = random.Random(shop.pk.int + 3)
+    # Une boutique sans réglages en reçoit comme une boutique neuve ; la démo n'écrit aucun numéro de réception.
+    seed_payment_methods(shop)
+    seed_zones(shop)
+    locations = shop_locations(shop)
+    allowed = set(active_methods(shop))
+    payments = [(method, weight) for method, weight in PAYMENTS if method in allowed]
+    pickup = shop.pickup_enabled
     Order.objects.for_shop(shop).filter(is_demo=True).delete()
     Product.objects.for_shop(shop).filter(is_demo=True).delete()
 
@@ -123,7 +143,7 @@ def generate_demo_data(shop):
         return {"products": 0, "orders": 0, "days": DEMO_DAYS}
     weights = [entry[3] for entry in entries]
     # Un noyau de 40 habitués qui reviennent souvent, et beaucoup de clients d'une ou deux commandes.
-    customers = [_customer(rng) for _ in range(260)]
+    customers = [_customer(rng, locations) for _ in range(260)]
     loyalty = [6] * 40 + [1] * 220
 
     today = timezone.localdate()
@@ -142,24 +162,28 @@ def generate_demo_data(shop):
             customer = rng.choices(customers, weights=loyalty)[0]
             lines = _lines(rng, products, weights)
             subtotal = sum(product.price * quantity for product, quantity in lines)
+            picked_up = pickup and pickup_rng.random() < PICKUP_SHARE
+            fee = 0 if picked_up else customer["fee"]
             order = Order(
                 shop=shop,
                 reference=_reference(rng, references),
                 status=_status(rng, age),
-                payment_method=rng.choices([p for p, _ in PAYMENTS], weights=[w for _, w in PAYMENTS])[0],
+                payment_method=rng.choices([p for p, _ in payments], weights=[w for _, w in payments])[0],
                 customer_name=customer["name"],
                 customer_phone=customer["phone"],
-                customer_city=customer["city"],
-                customer_commune=customer["commune"],
-                customer_landmark=customer["landmark"],
+                customer_city="" if picked_up else customer["city"],
+                customer_commune="" if picked_up else customer["commune"],
+                customer_landmark="" if picked_up else customer["landmark"],
                 subtotal=subtotal,
-                delivery_fee=customer["fee"],
-                total=subtotal + customer["fee"],
+                delivery_fee=fee,
+                total=subtotal + fee,
+                fulfillment=Fulfillment.PICKUP if picked_up else Fulfillment.DELIVERY,
+                promised_hours=None if picked_up else customer["delay"],
                 channel=channel_rng.choices([c for c, _ in CHANNELS], weights=[w for _, w in CHANNELS])[0],
                 is_demo=True,
                 created_at=created_at,
             )
-            _stamp(order, timing_rng, now)
+            _stamp(order, timing_rng, now, shop)
             orders.append(order)
             items.extend(
                 OrderItem(
@@ -178,14 +202,15 @@ def generate_demo_data(shop):
     return {"products": len(products), "orders": len(orders), "days": DEMO_DAYS}
 
 
-def _customer(rng):
-    city, commune, fee, _ = rng.choices(LOCATIONS, weights=[loc[3] for loc in LOCATIONS])[0]
+def _customer(rng, locations):
+    city, commune, fee, _, delay = rng.choices(locations, weights=[loc[3] for loc in locations])[0]
     return {
         "name": f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}",
         "phone": f"+225{rng.choice(['07', '05', '01'])}{rng.randint(0, 99_999_999):08d}",
         "city": city,
         "commune": commune,
         "fee": fee,
+        "delay": delay,
         "landmark": rng.choice(LANDMARKS),
     }
 
@@ -203,7 +228,7 @@ def _lines(rng, products, weights):
     return lines
 
 
-def _stamp(order, rng, now):
+def _stamp(order, rng, now, shop):
     """Confirmée dans les heures, expédiée dans la journée, livrée à temps environ 85 fois sur 100."""
     steps = {
         OrderStatus.CONFIRMED: ("confirmed_at",),
@@ -212,7 +237,7 @@ def _stamp(order, rng, now):
     }.get(order.status, ())
     if not steps:
         return
-    promised = promised_hours(order.customer_city, order.customer_commune)
+    promised = order.promised_hours if order.promised_hours is not None else shop.pickup_prep_hours
     total = promised * (rng.uniform(0.35, 0.95) if rng.random() < 0.85 else rng.uniform(1.05, 1.6))
     offsets = {"confirmed_at": rng.uniform(0.2, 3.0), "shipped_at": total * rng.uniform(0.3, 0.6), "delivered_at": total}
     previous = order.created_at

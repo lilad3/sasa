@@ -1,6 +1,6 @@
 # Chantier A2 : paiements et livraison par boutique (P05)
 
-Base : `main`. Branche : `claude/a2-paiements-livraison`. **Étape 1 : ce fichier est le contrat, rien n'est codé.** L'étape 2 (API) et l'étape 3 (front) ne démarrent qu'après validation de l'utilisateur et la relecture d'Alice (section finale).
+Base : `main`. Branche : `claude/a2-paiements-livraison`. Étape 1 : ce fichier est le contrat (validé par Kavin). Étape 2 : l'API est codée et testée, avec les changements imposés par la revue d'Alice (sections 10 et 11, qui **gagnent** sur le reste du texte en cas de désaccord). Étape 3 : le front.
 
 Rappels communs (ceux de `chantier-p4.md` et `chantier-p5.md`) :
 - migrations nouvelles seulement (shops 0009+, audit 0010+), vérifiées par `makemigrations --check`, code valable sur SQLite **et** PostgreSQL ;
@@ -13,7 +13,7 @@ Rappels communs (ceux de `chantier-p4.md` et `chantier-p5.md`) :
 | Étape | Contenu | État |
 |---|---|---|
 | 1 | Ce contrat + maquettes (`docs/maquettes/paiements-livraison/`) | à valider |
-| 2 | API : modèles, migrations, routes, checkout, journal, tests | non commencée |
+| 2 | API : modèles, migrations, routes, checkout, journal, tests | **faite** (branche `claude/a2-paiements-livraison`) |
 | 3 | Front : pages Paramètres, checkout, confirmation, suivi | non commencée |
 
 Hors périmètre : API Mobile Money réelle (aucun paiement ne passe par Akwaba, le client paie le commerçant directement), livraison gratuite sous condition (P13), livreurs (P10).
@@ -491,4 +491,48 @@ avec `ReauthFields` (mot de passe ou code 2FA). Si le serveur répond 403 `reaut
 
 ## 10. Revue sécurité (Alice)
 
-*(à remplir à la relecture)*
+Avis **bloquant**. Recopié tel que transmis par Kavin ; l'application suit.
+
+**À appliquer**
+- **B1** : un test P05 prouve qu'avec une session sans confirmation récente, changer un numéro de réception répond 403 et n'écrit rien. La correction A2-F1 sur la 2FA est faite par ailleurs (branche `claude/a2-securite-2fa`) : P05 ne part pas en production avant elle (voir « À faire en production »).
+- **B2 (décision 7 retournée)** : un numéro qui REMPLACE un numéro existant (pas la première saisie) reste « en attente » 24 h. Pendant ce temps, les clients voient l'ancien numéro (ou le texte de repli s'il n'y en avait pas). Le propriétaire peut annuler l'attente d'un clic, sans confirmation renforcée (annuler protège). L'attente s'affiche en bandeau dans l'espace marchand et sur la carte « Sécurité de la boutique ». Journal : début de l'attente, activation, annulation (catégorie Sécurité). L'activation au bout de 24 h se calcule à la lecture (pas de tâche planifiée).
+
+**Non bloquants retenus**
+- contrôle `demo_restricted` en premier ;
+- `security-overview` signale « numéro de réception changé dans les 7 derniers jours » ;
+- `payout_name` refuse les noms qui imitent un opérateur ou un service (liste fermée : Wave, Orange, MTN, Moov, Money, Service client…) ;
+- limite de 3 changements de numéro par jour et par boutique.
+
+**Tests qu'Alice rejouera** : numéro sans reauth (403, rien d'écrit) ; attente de 24 h et annulation ; moyen inactif refusé en appel direct ; isolation des zones entre boutiques ; aucun numéro complet dans le journal, les e-mails ou les erreurs. Ils sont dans `shops/tests/test_payments.py` (`PayoutConfirmationTests`, `PendingNumberTests`, `CheckoutPaymentTests`, `FirstNumberTests`) et `shops/tests/test_delivery.py` (`IsolationTests`).
+
+---
+
+## 11. Écarts par rapport au contrat de l'étape 1
+
+Ce qui a changé en réalisant l'étape 2. Tout le reste est appliqué tel quel (recommandations de l'auteur pour les 13 décisions, sauf la 7).
+
+1. **Décision 7 retournée (B2) : attente de 24 h.** Précisions de réalisation :
+   - Champs `pending_number`, `pending_name`, `pending_at` sur `ShopPaymentMethod` ; `activates_at = pending_at + 24 h` ; `effective_payout()` est le seul calcul de « ce que voit le client » (vitrine après commande, suivi, exemple du GET).
+   - **`had_number`** (nouveau champ) : vrai dès qu'un numéro a été donné une fois. Tout numéro suivant attend 24 h, **même après un retrait** : sans cela, « retirer le numéro puis en redonner un » contournerait l'attente. Pendant l'attente d'un numéro redonné après retrait, le client voit le texte de repli.
+   - Seule la **première saisie jamais faite** sert tout de suite. Un **retrait** de numéro sert tout de suite (il ne détourne rien) ; il n'est possible que sur un moyen **éteint** (un Mobile Money actif exige numéro et nom). Un **changement de nom seul** (même numéro) sert tout de suite, avec confirmation (un nom ne déplace pas l'argent ; les noms imitant un opérateur sont refusés).
+   - Renvoyer le formulaire avec le numéro en service ne touche pas l'attente ; renvoyer le numéro en attente ne la relance pas ; un troisième numéro remplace l'attente et **relance** les 24 h.
+   - `settle_pending()` (mise à jour conditionnelle, appelée aux lectures marchandes, au suivi et à la commande) écrit l'activation et la journalise **une seule fois** ; la lecture reste juste sans elle.
+   - Route ajoutée : `DELETE /shops/{slug}/payment-settings/{method}/pending` (propriétaire, sans confirmation renforcée, 404 s'il n'y a rien à annuler). Le GET gagne `pending` par moyen (numéro et nom en attente, début, activation) et `pending_count`.
+2. **Journal** : 3 actions de plus que le contrat : `payout_number_pending` (à surveiller), `payout_number_activated`, `payout_number_cancelled` (info). `payout_number_changed` ne sert plus qu'à la première saisie, au retrait et au changement de nom. Détails en liste blanche : deux derniers chiffres seulement.
+3. **Limite de débit** : `payout_change:shop` = **3 par jour et par boutique** (au lieu de 10 par heure), comptée seulement quand un numéro ou un nom change, après la confirmation. Les écritures de livraison restent à 60 par heure et par membre.
+4. **Ordre des contrôles** (PUT paiements) : démo → forme → au moins un moyen actif (`payment_methods_required`, 400, code de problème) → numéro et nom obligatoires → confirmation → limite.
+5. **E-mail d'alerte** : pour une attente, le gabarit est `payout_number_pending` (« Un numéro de paiement va changer sur {boutique} », avec la phrase « annulez le changement d'un clic ») ; sinon `payout_number_changed`. Un lien vers la page Paiements est ajouté.
+6. **`security-overview`** gagne `payout_changed_7d` (`{count, last_at}` ou `null`) et `payout_pending` (liste `{method, label, since, activates_at, new_last2}`). Jamais un numéro entier.
+7. **Nom du titulaire** : code `payout_name_reserved` (400) pour un nom contenant l'un des mots Wave, Orange, MTN, Moov, Money, MoMo, Akwaba, Support, Assistance, Opérateur, Officiel, ou les expressions « service client », « mobile money » (sans accents ni casse, mots entiers).
+8. **Résumé de livraison** : `limits` gagne `count` (nombre de zones, pour le compteur « 12 sur 20 »).
+9. **Plan** : `PlanSpec.delivery_zones` (20 / 60 / 150), exposé dans `GET plans` ; `usage.delivery_zones` ajouté ; blocage de la rétrogradation.
+10. **Fabriques de test et démo** : `make_shop()` donne les 15 zones et les 5 moyens actifs (état d'une boutique d'avant le chantier) ; `seed_demo` active les 5 moyens des boutiques de démo (sans numéro) pour que la démo vende comme avant.
+11. **Course PostgreSQL** : un test vérifie que le verrou `SELECT … FOR UPDATE` est émis (ignoré sur SQLite) ; le vrai test à deux fils n'a pas pu tourner ici (pas de PostgreSQL dans l'environnement).
+
+## 12. À faire en production
+
+1. **Ne pas déployer P05 avant la correction A2-F1** (2FA, branche `claude/a2-securite-2fa`). La confirmation renforcée protège les numéros ; tant que A2-F1 n'est pas en ligne, cette protection a une faille. Ordre : A2-F1, puis P05.
+2. Migrations, dans l'ordre : `shops 0009_paiements_livraison` (schéma), `shops 0010_reprise_paiements_livraison` (données : 15 zones et 5 moyens actifs par boutique existante, `promised_hours` des commandes), `audit 0010_evenements_paiements_livraison`. `python manage.py migrate` sur PostgreSQL ; vérifier `makemigrations --check` propre. La 0010 est idempotente et sans verrou long.
+3. Après migration, contrôler une boutique réelle : `GET /storefront/{slug}` doit rendre les mêmes 15 zones et les 5 moyens qu'avant.
+4. Déployer le **front** avec l'API (le front d'avant reste lisible : les clés existantes de la vitrine ont la même forme ; `fulfillment` et `payment_instructions` sont ajoutés).
+5. Prévenir les propriétaires : les 5 moyens restent actifs sans numéro tant qu'ils n'ont pas donné le leur.

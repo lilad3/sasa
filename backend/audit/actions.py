@@ -54,6 +54,13 @@ ACTIONS = {
     "api_key_revoked": (S, INFO, "Clé API révoquée"),
     "orders_exported": (S, WARNING, "Ventes exportées"),
     "customers_exported": (S, WARNING, "Clients exportés"),
+    # Paiements et livraison (chantier A2) : de l'argent entre ou sort différemment, donc Sécurité.
+    "payout_number_changed": (S, WARNING, "Numéro de réception modifié"),
+    "payout_number_pending": (S, WARNING, "Nouveau numéro de réception en attente de 24 h"),
+    "payout_number_activated": (S, INFO, "Nouveau numéro de réception activé"),
+    "payout_number_cancelled": (S, INFO, "Changement de numéro de réception annulé"),
+    "payment_methods_changed": (S, INFO, "Moyens de paiement modifiés"),
+    "delivery_settings_changed": (S, INFO, "Livraison modifiée"),
     # Activité des boutiques
     "shop_created": (B, INFO, "Boutique créée"),
     "order_placed": (B, INFO, "Commande passée en boutique"),

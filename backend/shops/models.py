@@ -48,6 +48,11 @@ class Shop(models.Model):
     vacation_active = models.BooleanField("en vacances", default=False)
     vacation_message = models.CharField("message de vacances", max_length=280, blank=True)
     vacation_until = models.DateField("date de retour", null=True, blank=True)
+    # Retrait sur place (docs/chantier-a2-paiements-livraison.md §1.3).
+    pickup_enabled = models.BooleanField("retrait sur place", default=False)
+    pickup_address = models.CharField("adresse de retrait", max_length=200, blank=True)
+    pickup_hours = models.CharField("horaires de retrait", max_length=160, blank=True)
+    pickup_prep_hours = models.PositiveSmallIntegerField("préparation du retrait (h)", default=2)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -152,6 +157,17 @@ class PaymentMethod(models.TextChoices):
     WAVE = "wave", "Wave"
 
 
+# Les Mobile Money : eux seuls ont un numéro de réception (docs/chantier-a2-paiements-livraison.md §1.1).
+MOBILE_MONEY = frozenset(
+    {PaymentMethod.ORANGE_MONEY, PaymentMethod.MTN_MOMO, PaymentMethod.MOOV_MONEY, PaymentMethod.WAVE}
+)
+
+
+class Fulfillment(models.TextChoices):
+    DELIVERY = "delivery", "Livraison"
+    PICKUP = "pickup", "Retrait sur place"
+
+
 class Channel(models.TextChoices):
     """D'où vient une commande (lien ?via= de la vitrine). Liste fermée : jamais de texte libre."""
 
@@ -196,6 +212,9 @@ class Order(models.Model):
     discount_amount = models.PositiveIntegerField(default=0)
     delivery_fee = models.PositiveIntegerField(default=0)
     total = models.PositiveIntegerField()
+    # Livraison ou retrait ; le délai promis est une copie, pour que changer une zone ne réécrive pas l'histoire.
+    fulfillment = models.CharField(max_length=10, choices=Fulfillment.choices, default=Fulfillment.DELIVERY)
+    promised_hours = models.PositiveSmallIntegerField("délai promis (h)", null=True, blank=True)
     channel = models.CharField("canal", max_length=10, choices=Channel.choices, default=Channel.DIRECT)
     is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
@@ -505,3 +524,76 @@ class IdempotencyRecord(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=["shop", "key"], name="unique_idempotency_key")]
         indexes = [models.Index(fields=["created_at"])]
+
+
+class ShopPaymentMethod(models.Model):
+    """
+    Un moyen de paiement d'une boutique (5 lignes par boutique). Le numéro est celui qui REÇOIT l'argent :
+    un numéro qui en remplace un autre attend 24 h dans `pending_*` avant de servir (chantier A2, revue Alice B2).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="payment_methods")
+    method = models.CharField(max_length=20, choices=PaymentMethod.choices)
+    enabled = models.BooleanField(default=True)
+    payout_number = models.CharField("numéro de réception", max_length=16, blank=True, help_text="Format +225XXXXXXXXXX.")
+    payout_name = models.CharField("nom affiché au client", max_length=40, blank=True)
+    # Numéro en attente : il remplace `payout_number` quand `pending_at` + 24 h est passé (calculé à la lecture).
+    pending_number = models.CharField(max_length=16, blank=True)
+    pending_name = models.CharField(max_length=40, blank=True)
+    pending_at = models.DateTimeField(null=True, blank=True)
+    # Vrai dès qu'un numéro a été donné une fois : tout numéro suivant attend 24 h, même après un retrait
+    # (sinon « retirer puis redonner un numéro » contournerait l'attente).
+    had_number = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["shop", "method"], name="unique_shop_payment_method"),
+            models.CheckConstraint(
+                condition=~models.Q(method="cash_on_delivery")
+                | (models.Q(payout_number="") & models.Q(payout_name="") & models.Q(pending_number="") & models.Q(pending_name="") & models.Q(pending_at__isnull=True)),
+                name="cash_has_no_payout",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.shop} · {self.method}"
+
+
+class DeliveryZone(models.Model):
+    """Une zone de livraison d'une boutique, avec ses frais et son délai (docs/chantier-a2-paiements-livraison.md §1.2)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="delivery_zones")
+    city = models.CharField("ville", max_length=60)
+    commune = models.CharField(max_length=60, blank=True)
+    # Clé de doublon calculée par le serveur : sans accents ni casse (« Port-Bouët » = « port bouet »).
+    key = models.CharField(max_length=130)
+    fee = models.PositiveIntegerField("frais (F)")
+    delay_hours = models.PositiveSmallIntegerField("délai promis (h)")
+    is_active = models.BooleanField(default=True)
+    position = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["position", "created_at"]
+        constraints = [models.UniqueConstraint(fields=["shop", "key"], name="unique_delivery_zone_key")]
+
+    def __str__(self):
+        return self.label
+
+    @property
+    def id_label(self):
+        """Identique à l'ancien `Zone.id` : les paniers en cours ne changent pas."""
+        return f"{self.city}|{self.commune}" if self.commune else self.city
+
+    @property
+    def label(self):
+        return f"{self.commune}, {self.city}" if self.commune else self.city

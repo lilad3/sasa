@@ -71,16 +71,29 @@ def make_member(email, shop, role, **fields):
     return user
 
 
-def make_shop(slug, name=None):
+def make_shop(slug, name=None, *, mobile_money=True):
+    """
+    Une boutique avec ses réglages de départ (15 zones). Les 5 moyens de paiement sont actifs, sans numéro : c'est
+    l'état d'une boutique d'avant le chantier A2, que la reprise de données laisse telle quelle.
+    `mobile_money=False` donne celui d'une boutique neuve (paiement à la livraison seul).
+    """
     from shops.models import Shop
+    from shops.services import seed_shop_settings
 
-    return Shop.objects.create(slug=slug, name=name or slug.replace("-", " ").title())
+    shop = Shop.objects.create(slug=slug, name=name or slug.replace("-", " ").title())
+    seed_shop_settings(shop, mobile_money_enabled=mobile_money)
+    return shop
 
 
 def make_order(shop, *, total=10_000, status="pending", age=None, phone="+2250707000001", product=None, quantity=1, **fields):
     from shops.models import Order, OrderItem
 
+    from shops.delivery import promised_hours
+
     defaults = {"payment_method": "wave", "customer_name": "Aya Koné", "customer_city": "Abidjan", "customer_commune": "Cocody"}
+    # Le délai promis est copié à la commande ; sans lieu (retrait), il n'y en a pas.
+    if fields.get("fulfillment") != "pickup":
+        defaults["promised_hours"] = promised_hours(fields.get("customer_city", defaults["customer_city"]))
     order = Order.objects.create(
         shop=shop,
         status=status,

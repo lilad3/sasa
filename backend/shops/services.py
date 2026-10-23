@@ -2,7 +2,8 @@ import secrets
 
 from django.utils.text import slugify
 
-from .models import Membership, Role, Shop, ShopLogo
+from .delivery import DEFAULT_ZONES, promised_hours, zone_key
+from .models import MOBILE_MONEY, DeliveryZone, Membership, PaymentMethod, Role, Shop, ShopLogo, ShopPaymentMethod
 from .permissions import effective_permissions
 
 
@@ -14,7 +15,38 @@ def create_shop_for_owner(user, name, plan="free"):
     # Démo sans paiement : le plan choisi à l'inscription s'applique tout de suite.
     shop = Shop.objects.create(slug=slug, name=name, plan=plan)
     Membership.objects.create(user=user, shop=shop, role=Role.OWNER)
+    seed_shop_settings(shop)
     return shop
+
+
+def seed_shop_settings(shop, *, mobile_money_enabled=False):
+    """
+    Réglages de départ d'une boutique neuve : seul le paiement à la livraison est actif (on ne propose pas un
+    Mobile Money dont le commerçant n'a pas donné le numéro), et les 15 zones de départ sont copiées.
+    """
+    seed_payment_methods(shop, mobile_money_enabled=mobile_money_enabled)
+    seed_zones(shop)
+
+
+def seed_payment_methods(shop, *, mobile_money_enabled=False):
+    if ShopPaymentMethod.objects.for_shop(shop).exists():
+        return
+    ShopPaymentMethod.objects.bulk_create(
+        ShopPaymentMethod(shop=shop, method=method, enabled=method not in MOBILE_MONEY or mobile_money_enabled)
+        for method, _ in PaymentMethod.choices
+    )
+
+
+def seed_zones(shop):
+    if DeliveryZone.objects.for_shop(shop).exists():
+        return
+    DeliveryZone.objects.bulk_create(
+        DeliveryZone(
+            shop=shop, city=zone.city, commune=zone.commune, key=zone_key(zone.city, zone.commune),
+            fee=zone.fee, delay_hours=promised_hours(zone.city), position=position,
+        )
+        for position, zone in enumerate(DEFAULT_ZONES)
+    )
 
 
 def memberships_for(user):

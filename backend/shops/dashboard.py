@@ -7,9 +7,8 @@ from django.db.models import Count, F, Max, Sum
 from django.db.models.functions import ExtractHour, ExtractIsoWeekDay, TruncDate
 from django.utils import timezone
 
-from .delivery import promised_hours
 from .goals import MONTHS
-from .models import Order, OrderItem, OrderStatus, Product
+from .models import Fulfillment, Order, OrderItem, OrderStatus, Product
 from .serializers import OrderSerializer
 
 PERIODS = {"7d": 7, "30d": 30, "90d": 90}
@@ -175,13 +174,14 @@ def _on_time(orders):
     Livrées à temps (docs/chantier-p5.md §4.4) : parmi les commandes livrées et horodatées, combien
     l'ont été dans le délai promis pour leur zone, de la commande à la livraison.
     """
-    rows = orders.filter(delivered_at__isnull=False).values_list("created_at", "delivered_at", "customer_city", "customer_commune")
+    # Le délai promis est celui copié à la commande ; un retrait n'a pas de promesse de livraison.
+    rows = orders.filter(delivered_at__isnull=False, fulfillment=Fulfillment.DELIVERY).values_list("created_at", "delivered_at", "promised_hours")
     measured, on_time, hours = 0, 0, 0.0
-    for created_at, delivered_at, city, commune in rows:
+    for created_at, delivered_at, promised in rows:
         took = (delivered_at - created_at).total_seconds() / 3600
         measured += 1
         hours += took
-        if took <= promised_hours(city, commune):
+        if promised is not None and took <= promised:
             on_time += 1
     return {"measured": measured, "on_time": on_time, "average_hours": round(hours / measured, 1) if measured else None}
 
@@ -200,7 +200,8 @@ def _by_channel(orders):
 def _by_place(orders):
     """CA par lieu de livraison. Les lieux viennent des zones de livraison : la liste reste courte."""
     rows = (
-        orders.order_by()
+        orders.filter(fulfillment=Fulfillment.DELIVERY)
+        .order_by()
         .values("customer_city", "customer_commune")
         .annotate(orders=Count("id"), revenue=Sum("total"))
         .order_by("-revenue")

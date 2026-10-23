@@ -115,4 +115,6 @@ Chaque protection du contrat (§5) a son test :
 | `shops/plans.py` | Plans et limites, appliqués par le serveur |
 | `shops/api_keys.py` · `shops/public_api.py` | Clés API (empreinte seule, temps constant) et API publique `/api/public/v1/` |
 | `shops/catalog.py` · `shops/csv_import.py` | Catalogue, alertes de stock, import CSV tout ou rien |
+| `shops/payments.py` · `shops/payment_settings.py` | Moyens de paiement par boutique, numéros de réception (attente de 24 h pour un numéro qui en remplace un autre), texte des instructions donné au client |
+| `shops/delivery.py` · `shops/delivery_settings.py` | Zones de livraison par boutique (plafond du plan), retrait sur place |
 | `core/spreadsheet.py` | Exports CSV pour Excel, formules neutralisées |

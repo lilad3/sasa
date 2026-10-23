@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from core.exceptions import ProblemError
 
-from .models import ApiKey, Membership, Order, Product
+from .models import ApiKey, DeliveryZone, Membership, Order, Product
 
 
 @dataclass(frozen=True)
@@ -23,12 +23,13 @@ class PlanSpec:
     api_keys: bool
     csv_import: bool
     custom_accent: bool
+    delivery_zones: int  # zones de livraison, inactives comprises
 
 
 PLANS = {
-    "free": PlanSpec("free", "Gratuit", 0, 25, 1, 100, api_keys=False, csv_import=False, custom_accent=False),
-    "pro": PlanSpec("pro", "Pro", 9900, 500, 5, 2000, api_keys=True, csv_import=True, custom_accent=True),
-    "business": PlanSpec("business", "Business", 29900, None, 20, None, api_keys=True, csv_import=True, custom_accent=True),
+    "free": PlanSpec("free", "Gratuit", 0, 25, 1, 100, api_keys=False, csv_import=False, custom_accent=False, delivery_zones=20),
+    "pro": PlanSpec("pro", "Pro", 9900, 500, 5, 2000, api_keys=True, csv_import=True, custom_accent=True, delivery_zones=60),
+    "business": PlanSpec("business", "Business", 29900, None, 20, None, api_keys=True, csv_import=True, custom_accent=True, delivery_zones=150),
 }
 
 FEATURE_LABELS = {
@@ -36,7 +37,7 @@ FEATURE_LABELS = {
     "csv_import": "L'import de produits",
     "custom_accent": "Le choix de la couleur de la vitrine",
 }
-RESOURCE_LABELS = {"products": "produits", "members": "personnes dans l'équipe"}
+RESOURCE_LABELS = {"products": "produits", "members": "personnes dans l'équipe", "delivery_zones": "zones de livraison"}
 
 
 def spec(shop):
@@ -65,6 +66,8 @@ def ensure_room(shop, resource, adding=1):
 def count(shop, resource):
     if resource == "products":
         return Product.objects.for_shop(shop).count()
+    if resource == "delivery_zones":
+        return DeliveryZone.objects.for_shop(shop).count()
     return Membership.objects.filter(shop=shop).count()
 
 
@@ -73,6 +76,7 @@ def usage(shop):
     return {
         "products": count(shop, "products"),
         "members": count(shop, "members"),
+        "delivery_zones": count(shop, "delivery_zones"),
         "orders_this_month": Order.objects.for_shop(shop).filter(created_at__date__gte=month_start).count(),
         "active_api_keys": ApiKey.objects.for_shop(shop).filter(revoked_at__isnull=True).count(),
     }
@@ -90,6 +94,8 @@ def downgrade_blockers(shop, target):
         blockers.append(f"{current['products']} produits pour {plan.products} autorisés")
     if plan.members is not None and current["members"] > plan.members:
         blockers.append(f"{current['members']} personnes dans l'équipe pour {plan.members} autorisées")
+    if current["delivery_zones"] > plan.delivery_zones:
+        blockers.append(f"{current['delivery_zones']} zones de livraison pour {plan.delivery_zones} autorisées")
     if not plan.api_keys and current["active_api_keys"]:
         blockers.append("des clés API actives (révoquez-les d'abord)")
     return blockers

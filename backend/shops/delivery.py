@@ -1,8 +1,13 @@
 """
-Zones et frais de livraison, en FCFA. Le serveur seul décide des frais : le front affiche
-cette liste, et le checkout recalcule le montant à partir de la zone choisie.
+Zones et frais de livraison, en FCFA, propres à chaque boutique (docs/chantier-a2-paiements-livraison.md §1.2).
+Le serveur seul décide des frais : le front affiche les zones actives, et le checkout recalcule le montant
+à partir de la zone choisie.
+
+DEFAULT_ZONES n'est que la liste de départ d'une NOUVELLE boutique : elle est copiée une fois à la création.
 """
 
+import re
+import unicodedata
 from dataclasses import dataclass
 
 
@@ -22,11 +27,10 @@ class Zone:
 
     @property
     def delay_hours(self):
-        """Le délai de livraison promis, de la commande à la remise au client (docs/chantier-p5.md §4.3)."""
         return promised_hours(self.city)
 
 
-ZONES = [
+DEFAULT_ZONES = [
     Zone("Abidjan", "Cocody", 1500),
     Zone("Abidjan", "Yopougon", 1500),
     Zone("Abidjan", "Marcory", 1500),
@@ -44,22 +48,33 @@ ZONES = [
     Zone("Korhogo", "", 3500),
 ]
 
-_BY_PLACE = {(zone.city.casefold(), zone.commune.casefold()): zone for zone in ZONES}
-
-
-def find_zone(city, commune=""):
-    return _BY_PLACE.get(((city or "").strip().casefold(), (commune or "").strip().casefold()))
-
-
 GRAND_ABIDJAN_HOURS = 24
 NEAR_ABIDJAN = {"bingerville", "grand-bassam"}
 
 
 def promised_hours(city, commune=""):
-    """24 h dans le Grand Abidjan, 48 h à Bingerville et Grand-Bassam, 72 h ailleurs (et pour un lieu inconnu)."""
+    """Délai de départ d'une zone : 24 h dans le Grand Abidjan, 48 h à Bingerville et Grand-Bassam, 72 h ailleurs."""
     place = (city or "").strip().casefold()
     if place == "abidjan":
         return GRAND_ABIDJAN_HOURS
     if place in NEAR_ABIDJAN:
         return 48
     return 72
+
+
+def zone_key(city, commune=""):
+    """Clé de doublon : minuscules, sans accents, tirets et espaces écrasés. « Port-Bouët » = « port bouet »."""
+
+    def clean(text):
+        text = unicodedata.normalize("NFKD", text or "")
+        text = "".join(char for char in text if not unicodedata.combining(char))
+        return re.sub(r"[\s\-_'’]+", " ", text.casefold()).strip()
+
+    return f"{clean(city)}|{clean(commune)}"
+
+
+def find_zone(shop, city, commune=""):
+    """La zone ACTIVE de cette boutique (et d'aucune autre) qui correspond au lieu, ou None."""
+    from .models import DeliveryZone
+
+    return DeliveryZone.objects.for_shop(shop).filter(is_active=True, key=zone_key(city, commune)).first()

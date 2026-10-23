@@ -18,7 +18,8 @@ from audit.actions import ACTIONS, Category
 from audit.models import AuditEvent
 from core.pagination import PagePagination
 
-from .models import ApiKey, Membership
+from .models import ApiKey, Membership, ShopPaymentMethod
+from .payments import LABELS, activates_at, last2, settle_pending
 from .permissions import ShopScopedView
 from .team import ROLE_ORDER, full_name
 
@@ -46,11 +47,21 @@ DETAILS = {
     "product_featured": ("change",),
     "storefront_published": ("number", "theme"),
     "storefront_restored": ("number",),
+    # Jamais le numéro entier : seulement ses deux derniers chiffres (docs/chantier-a2-paiements-livraison.md §5).
+    "payout_number_changed": ("method", "previous_last2", "new_last2", "name_changed"),
+    "payout_number_pending": ("method", "previous_last2", "new_last2", "activates_at"),
+    "payout_number_activated": ("method", "previous_last2", "new_last2"),
+    "payout_number_cancelled": ("method", "pending_last2"),
+    "payment_methods_changed": ("enabled", "disabled"),
+    "delivery_settings_changed": ("change", "zone", "previous_fee", "fee", "previous_hours", "hours", "pickup_enabled"),
 }
 
 # Ce qui, sur le compte d'un membre de l'équipe, peut vouloir dire qu'on essaie d'y entrer.
 SUSPICIOUS = ("login_failed", "mfa_failed", "reauth_failed", "account_locked", "refresh_reuse_detected")
 SUSPICIOUS_WINDOW = timedelta(days=7)
+# Un numéro de réception changé (ou en attente) dans cette fenêtre : de l'argent peut partir ailleurs.
+PAYOUT_ACTIONS = ("payout_number_changed", "payout_number_pending")
+PAYOUT_WINDOW = timedelta(days=7)
 # Une clé qui ne sert plus est une porte ouverte pour rien.
 DORMANT_AFTER = timedelta(days=30)
 NEW_KEY_GRACE = timedelta(days=7)
@@ -118,6 +129,7 @@ class SecurityOverviewView(ShopScopedView):
     permission_by_method = {"GET": "shop.manage"}
 
     def get(self, request, slug):
+        settle_pending(self.shop, request)
         now = timezone.now()
         memberships = sorted(
             Membership.objects.filter(shop=self.shop).select_related("user"),
@@ -189,9 +201,21 @@ class SecurityOverviewView(ShopScopedView):
                 "rows": last_export.metadata.get("rows"),
             }
 
+        payout_events = AuditEvent.objects.filter(
+            shop_id=self.shop.pk, action__in=PAYOUT_ACTIONS, created_at__gte=now - PAYOUT_WINDOW
+        ).order_by("-id")
+        last_payout = payout_events.first()
+        pending = [
+            {"method": row.method, "label": LABELS[row.method], "since": row.pending_at, "activates_at": activates_at(row), "new_last2": last2(row.pending_number)}
+            for row in ShopPaymentMethod.objects.for_shop(self.shop).filter(pending_at__isnull=False).order_by("pending_at")
+        ]
+
         return Response(
             {
                 "team": team,
+                # Numéro de réception changé dans les 7 derniers jours (jamais le numéro lui-même) et changements en attente.
+                "payout_changed_7d": {"count": payout_events.count(), "last_at": last_payout.created_at} if last_payout else None,
+                "payout_pending": pending,
                 "api_keys": {
                     "active": len(keys),
                     "dormant": [{"id": str(k.pk), "name": k.name, "last_used_at": k.last_used_at, "created_at": k.created_at} for k in dormant],

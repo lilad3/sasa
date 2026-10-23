@@ -385,6 +385,12 @@ Les erreurs sont inspirées de la RFC 9457 et envoyées avec `Content-Type: appl
 | 409 | `plan_too_small` | Passage à un plan inférieur impossible (produits, équipe ou clés en trop, détail fourni) |
 | 409 | `too_many_api_keys` | 10 clés actives au maximum |
 | 409 | `shop_on_vacation` | Vitrine en congé : la commande n'est pas prise |
+| 400 | `payment_method_unavailable` | Le moyen choisi n'est plus actif dans la boutique (`errors.payment_method`) : retirer le moyen, rafraîchir la vitrine |
+| 400 | `pickup_unavailable` | Retrait demandé alors qu'il est éteint (`errors.fulfillment`) |
+| 400 | `payment_methods_required` | Aucun moyen de paiement actif |
+| 400 | `payout_number_required` · `payout_name_required` · `payout_number_not_allowed` · `payout_name_reserved` | Sous le champ du moyen (`errors."methods.N.payout_number"`) |
+| 400 | `fee_out_of_range` · `delay_out_of_range` · `prep_out_of_range` · `pickup_address_required` · `order_mismatch` · `field_not_editable` | Zones et retrait (docs/chantier-a2-paiements-livraison.md §6) |
+| 409 | `zone_duplicate` · `zone_in_use` · `no_fulfillment_option` | Zones de livraison : doublon, zone déjà servie, plus aucune option de remise |
 | 413 | `file_too_large` | Import CSV refusé |
 | 415 | `unsupported_file` | Import CSV refusé |
 | 423 | `account_locked` | Compte à rebours depuis `retry_after` |
@@ -410,6 +416,8 @@ Les codes de mot de passe dans `errors.password` sont : `password_too_short` · 
 | `POST /shops/{slug}/members` | 20 / h | boutique |
 | `POST /shops/{slug}/notes` | 30 / h | auteur |
 | `POST /shops/{slug}/orders/{id}/notes` | 60 / h | auteur |
+| `PUT /shops/{slug}/payment-settings` (numéro ou nom changé) | 3 / jour | boutique |
+| `POST` · `PATCH` · `DELETE` · `PUT /shops/{slug}/delivery/…` | 60 / h | membre |
 | `/api/public/v1/*` | 120 / min | clé API |
 | Reste de `/api/v1/` | 300 / min | utilisateur |
 
@@ -541,7 +549,11 @@ type SecurityEvent = {
 | ✓ | `GET /plans` · `POST /plan` | propriétaire (+ confirmation renforcée pour changer) | `{ current, plans, usage }` ; `409 plan_too_small` si l'usage dépasse le plan visé |
 | ✓ | `GET` · `POST /api-keys` · `DELETE /api-keys/{id}` | propriétaire (+ confirmation renforcée et plan Pro+ pour créer) | La clé complète n'apparaît que dans la réponse du `POST` ; alerte e-mail à la création |
 | ✓ | `GET /activity?type=sensible\|tout&page=` | propriétaire | Journal de la boutique, 90 jours, paginé (§2.10) |
-| ✓ | `GET /security-overview` | propriétaire | Faits de sécurité : 2FA de l'équipe, clés endormies, essais refusés, dernier export (§2.10) |
+| ✓ | `GET /security-overview` | propriétaire | Faits de sécurité : 2FA de l'équipe, clés endormies, essais refusés, dernier export, numéro de réception changé dans les 7 jours et changements en attente (§2.10) |
+| A2 | `GET` · `PUT /payment-settings` | propriétaire (+ confirmation renforcée si un numéro ou un nom change ; compte de démo : `403 demo_restricted`) | Les 5 moyens (`enabled`, `payout_number`, `payout_name`, `example` écrit par le serveur, `pending`), `summary`, `missing_numbers`, `pending_count`. Un numéro qui **remplace** un numéro donné un jour attend 24 h (les clients voient l'ancien) ; journal et e-mail à chaque propriétaire, deux derniers chiffres seulement |
+| A2 | `DELETE /payment-settings/{method}/pending` | propriétaire | Annule l'attente d'un nouveau numéro, sans confirmation renforcée (annuler protège) · `404` s'il n'y a rien à annuler |
+| A2 | `GET /delivery` | propriétaire | `{ summary, limits, zones[], pickup }` |
+| A2 | `POST` · `PATCH /delivery/zones` · `DELETE /delivery/zones/{id}` · `PUT /delivery/zones/order` · `PUT /delivery/pickup` | propriétaire | Zones par boutique (frais 0 à 100 000 F, délai 1 à 240 h, plafond du plan 20 / 60 / 150), retrait sur place. Un `id` d'une autre boutique : `404` sans rien appliquer |
 | ✓ | `GET` · `PATCH /settings` | propriétaire | Profil de la vitrine, couleur (Pro+), mode vacances (`vacation_active`, `vacation_message`, `vacation_until`) |
 | ✓ | `GET` · `POST /members` · `PATCH` · `DELETE /members/{user_id}` · `POST /members/{user_id}/temporary-password` | voir : tous · gérer : propriétaire (+ confirmation renforcée) | §2.15 |
 | ✓ | `GET /notes?unread=1` · `POST /notes` · `POST /notes/{id}/read` · `DELETE /notes/{id}` | lire : tous · écrire : propriétaire, gérant | Le mot du patron ; `DELETE` retire la note (auteur ou propriétaire) sans l'effacer de l'historique |
@@ -589,6 +601,7 @@ type Order = {
   reference: string;
   status: OrderStatus;
   payment_method: PaymentMethod;
+  fulfillment: "delivery" | "pickup";
   customer: { name: string; phone: string; city: string; commune: string; landmark: string };
   items: { product_id: string; name: string; unit_price: number; quantity: number; line_total: number }[];
   subtotal: number;
@@ -625,9 +638,9 @@ Ces routes n'acceptent aucun token (un visiteur connecté ou non voit la même v
 
 | | Méthode et route | Rôle |
 |---|---|---|
-| ✓ | `GET /storefront/{slug}` | `Storefront` : nom, description, ville, couleur d'accent, zones de livraison, moyens de paiement |
+| ✓ | `GET /storefront/{slug}` | `Storefront` : nom, description, ville, couleur d'accent, **zones de livraison actives**, **moyens de paiement actifs** (jamais un numéro), `pickup` (`null` si éteint) |
 | ✓ | `GET /storefront/{slug}/products` · `GET /storefront/{slug}/products/{product_slug}` | `PublicProduct[]`, produits actifs uniquement, triés par rayon puis par nom |
-| ✓ | `POST /storefront/{slug}/orders` | En-tête `Idempotency-Key` (UUID) obligatoire → `201 { reference, total, status }` · `409 shop_on_vacation` en congé |
+| ✓ | `POST /storefront/{slug}/orders` | En-tête `Idempotency-Key` (UUID) obligatoire → `201 { reference, total, status, fulfillment, payment_method, payment_instructions }` · `409 shop_on_vacation` en congé |
 | ✓ | `POST /storefront/{slug}/track` | `{ reference, phone_last4 }` → statut, date, total, articles, commune. Ni adresse ni téléphone en retour ; même `404` pour une référence inconnue et un numéro faux ; 5 essais par heure et par référence |
 
 ```ts
@@ -641,7 +654,8 @@ type Storefront = {
   accent: Accent;
   currency: "XOF";
   product_count: number;
-  delivery_zones: { id: string; city: string; commune: string; label: string; fee: number }[];
+  delivery_zones: { id: string; city: string; commune: string; label: string; fee: number; delay_hours: number }[];
+  pickup: { address: string; hours: string; prep_hours: number } | null;
   payment_methods: { id: PaymentMethod; label: string }[];
 };
 
@@ -666,13 +680,16 @@ Corps de `POST /orders` :
   "items": [{ "product_id": "…", "quantity": 2 }],
   "customer": { "name": "…", "phone": "07 07 12 34 56", "city": "Abidjan", "commune": "Cocody", "landmark": "…" },
   "payment_method": "wave",
+  "fulfillment": "delivery",
   "expected_total": 27000,
   "website": ""
 }
 ```
 
 - Le panier vit côté client. Le serveur ne le croit pas : il revalide tout au checkout.
-- `city` + `commune` doivent correspondre à une zone de `delivery_zones`, sinon `400` avec `customer.city: delivery_unavailable`. Les frais viennent de la zone, jamais du client.
+- `fulfillment` : `delivery` (défaut) ou `pickup`. En livraison, `city` + `commune` doivent correspondre à une zone **active de cette boutique**, sinon `400` avec `customer.city: delivery_unavailable` ; les frais et le délai viennent de la zone, jamais du client. En retrait, ville, commune et repère sont ignorés (frais 0) ; retrait éteint : `400 pickup_unavailable`.
+- Moyen de paiement non actif dans la boutique : `400 payment_method_unavailable`, sans commande ni stock décompté.
+- `payment_instructions` (`null` pour le paiement à la livraison) : `{ method, label, number, number_display, holder, amount, reference, text }`. Le texte vient du serveur ; le numéro est lu en direct (pas copié dans la commande) et recalculé à chaque envoi, y compris un rejeu idempotent. `POST /track` ajoute `fulfillment`, `pickup` et `payment_instructions` (commande en attente ou confirmée seulement).
 - Article masqué, inconnu ou d'une autre boutique : `400` avec `items.N.product_id: product_unavailable`.
 - Stock insuffisant : `409 out_of_stock`, avec `items.N.quantity: [{ code, message, available }]`.
 - Total différent de `expected_total` : `409 price_changed`, avec `subtotal`, `delivery_fee` et `total` recalculés.

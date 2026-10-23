@@ -4,7 +4,6 @@ from django.utils.text import slugify
 from rest_framework import serializers
 
 from .models import Order, OrderItem, OrderNote, OrderStatus, Product
-from .delivery import promised_hours
 from .storefront import photos_payload, plain_text
 
 
@@ -24,7 +23,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "id", "reference", "status", "payment_method", "customer", "items",
-            "subtotal", "discount_code", "discount_amount", "delivery_fee", "total", "channel", "created_at",
+            "subtotal", "discount_code", "discount_amount", "delivery_fee", "total", "fulfillment", "channel", "created_at",
         ]
 
     def get_customer(self, order):
@@ -63,7 +62,8 @@ class OrderDetailSerializer(OrderSerializer):
         ]
 
     def get_promised_hours(self, order):
-        return promised_hours(order.customer_city, order.customer_commune)
+        """Le délai copié à la commande (null en retrait) : il ne bouge pas quand la zone change."""
+        return order.promised_hours
 
     def get_delivery_hours(self, order):
         """De la commande à la livraison, en heures arrondies au dixième (null tant qu'elle n'est pas livrée)."""

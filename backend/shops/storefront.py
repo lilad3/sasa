@@ -22,10 +22,11 @@ from core.exceptions import ProblemError
 from core.ratelimit import enforce
 
 from .checkout import fake_response, place_order, priced_lines
-from .delivery import ZONES, find_zone
+from .delivery import find_zone
 from .design_catalog import published_design
 from .discount_codes import CHECK_CODE_LIMIT, CHECK_IP_LIMIT, code_key, label, normalize_code, usable_discount
-from .models import Channel, Order, OrderItem, OrderStatus, PaymentMethod, Product, ProductPhoto, Shop, ShopLogo
+from .models import Channel, DeliveryZone, Fulfillment, Order, OrderItem, OrderStatus, PaymentMethod, Product, ProductPhoto, Shop, ShopLogo
+from .payments import LABELS, active_methods, payment_instructions, settle_pending
 
 ORDER_LIMIT = (10, 3600)  # 10 commandes par heure et par IP (§3.3)
 # Suivi de commande : 4 chiffres de téléphone, c'est 10 000 possibilités. La limite par
@@ -63,20 +64,13 @@ def normalize_phone(raw):
 class CustomerSerializer(serializers.Serializer):
     name = serializers.CharField(min_length=2, max_length=120, validators=[plain_text])
     phone = serializers.CharField(max_length=24)
-    city = serializers.CharField(max_length=60)
+    # Ville et commune ne comptent que pour une livraison : CheckoutSerializer les contrôle (et les vide en retrait).
+    city = serializers.CharField(max_length=60, required=False, allow_blank=True, default="")
     commune = serializers.CharField(max_length=60, required=False, allow_blank=True, default="")
     landmark = serializers.CharField(max_length=160, required=False, allow_blank=True, default="", validators=[plain_text])
 
     def validate_phone(self, value):
         return normalize_phone(value)
-
-    def validate(self, attrs):
-        if find_zone(attrs["city"], attrs["commune"]) is None:
-            raise serializers.ValidationError(
-                {"city": [ErrorDetail("Nous ne livrons pas encore cette zone.", code="delivery_unavailable")]}
-            )
-        return attrs
-
 
 class ItemSerializer(serializers.Serializer):
     product_id = serializers.UUIDField()
@@ -87,6 +81,8 @@ class CheckoutSerializer(serializers.Serializer):
     items = ItemSerializer(many=True, allow_empty=False, max_length=30)
     customer = CustomerSerializer()
     payment_method = serializers.ChoiceField(choices=PaymentMethod.choices)
+    # Liste fermée ; absent : livraison (le front d'avant ne l'envoie pas).
+    fulfillment = serializers.ChoiceField(choices=Fulfillment.choices, required=False, default=Fulfillment.DELIVERY)
     expected_total = serializers.IntegerField(min_value=0, required=False)
     # Code de réduction personnel (docs/chantier-p5.md §1.5) : vérifié dans la transaction de la commande.
     discount_code = serializers.CharField(required=False, allow_blank=True, default="", max_length=20)
@@ -110,6 +106,18 @@ class CheckoutSerializer(serializers.Serializer):
     def validate_channel(self, value):
         return normalize_channel(value)
 
+    def validate(self, attrs):
+        customer = attrs["customer"]
+        if attrs["fulfillment"] == Fulfillment.PICKUP:
+            # Le lieu n'a pas de sens en retrait : il est vidé AVANT l'empreinte d'idempotence.
+            attrs["customer"] = {**customer, "city": "", "commune": "", "landmark": ""}
+            return attrs
+        if not customer["city"].strip():
+            raise serializers.ValidationError({"customer": {"city": [ErrorDetail("Choisissez votre zone de livraison.", code="required")]}})
+        if find_zone(self.context["shop"], customer["city"], customer["commune"]) is None:
+            raise serializers.ValidationError({"customer": {"city": [ErrorDetail("Nous ne livrons pas encore cette zone.", code="delivery_unavailable")]}})
+        return attrs
+
 
 def normalize_channel(value):
     """Absent ou vide : « direct ». Inconnu : « autre ». Jamais le texte reçu tel quel."""
@@ -126,6 +134,13 @@ class DiscountCheckSerializer(serializers.Serializer):
 
     def validate_phone(self, value):
         return normalize_phone(value)
+
+
+def pickup_payload(shop):
+    """Le retrait vu par le client : null s'il est éteint."""
+    if not shop.pickup_enabled:
+        return None
+    return {"address": shop.pickup_address, "hours": shop.pickup_hours, "prep_hours": shop.pickup_prep_hours}
 
 
 def storefront_shop(slug):
@@ -236,11 +251,13 @@ class StorefrontDetailView(StorefrontView):
                     "until": shop.vacation_until if shop.on_vacation() else None,
                 },
                 "product_count": Product.objects.for_shop(shop).filter(is_active=True).count(),
+                # Seulement ce qui est actif, et jamais un numéro : il n'est donné qu'après une commande, avec sa référence.
                 "delivery_zones": [
-                    {"id": zone.id, "city": zone.city, "commune": zone.commune, "label": zone.label, "fee": zone.fee, "delay_hours": zone.delay_hours}
-                    for zone in ZONES
+                    {"id": zone.id_label, "city": zone.city, "commune": zone.commune, "label": zone.label, "fee": zone.fee, "delay_hours": zone.delay_hours}
+                    for zone in DeliveryZone.objects.for_shop(shop).filter(is_active=True)
                 ],
-                "payment_methods": [{"id": value, "label": label} for value, label in PaymentMethod.choices],
+                "pickup": pickup_payload(shop),
+                "payment_methods": [{"id": method, "label": LABELS[method]} for method in active_methods(shop)],
             }
         )
 
@@ -269,18 +286,19 @@ class StorefrontOrderView(StorefrontView):
             raise ProblemError(409, "shop_on_vacation", "La boutique est en congé : elle ne prend pas de commande pour le moment.")
         key = _idempotency_key(request)
 
-        serializer = CheckoutSerializer(data=request.data)
+        serializer = CheckoutSerializer(data=request.data, context={"shop": shop})
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
         if data["website"]:
             # 201 comme une vraie commande : le robot ne sait pas qu'il a été repéré.
             record("checkout_bot_blocked", request, shop=shop)
-            return Response(fake_response(data), status=status.HTTP_201_CREATED)
+            return Response(with_instructions(shop, fake_response(data)), status=status.HTTP_201_CREATED)
 
         if data["discount_code"]:
             # Même compteur que la vérification : 5 essais par heure et par code, d'où qu'ils viennent.
             enforce("discount_check:code", code_key(shop, data["discount_code"]), CHECK_CODE_LIMIT)
+        settle_pending(shop, request)
         response, order = place_order(shop, _canonical(data), key)
         if order is not None:
             record(
@@ -293,7 +311,15 @@ class StorefrontOrderView(StorefrontView):
                 discount_amount=order.discount_amount,
                 channel=order.channel,
             )
-        return Response(response, status=status.HTTP_201_CREATED)
+        # Les instructions sont recalculées à chaque envoi : la réponse enregistrée ne contient jamais de numéro,
+        # et un rejeu ne montre pas un numéro périmé.
+        return Response(with_instructions(shop, response), status=status.HTTP_201_CREATED)
+
+
+def with_instructions(shop, response):
+    method = response.get("payment_method")
+    instructions = payment_instructions(shop, method, response["total"], response["reference"]) if method else None
+    return {**response, "payment_instructions": instructions}
 
 
 class StorefrontDiscountCheckView(StorefrontView):
@@ -347,6 +373,7 @@ class StorefrontTrackView(StorefrontView):
         serializer.is_valid(raise_exception=True)
         reference = serializer.validated_data["reference"]
         enforce("track_order:ref", f"{shop.pk}:{reference}", TRACK_ORDER_LIMIT)
+        settle_pending(shop, request)
 
         order = Order.objects.for_shop(shop).filter(reference=reference).prefetch_related("items").first()
         # Même réponse pour une référence inconnue et un numéro qui ne correspond pas.
@@ -364,6 +391,18 @@ class StorefrontTrackView(StorefrontView):
                 "delivery_fee": order.delivery_fee,
                 "total": order.total,
                 "payment_method": order.payment_method,
+                "fulfillment": order.fulfillment,
+                # Tant qu'il reste à payer seulement ; le numéro est lu en direct dans les réglages du moment.
+                "payment_instructions": (
+                    payment_instructions(shop, order.payment_method, order.total, order.reference)
+                    if order.status in (OrderStatus.PENDING, OrderStatus.CONFIRMED)
+                    else None
+                ),
+                "pickup": (
+                    {"address": shop.pickup_address, "hours": shop.pickup_hours, "prep_hours": shop.pickup_prep_hours}
+                    if order.fulfillment == Fulfillment.PICKUP
+                    else None
+                ),
                 "items": [{"name": item.name, "quantity": item.quantity} for item in order.items.all()],
                 "delivery": {"city": order.customer_city, "commune": order.customer_commune},
             }
@@ -386,6 +425,7 @@ def _canonical(data):
         "items": [{"product_id": str(item["product_id"]), "quantity": item["quantity"]} for item in data["items"]],
         "customer": dict(data["customer"]),
         "payment_method": data["payment_method"],
+        "fulfillment": data["fulfillment"],
         "expected_total": data.get("expected_total"),
         # Le code et le canal comptent dans l'empreinte : même clé et autre code donnent 409.
         "discount_code": data["discount_code"],

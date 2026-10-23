@@ -36,6 +36,17 @@ ALERTS = {
         "Une clé API vient d'être créée. Elle permet à un autre logiciel de lire les données de votre boutique "
         "jusqu'à sa révocation.",
     ),
+    # Gabarits (docs/chantier-a2-paiements-livraison.md §5) : {shop}, {changes} (deux derniers chiffres seulement).
+    "payout_number_changed": (
+        "Un numéro de paiement a changé sur {shop}",
+        "Le numéro qui reçoit l'argent de vos clients vient d'être modifié sur {shop} :\n{changes}",
+    ),
+    "payout_number_pending": (
+        "Un numéro de paiement va changer sur {shop}",
+        "Un nouveau numéro de réception a été demandé sur {shop} :\n{changes}\n"
+        "Pendant 24 h, vos clients continuent de voir l'ancien numéro. "
+        "Si ce n'est pas vous, annulez le changement d'un clic depuis la page Paiements.",
+    ),
     "recovery_code_used": (
         "Un code de secours a été utilisé",
         "Un de vos codes de secours vient d'être utilisé. Il ne fonctionnera plus.",
@@ -101,11 +112,13 @@ def send_account_locked(user, unlock_token):
     )
 
 
-def send_security_alert(user, action, request=None):
+def send_security_alert(user, action, request=None, *, link="", **context):
     subject, what = ALERTS[action]
+    subject, what = subject.format(**context), what.format(**context)
     when = timezone.localtime().strftime("%d/%m/%Y à %H:%M")
     device = device_label(getattr(request, "client_ua", "")) or "inconnu"
     ip = getattr(request, "client_ip", "") or "inconnue"
+    page = f"\n\nPage Paiements : {settings.FRONTEND_URL}{link}" if link else ""
     send_mail(
         subject,
         f"Bonjour {user.first_name or ''},\n\n{what}\n\n"
@@ -113,6 +126,7 @@ def send_security_alert(user, action, request=None):
         "C'était vous ? Vous n'avez rien à faire.\n"
         "Ce n'était pas vous ? Changez votre mot de passe tout de suite, puis fermez vos autres sessions "
         f"depuis la page Sécurité :\n{settings.FRONTEND_URL}/mot-de-passe-oublie"
+        f"{page}"
         f"{SIGNATURE}",
         None,
         [user.email],
