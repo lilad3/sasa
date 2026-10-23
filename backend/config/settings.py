@@ -257,6 +257,12 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
 
 
+# Sentry (core/sentry.py) : éteint sans DSN, et sans aucune donnée personnelle quand il est actif.
+from core.sentry import init_sentry  # noqa: E402
+
+init_sentry(os.environ.get('SENTRY_DSN', ''), os.environ.get('SENTRY_ENVIRONMENT', 'production'))
+
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

@@ -6,6 +6,7 @@ import secrets
 from django.conf import settings
 
 from .exceptions import problem_json_response
+from .sentry import tag_request
 
 SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 
@@ -19,6 +20,7 @@ class RequestIdMiddleware:
     def __call__(self, request):
         incoming = request.headers.get("X-Request-ID", "")
         request.request_id = incoming if SAFE_ID.match(incoming) else f"req_{secrets.token_urlsafe(15)}"
+        tag_request(request.request_id)
         response = self.get_response(request)
         response["X-Request-ID"] = request.request_id
         return response

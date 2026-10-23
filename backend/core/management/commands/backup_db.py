@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 
 from core import backup
+from core.sentry import capture_failure
 
 
 def human_size(size):
@@ -14,6 +15,7 @@ class Command(BaseCommand):
         try:
             result = backup.create_backup()
         except backup.BackupError as error:
+            capture_failure("backup_db")
             raise CommandError(str(error)) from None
         seconds = f"{result.seconds:.1f}".replace(".", ",")
         self.stdout.write(f"OK {result.path.name} {human_size(result.size)} en {seconds} s sha256={result.sha256}")
