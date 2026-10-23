@@ -54,11 +54,11 @@ class ChainReport:
     reason: str = ""
 
 
-def verify_chain():
-    """Recalcule toute la chaîne, de la ligne la plus ancienne à la plus récente."""
+def verify_chain(using=None):
+    """Recalcule toute la chaîne, de la ligne la plus ancienne à la plus récente (`using` : autre base, ex. une restauration)."""
     previous = None
     checked = 0
-    for event in AuditEvent.objects.order_by("id").iterator(chunk_size=500):
+    for event in AuditEvent.objects.using(using).order_by("id").iterator(chunk_size=500):
         if previous is not None and event.previous_hash != previous:
             return ChainReport(False, checked, event.pk, "maillon rompu : une ligne a été supprimée ou insérée hors de l'application")
         if not hmac.compare_digest(event.hash, event.compute_hash()):

@@ -219,6 +219,11 @@ TOTP_ENCRYPTION_KEY = os.environ['TOTP_ENCRYPTION_KEY']
 # Signe la chaîne du journal d'audit : sans cette clé, impossible de réécrire l'historique sans que ça se voie.
 AUDIT_HMAC_KEY = os.environ['AUDIT_HMAC_KEY']
 
+# Sauvegardes chiffrées (core/backup.py). Clé Fernet distincte des autres ; sans elle, backup_db et restore_db refusent
+# de tourner. Le dossier doit se trouver hors du dépôt.
+BACKUP_ENCRYPTION_KEY = os.environ.get('BACKUP_ENCRYPTION_KEY', '')
+BACKUP_DIR = os.environ.get('BACKUP_DIR') or str(Path.home() / 'akwaba-backups')
+
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
 
 # Inscription (contrat §2.5). Par défaut (1), un lien de confirmation part par e-mail avant la création
