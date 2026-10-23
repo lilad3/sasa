@@ -172,7 +172,7 @@ Réponse 200 :
 }
 ```
 
-Les champs reprennent ceux des listes existantes (mêmes noms, mêmes statuts). Tests demandés : non-membre 404 ; vendeur sans groupe `customers` ; gérant sans `products.view` retiré par un cas de test d'API ; `q` de 1 et 61 caractères refusés ; `%` et `_` traités comme du texte ; limite au 31ᵉ appel ; isolation entre boutiques (un client d'une autre boutique n'apparaît jamais).
+Les champs reprennent ceux des listes existantes (mêmes noms, mêmes statuts). Tests demandés : non-membre 404 ; vendeur sans groupe `customers` ; membre à qui l'on retire `products.view` (groupe `products` absent) ; `q` de 1 et 61 caractères refusés ; `%` et `_` traités comme du texte ; limite au 31ᵉ appel ; isolation entre boutiques (un client d'une autre boutique n'apparaît jamais).
 
 ### 7.3 Assistant
 
