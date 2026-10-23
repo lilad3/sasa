@@ -1,0 +1,421 @@
+/* Prototype P16 : Essentiel, la photo d'abord (docs/chantier-a2-essentiel.md). Classes ess-, fichier global. À supprimer à l'étape 2. */
+
+/* ---------- E1 : la photo au format 4:5, sur presque toute la carte ---------- */
+
+.ess-cadre {
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--color-nuit);
+  container-type: inline-size;
+  transition: box-shadow 0.3s ease;
+}
+
+.ess-cadre[data-taille="fil"],
+.ess-cadre[data-taille="page"] {
+  border-radius: 24px;
+}
+
+/* E4 : au panier, la photo prend un contour de lumière orange. */
+.ess-cadre::after {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  border: 3px solid transparent;
+  border-radius: inherit;
+  pointer-events: none;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.ess-cadre[data-panier="true"] {
+  box-shadow: 0 0 28px 2px rgb(255 122 31 / 0.55);
+}
+
+.ess-cadre[data-panier="true"]::after {
+  border-color: var(--color-orange);
+  box-shadow: inset 0 0 22px rgb(255 122 31 / 0.45);
+}
+
+.ess-cadre[data-epuise="true"] .ess-image {
+  filter: grayscale(0.7) brightness(0.8);
+}
+
+.ess-photos {
+  position: absolute;
+  inset: 0;
+  outline: none;
+}
+
+/* Un léger voile en haut : les barres restent lisibles sur une photo claire. */
+.ess-photos::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0 0 auto;
+  height: 56px;
+  background: linear-gradient(rgb(14 12 10 / 0.38), transparent);
+  pointer-events: none;
+}
+
+.ess-photos:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--color-creme);
+}
+
+.ess-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: ess-apparait 0.18s ease;
+}
+
+@keyframes ess-apparait {
+  from {
+    opacity: 0.4;
+  }
+}
+
+/* ---------- E2 : les barres du statut, et les deux zones à toucher ---------- */
+
+.ess-barres {
+  position: absolute;
+  z-index: 2;
+  inset: 9px 10px auto;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.ess-barres span {
+  flex: 1;
+  height: 2.5px;
+  border-radius: 2px;
+  background: rgb(250 244 234 / 0.36);
+  transition: background-color 0.2s ease;
+}
+
+.ess-barres span[data-etat="vue"],
+.ess-barres span[data-etat="courante"] {
+  background: rgb(250 244 234 / 0.96);
+}
+
+.ess-zone {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 36px;
+  background: transparent;
+}
+
+.ess-zone:disabled {
+  cursor: default;
+}
+
+.ess-zone--avant {
+  left: 0;
+  width: 35%;
+  cursor: w-resize;
+}
+
+.ess-zone--apres {
+  right: 0;
+  width: 65%;
+  cursor: e-resize;
+}
+
+.ess-zone:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--color-creme);
+}
+
+.ess-cadre[data-taille="page"] .ess-zone {
+  bottom: 0;
+}
+
+/* ---------- E3 : le prix sur une fine bande nuit ---------- */
+
+.ess-bande {
+  position: absolute;
+  z-index: 3;
+  inset: auto 0 0;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding-inline: 12px;
+  color: var(--color-creme);
+  background: rgb(14 12 10 / 0.84);
+}
+
+.ess-cadre[data-taille="fil"] .ess-bande {
+  height: 44px;
+  padding-inline: 16px;
+}
+
+.ess-cadre[data-taille="fil"] .ess-bande .chiffres {
+  font-size: 18px;
+}
+
+/* ---------- E4 : ajouter d'un toucher ---------- */
+
+.ess-ajout {
+  position: absolute;
+  z-index: 5;
+  right: 7px;
+  bottom: 5px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+}
+
+.ess-cadre[data-taille="fil"] .ess-ajout {
+  right: 10px;
+  bottom: 7px;
+  width: 52px;
+  height: 52px;
+}
+
+.ess-ajout:disabled {
+  cursor: not-allowed;
+}
+
+/* ---------- E7 : sans photo, une fiche typographique ---------- */
+
+.ess-sans-photo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 16px 52px;
+  color: var(--color-creme);
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 18px),
+    var(--color-nuit);
+}
+
+.ess-filet {
+  width: 34px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent, var(--color-orange));
+  box-shadow: 0 0 14px var(--accent, var(--color-orange));
+}
+
+.ess-sans-photo-nom {
+  font-size: clamp(19px, 12.5cqi, 52px);
+  font-weight: 800;
+  line-height: 1.02;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* ---------- E9 : la couverture avec la vraie photo ---------- */
+
+.ess-couverture {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  /* Téléphone : plein écran, sous la barre de la boutique (12 px + 52 px + 12 px). */
+  height: 100svh;
+  min-height: 560px;
+  margin: -76px -12px 0;
+  color: var(--color-creme);
+  background: var(--color-nuit);
+}
+
+.ess-couverture-decor {
+  position: absolute;
+  z-index: -3;
+  inset: 0;
+  background: url("/decor.jpg") center / cover;
+}
+
+.ess-couverture-photo {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.ess-couverture-voile {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(14 12 10 / 0.82) 0%, rgb(14 12 10 / 0.62) 30%, rgb(14 12 10 / 0) 50%, rgb(14 12 10 / 0.88) 80%, rgb(14 12 10 / 0.95) 100%);
+}
+
+.ess-couverture-titre {
+  position: absolute;
+  inset: 92px 18px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Sur un motif chargé (un wax), la ligne d'information doit rester lisible. */
+  text-shadow: 0 1px 12px rgb(14 12 10 / 0.9);
+}
+
+.ess-couverture-une {
+  position: absolute;
+  inset: auto 18px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 560px;
+}
+
+@media (min-width: 768px) {
+  .ess-couverture {
+    margin-inline: -20px;
+  }
+}
+
+/* Ordinateur : la couverture redevient une vitre arrondie ; la photo garde son format portrait, à droite. */
+@media (min-width: 1024px) {
+  .ess-couverture {
+    height: 620px;
+    min-height: 0;
+    margin: 0;
+    border-radius: 28px;
+  }
+
+  .ess-couverture-photo {
+    left: auto;
+    width: 48%;
+    object-position: center;
+    mask-image: linear-gradient(90deg, transparent, #000 22%);
+  }
+
+  .ess-couverture-voile {
+    background:
+      linear-gradient(90deg, rgb(14 12 10 / 0.55) 0%, rgb(14 12 10 / 0) 60%),
+      linear-gradient(180deg, rgb(14 12 10 / 0.25) 0%, rgb(14 12 10 / 0) 40%, rgb(14 12 10 / 0.75) 100%);
+  }
+
+  .ess-couverture-titre {
+    inset: 34px 36px auto;
+    max-width: 72%;
+  }
+
+  .ess-couverture-une {
+    inset: auto 36px 36px;
+  }
+}
+
+/* ---------- E10 : les rayons en onglets de texte, qui restent en haut ---------- */
+
+.ess-onglets {
+  position: sticky;
+  z-index: 20;
+  top: 72px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 14px;
+  border: 1px solid rgb(255 248 238 / 0.5);
+  border-radius: 18px;
+  background: rgb(255 214 178 / 0.62);
+  backdrop-filter: blur(14px);
+}
+
+.ess-onglets-defile {
+  display: flex;
+  flex: 1;
+  gap: 18px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ess-onglet {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: baseline;
+  gap: 5px;
+  padding: 10px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-encre-doux);
+  white-space: nowrap;
+}
+
+.ess-onglet[aria-pressed="true"] {
+  color: var(--color-encre);
+}
+
+.ess-onglet[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 2px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--color-orange);
+  box-shadow: 0 0 12px 1px rgb(255 122 31 / 0.8);
+}
+
+.ess-affichage {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 14px;
+  background: rgb(23 17 10 / 0.08);
+}
+
+.ess-affichage button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  color: var(--color-encre-doux);
+}
+
+.ess-affichage button[aria-pressed="true"] {
+  color: var(--color-creme);
+  background: var(--color-encre);
+}
+
+/* ---------- E6 : la quantité sur la page produit ---------- */
+
+.ess-quantite {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgb(23 17 10 / 0.22);
+  border-radius: 999px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: rgb(255 240 225 / 0.3);
+}
+
+.ess-quantite[aria-checked="true"] {
+  color: var(--color-creme);
+  border-color: var(--color-encre);
+  background: var(--color-encre);
+}
+
+/* ---------- Mouvement ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ess-image {
+    animation: none;
+  }
+}
+
+[data-motion="none"] .ess-image {
+  animation: none;
+}

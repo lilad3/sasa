@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Photos de démo du prototype P16 (docs/chantier-a2-essentiel.md) : copiées depuis « photos pour démo », jamais versionnées.
+/public/prototype-essentiel/
