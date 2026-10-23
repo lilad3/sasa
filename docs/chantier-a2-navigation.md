@@ -97,17 +97,39 @@ Aujourd'hui, « Activer la double authentification » n'existe que dans le bloc 
 - **Meilleures ventes** : retirées de tout ce qui est mobile. Elles restent dans la barre latérale d'ordinateur (inchangé). Étape 2 : le composant n'est plus monté sous `lg`, pour que le serveur ne demande plus le résumé 30 jours pour rien sur téléphone (décision 7).
 - **En-tête mobile.** La barre horizontale actuelle disparaît sous `lg`. À la place, un en-tête simple, non collant : logo et nom de la boutique. Les liens vers Paramètres, boutiques et déconnexion vivent dans le tiroir.
 
-## 6. Tiroir « Menu » (par le bas)
+## 6. Menu latéral (depuis la gauche, modèle de l'admin mobile de Shopify)
 
-Ouvert par **Menu**. Une feuille qui monte du bas, 85 % de la hauteur au plus, qui défile à l'intérieur ; fond nuit, bord supérieur arrondi, poignée de glissement. Fermeture : bouton Fermer, toucher à côté, geste vers le bas, touche Échap, ou changement de page.
+*Revu le 23/10 sur retour de l'utilisateur : la feuille qui montait du bas est abandonnée. Maquette : `docs/maquettes/navigation/tiroir-menu.html`.*
+
+**Menu** l'ouvre. C'est un panneau sombre (`#15110e`, un peu plus clair que la page) **en pleine hauteur**, qui glisse **depuis la gauche** et couvre l'écran sauf une **bande de 56 px à droite**. On y voit la page, assombrie (voile nuit à 66 %). Bord droit arrondi (26 px), ombre portée vers la droite.
+
+- **La barre du bas est cachée** tant que le panneau est ouvert.
+- **Fermeture** : le bouton Fermer, un toucher sur la bande de droite, un geste vers la gauche, la touche Échap, ou un changement de page.
+- **Aucune barre de défilement visible** : la liste défile (`overflow-y: auto`, `overscroll-behavior: contain`), mais sa barre est masquée (`scrollbar-width: none` et `::-webkit-scrollbar { display: none }`). Le défilement de la page est bloqué pendant l'ouverture.
 
 De haut en bas :
-1. **Alerte de sécurité** (ocre), si la double authentification est absente ;
-2. **les entrées** de `drawer`, dans l'ordre de §2, une par ligne (icône, libellé, pastille à droite). **Ma boutique** porte dessous un lien secondaire **« Voir ma vitrine »** (nouvel onglet) ;
-3. le bouton **Paramètres**, à part (le plus large, `bouton-nuit`), visible avec `shop.manage` ou `storefront.edit` ;
-4. tout en bas, deux actions discrètes : **Changer de boutique** (liste des boutiques du compte, visible seulement si le compte en a plus d'une ; sinon l'action est absente) et **Se déconnecter** (la Server Action `logout` existante).
+1. **En-tête fixe** : le logo Akwaba, puis un champ **« Rechercher »** arrondi (pilule de 46 px). Il ouvre la même recherche que le bouton rond de la barre du bas (§7). Il est absent pour le vendeur (décision 4).
+2. **Alerte de sécurité** (ocre, texte `encre`, cadenas), si la double authentification est absente.
+3. **Les entrées** de `drawer`, dans l'ordre de §2 : une ligne de 46 px par entrée (icône, libellé, pastille à droite : orange pour Commandes, ocre pour les non lus et Sécurité).
+   - **Une entrée qui a des sous-pages se déplie en place** (chevron à droite, `aria-expanded`). La sous-liste est en retrait, alignée sur le texte et **sans icône**. Exemples : **Croissance** › Aperçu, Attribution, Campagnes ; **Analyses** › Tableau de bord, Rapports, Vue en direct ; **Ma boutique** › Thèmes, Voir ma vitrine (nouvel onglet). Le panneau s'ouvre avec la sous-liste de la page courante déjà dépliée.
+   - **Entrée active** : un fond légèrement plus clair (`white/8.5`) et **la braise orange** (point de 5 px, lueur) à gauche. Quand la page active est une sous-page, son parent garde l'icône allumée (orange clair), sans fond.
+4. **Section « Canaux de vente ›** » (petit titre, lien vers la liste des canaux) avec la ligne **Boutique en ligne** et deux raccourcis : **Modifier** (crayon, vers « Ma boutique ») et **Voir** (œil, la vitrine dans un nouvel onglet). Ce sont des cibles de 40 px, avec un libellé pour le lecteur d'écran. Puis **Applications**.
+5. Après un filet, deux actions discrètes : **Changer de boutique** (seulement si le compte en a plus d'une) et **Se déconnecter** (la Server Action `logout` existante).
+6. **En bas, flottants**, visibles pendant tout le défilement, sur un fondu vers la couleur du panneau : une pilule **« Paramètres »** (icône réglages, `bouton-nuit`, visible avec `shop.manage` ou `storefront.edit`) et, à côté, un bouton rond **« Fermer »** (X, 52 px). La liste a 110 px de marge en bas, pour que sa dernière ligne passe au-dessus d'eux.
 
-Accessibilité : `role="dialog"` `aria-modal`, titre « Menu », le focus entre dans le tiroir et revient sur le bouton **Menu** à la fermeture, le reste de la page est `inert`, le défilement de la page est bloqué pendant l'ouverture. Animation d'ouverture courte, supprimée avec `prefers-reduced-motion`.
+**Vendeur** : Commandes, Produits, Messages, Sécurité, puis Se déconnecter. Pas de champ Rechercher, pas de Paramètres, pas de canal de vente. Le bouton Fermer reste seul en bas à droite.
+
+**Ordinateur** : rien ne change, la barre latérale reste visible en permanence.
+
+**Entrées encore absentes** : la maquette du propriétaire montre l'état cible. Réductions, Croissance, Contenu, Analyses et Applications restent masquées tant que leur page n'existe pas (`ready: false`, décision 1). Leurs sous-pages sont proposées et seront confirmées avec chaque chantier (P13, P14, P15).
+
+**Accessibilité** :
+- `role="dialog"` et `aria-modal`, titre « Menu ».
+- Le focus entre sur le champ Rechercher, ou sur la première entrée pour le vendeur, et revient sur le bouton **Menu** à la fermeture. Le reste de la page est `inert`.
+- Une sous-liste se déplie au clavier (Entrée ou Espace sur le parent).
+- Glissement d'ouverture en 240 ms, supprimé avec `prefers-reduced-motion`.
+
+**Décision ajoutée (11)** : « Ma boutique » (avec Thèmes, Voir ma vitrine) et « Canaux de vente › Boutique en ligne » mènent au même endroit. *Recommandation :* garder les deux comme sur la maquette, tant que la boutique en ligne est le seul canal. Quand d'autres canaux arriveront (P14, « Canaux de vente »), « Ma boutique » passera sous la section.
 
 ### Icônes (nouvelles, dans le trait de `nav-links.tsx`)
 
@@ -126,6 +148,9 @@ Grille 24×24, trait 1,7 px, extrémités et jonctions arrondies, `fill="none"`,
 | `apps` | `M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 14v6M14 17h6` |
 | `switch` | `M5 8h13M14.5 4.5 18 8l-3.5 3.5M19 16H6M9.5 12.5 6 16l3.5 3.5` |
 | `close` | `M6 6l12 12M18 6 6 18` |
+| `chevron` | `M6.5 9.5 12 15l5.5-5.5` (tourne de 180° quand la sous-liste est dépliée) |
+| `edit` | `M4.5 19.5h4l10-10-4-4-10 10zM13 7l4 4` |
+| `view` | `M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 14.8a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6z` |
 | `logout` | tracé déjà dans `sidebar.tsx`, déplacé dans `ICONS` |
 
 ## 7. Recherche (en bas de l'écran) et Assistant
