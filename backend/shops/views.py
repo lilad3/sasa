@@ -78,7 +78,8 @@ class OrderDetailView(ShopScopedView):
         serializer.is_valid(raise_exception=True)
         new_status = serializer.validated_data["status"]
         with transaction.atomic():
-            order = self._order(order_id)
+            # Verrou de la commande : deux changements simultanés ne partent pas du même ancien statut.
+            order = shop_order(self.shop, order_id, lock=True)
             if new_status != order.status:
                 if not order.can_become(new_status):
                     raise ProblemError(
@@ -111,9 +112,12 @@ class OrderDetailView(ShopScopedView):
         return shop_order(self.shop, order_id)
 
 
-def shop_order(shop, order_id):
+def shop_order(shop, order_id, lock=False):
     # Une commande d'une autre boutique donne 404, comme une commande inexistante.
-    order = Order.objects.for_shop(shop).prefetch_related("items", "notes").filter(pk=order_id).first()
+    orders = Order.objects.for_shop(shop)
+    if lock:
+        orders = orders.select_for_update(of=("self",), no_key=True)
+    order = orders.prefetch_related("items", "notes").filter(pk=order_id).first()
     if order is None:
         raise NotFound("Commande introuvable.")
     return order

@@ -22,6 +22,7 @@ from core.exceptions import ProblemError
 from core.ratelimit import enforce
 
 from .images import ImageResponseMixin, open_upload
+from .locks import lock_product
 from .models import Product, ProductPhoto
 from .permissions import ShopScopedView
 from .storefront import StorefrontView, photos_payload, storefront_shop
@@ -89,6 +90,7 @@ class ProductPhotoDetailView(ProductScopedView):
     def delete(self, request, slug, product_id, photo_id):
         product = self.product(product_id)
         with transaction.atomic():
+            lock_product(product)  # deux réordonnancements simultanés ne se croisent pas
             self.photo(product, photo_id).delete()
             # Les suivantes remontent d'un rang, une à une et dans l'ordre : la contrainte (produit, rang) tient.
             for position, photo in enumerate(product.photos.only("id", "position").order_by("position")):
@@ -102,8 +104,9 @@ class ProductPhotoMainView(ProductScopedView):
 
     def put(self, request, slug, product_id, photo_id):
         product = self.product(product_id)
-        main = self.photo(product, photo_id)
         with transaction.atomic():
+            lock_product(product)
+            main = self.photo(product, photo_id)
             others = [photo for photo in product.photos.only("id", "position").order_by("position") if photo.pk != main.pk]
             ordered = [main, *others]
             # D'abord hors de la plage 0-2, puis à leur place : jamais deux photos au même rang.

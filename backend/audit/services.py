@@ -1,13 +1,17 @@
 import hmac
 from dataclasses import dataclass
 
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 
 from core.devices import device_label
 
 from .actions import ACTIONS
 from .models import AuditEvent
+
+
+# Clé du verrou consultatif qui range les écritures du journal en file (arbitraire mais fixe).
+CHAIN_LOCK_KEY = 7_204_617_001
 
 
 def record(action, request=None, *, actor=None, email="", shop=None, target=None, **metadata):
@@ -38,8 +42,12 @@ def record(action, request=None, *, actor=None, email="", shop=None, target=None
         metadata=metadata,
     )
     # SQLite démarre la transaction en IMMEDIATE (settings) : deux événements simultanés
-    # ne peuvent pas s'accrocher au même maillon.
+    # ne peuvent pas s'accrocher au même maillon. Sur PostgreSQL, un verrou de transaction à clé fixe fait la même
+    # chose : il tient jusqu'à la fin de la transaction, donc l'ordre des `id` suit celui de la chaîne.
     with transaction.atomic():
+        if connection.vendor == "postgresql":
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(%s)", [CHAIN_LOCK_KEY])
         event.previous_hash = AuditEvent.objects.order_by("-id").values_list("hash", flat=True).first() or ""
         event.hash = event.compute_hash()
         event.save()

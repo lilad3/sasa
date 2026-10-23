@@ -114,16 +114,15 @@ class MemberListView(ShopScopedView):
             raise PermissionDenied("Un gérant ajoute des vendeurs, pas des gérants.")
         # Donner accès aux commandes et aux téléphones des clients est une action grave.
         require_reauth(request)
-        plans.ensure_room(self.shop, "members")
-        if User.objects.filter(email__iexact=data["email"]).exists():
-            raise ProblemError(
-                409,
-                "account_exists",
-                "Cette adresse a déjà un compte Akwaba. Utilisez une autre adresse pour cette personne.",
-            )
+        with plans.room_for(self.shop, "members"):
+            if User.objects.filter(email__iexact=data["email"]).exists():
+                raise ProblemError(
+                    409,
+                    "account_exists",
+                    "Cette adresse a déjà un compte Akwaba. Utilisez une autre adresse pour cette personne.",
+                )
 
-        password = temporary_password()
-        with transaction.atomic():
+            password = temporary_password()
             user = User.objects.create_user(
                 email=data["email"],
                 password=password,

@@ -85,20 +85,32 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        'OPTIONS': {
-            # WAL : le dashboard peut lire pendant qu'une commande s'écrit.
-            'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL',
-            # SQLite ignore select_for_update : IMMEDIATE prend le verrou d'écriture
-            # dès le début de la transaction, ce qui protège le stock au checkout.
-            'transaction_mode': 'IMMEDIATE',
-            'timeout': 5,
-        },
+if os.environ.get('DATABASE_URL'):
+    # PostgreSQL (contrat A2 fondations §5.1). Les protections contre les courses sont écrites pour READ COMMITTED,
+    # le niveau par défaut : ne pas le changer.
+    import dj_database_url
+
+    DATABASES = {
+        'default': dj_database_url.parse(os.environ['DATABASE_URL'], conn_max_age=60, conn_health_checks=True),
     }
-}
+    # Hors de la machine locale, la connexion est chiffrée.
+    if DATABASES['default'].get('HOST', '') not in ('', 'localhost', '127.0.0.1', '::1'):
+        DATABASES['default'].setdefault('OPTIONS', {}).setdefault('sslmode', 'require')
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                # WAL : le dashboard peut lire pendant qu'une commande s'écrit.
+                'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL',
+                # SQLite ignore select_for_update : IMMEDIATE prend le verrou d'écriture
+                # dès le début de la transaction, ce qui protège le stock au checkout.
+                'transaction_mode': 'IMMEDIATE',
+                'timeout': 5,
+            },
+        }
+    }
 
 AUTH_USER_MODEL = 'accounts.User'
 

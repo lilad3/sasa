@@ -53,6 +53,14 @@ class ApiTestCase(APITestCase):
         return tokens
 
 
+def drop_audit_trigger(name):
+    """Retire un trigger du journal, comme le ferait quelqu'un qui a accès à la base (SQLite ou PostgreSQL)."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute(f"DROP TRIGGER {name} ON audit_auditevent" if connection.vendor == "postgresql" else f"DROP TRIGGER {name}")
+
+
 def without_request_id(response):
     return {key: value for key, value in response.json().items() if key != "request_id"}
 
@@ -126,3 +134,69 @@ def wrong_code(secret):
     """Un code à 6 chiffres qui n'est valable dans aucune des fenêtres acceptées par le serveur."""
     valid = {totp(secret, steps) for steps in (-1, 0, 1)}
     return next(code for code in ("000000", "111111", "222222", "333333") if code not in valid)
+
+
+# --- Concurrence (PostgreSQL) -------------------------------------------------------------------------------------
+
+
+def run_parallel(*jobs):
+    """
+    Lance les fonctions en même temps, chacune dans son fil (donc sa propre connexion), et renvoie leurs résultats.
+    Une barrière les fait partir ensemble ; une exception est renvoyée comme résultat, pas levée.
+    """
+    import threading
+
+    from django.db import connection
+
+    barrier = threading.Barrier(len(jobs))
+    results = [None] * len(jobs)
+
+    def worker(index, job):
+        try:
+            barrier.wait(timeout=10)
+            results[index] = job()
+        except Exception as error:  # noqa: BLE001 : le test regarde ce qui s'est passé
+            results[index] = error
+        finally:
+            connection.close()
+
+    threads = [threading.Thread(target=worker, args=(i, job)) for i, job in enumerate(jobs)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+    return results
+
+
+def _transaction_case():
+    from django.db import connection
+    from rest_framework.test import APITransactionTestCase
+
+    @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+    class PostgresConcurrencyCase(APITransactionTestCase):
+        """
+        Vraie concurrence : des fils d'exécution qui écrivent pour de vrai, donc sans transaction de test.
+        Le nettoyage vide les tables (TRUNCATE), ce que les triggers du journal interdisent ; on les lève le temps du ménage.
+        À ne lancer que sur une base de test dédiée.
+        """
+
+        client_class = BffClient
+
+        def assertProblem(self, response, status_code, code):
+            ApiTestCase.assertProblem(self, response, status_code, code)
+
+        def _fixture_teardown(self):
+            import importlib
+
+            module = importlib.import_module("audit.migrations.0010_triggers_postgresql")
+            with connection.cursor() as cursor:
+                for name in module.NAMES:
+                    cursor.execute(f"DROP TRIGGER IF EXISTS {name} ON audit_auditevent")
+            try:
+                super()._fixture_teardown()
+            finally:
+                with connection.cursor() as cursor:
+                    for sql in module.TRIGGERS:
+                        cursor.execute(sql)
+
+    return PostgresConcurrencyCase

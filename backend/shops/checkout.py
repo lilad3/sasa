@@ -18,6 +18,7 @@ from core.exceptions import ProblemError
 from .delivery import find_zone
 from .discount_codes import invalid as discount_invalid
 from .discount_codes import usable_discount
+from .locks import lock_shop
 from .models import Channel, Customer, Discount, IdempotencyRecord, Order, OrderItem, OrderStatus, Product, new_reference
 
 IDEMPOTENCY_TTL = timedelta(hours=24)
@@ -40,9 +41,11 @@ def place_order(shop, data, idempotency_key):
     Une clé déjà vue avec le même contenu renvoie la même réponse, sans nouvelle commande.
     """
     fingerprint = request_hash(data)
-    # transaction_mode IMMEDIATE (settings) : le verrou d'écriture est pris dès le début,
-    # deux commandes simultanées passent l'une après l'autre et ne peuvent pas vider le stock deux fois.
+    # SQLite : transaction_mode IMMEDIATE (settings) prend le verrou d'écriture dès le début. PostgreSQL : le verrou
+    # de la boutique fait la même chose. Dans les deux cas, les commandes d'une boutique passent l'une après l'autre :
+    # le stock ne se vide pas deux fois et une clé d'idempotence rejouée renvoie la réponse déjà donnée.
     with transaction.atomic():
+        lock_shop(shop)
         IdempotencyRecord.objects.filter(created_at__lt=timezone.now() - IDEMPOTENCY_TTL).delete()
         previous = IdempotencyRecord.objects.filter(shop=shop, key=idempotency_key).first()
         if previous is not None:

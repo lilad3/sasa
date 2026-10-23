@@ -3,12 +3,15 @@ Plans simulés (pas encore de paiement). Ce sont les mêmes que sur la landing, 
 côté serveur, que leurs limites s'appliquent : le front ne fait que les afficher.
 """
 
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 
+from django.db import transaction
 from django.utils import timezone
 
 from core.exceptions import ProblemError
 
+from .locks import lock_shop
 from .models import ApiKey, Membership, Order, Product
 
 
@@ -60,6 +63,18 @@ def ensure_room(shop, resource, adding=1):
             f"Votre plan {spec(shop).name} permet {limit} {RESOURCE_LABELS[resource]}.",
             limit=limit,
         )
+
+
+@contextmanager
+def room_for(shop, resource, adding=1):
+    """
+    Vérifie la limite du plan et laisse créer, sous le verrou de la boutique : deux créations simultanées ne
+    dépassent pas la limite (le comptage et l'écriture se font dans la même transaction).
+    """
+    with transaction.atomic():
+        lock_shop(shop)
+        ensure_room(shop, resource, adding)
+        yield
 
 
 def count(shop, resource):

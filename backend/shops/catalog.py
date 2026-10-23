@@ -1,5 +1,6 @@
 """Catalogue de l'espace marchand : produits, alertes de stock et import CSV (docs/contrat-api.md §4.3)."""
 
+from django.db import transaction
 from django.db.models import F, Q
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail, NotFound, ValidationError
@@ -11,6 +12,7 @@ from core.pagination import PagePagination
 
 from . import plans
 from .csv_import import import_products
+from .locks import lock_shop
 from .models import Product
 from .permissions import ShopScopedView
 from .serializers import ProductSerializer
@@ -44,8 +46,8 @@ class ProductListView(ShopScopedView):
     def post(self, request, slug):
         serializer = ProductSerializer(data=request.data, context={"shop": self.shop})
         serializer.is_valid(raise_exception=True)
-        plans.ensure_room(self.shop, "products")
-        product = serializer.save()
+        with plans.room_for(self.shop, "products"):
+            product = serializer.save()
         return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
 
 
@@ -106,7 +108,13 @@ class ProductImportView(ShopScopedView):
         if upload is None:
             raise ValidationError({"file": [ErrorDetail("Choisissez un fichier CSV.", code="required")]})
         dry_run = str(request.data.get("dry_run", "")).lower() in {"1", "true", "oui"}
-        report = import_products(self.shop, upload, dry_run=dry_run)
+        if dry_run:
+            report = import_products(self.shop, upload, dry_run=True)
+        else:
+            # Le comptage de la limite du plan et l'écriture se font sous le verrou de la boutique.
+            with transaction.atomic():
+                lock_shop(self.shop)
+                report = import_products(self.shop, upload, dry_run=False)
         if not dry_run and not report["errors"]:
             record(
                 "products_imported", request, actor=request.user, shop=self.shop,

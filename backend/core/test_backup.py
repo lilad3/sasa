@@ -5,6 +5,7 @@ import os
 import sqlite3
 import stat
 import tempfile
+import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
@@ -19,7 +20,7 @@ from django.utils import timezone
 from audit.models import AuditEvent
 from audit.services import record
 from core import backup
-from core.testing import make_order, make_shop, make_user
+from core.testing import _transaction_case, make_order, make_shop, make_user
 
 KEY = Fernet.generate_key().decode()
 
@@ -72,6 +73,10 @@ class BackupTestCase(TransactionTestCase):
         return sorted(p.name for p in Path(self.dir.name).iterdir())
 
 
+sqlite_only = unittest.skipUnless(connection.vendor == "sqlite", "moteur SQLite")
+
+
+@sqlite_only
 class BackupTests(BackupTestCase):
     def test_backup_is_encrypted_and_unreadable_without_the_key(self):
         output = run("backup_db")
@@ -150,6 +155,7 @@ class BackupTests(BackupTestCase):
             backup._sqlite_dump(broken)
 
 
+@sqlite_only
 class RestoreTests(BackupTestCase):
     def setUp(self):
         super().setUp()
@@ -272,3 +278,54 @@ class PostgresCommandTests(TestCase):
         self.assertEqual(db, {"HOST": "h.ci", "PORT": 6543, "USER": "u", "PASSWORD": "p@ss", "NAME": "ma_base"})
         argv, _ = backup.pg_args(db, "pg_restore")
         self.assertNotIn("p@ss", " ".join(argv))
+
+
+@unittest.skipUnless(connection.vendor == "postgresql", "moteur PostgreSQL")
+class PostgresBackupTests(_transaction_case()):
+    """Le vrai pg_dump et le vrai pg_restore, vers une base séparée (les outils clients doivent être installés)."""
+
+    @classmethod
+    def _validate_databases(cls):
+        return frozenset({"default", "restauration"})
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        override = override_settings(BACKUP_ENCRYPTION_KEY=KEY, BACKUP_DIR=self.dir.name)
+        override.enable()
+        self.addCleanup(override.disable)
+        shop = make_shop("maison-test")
+        make_order(shop, total=15_000)
+        record("shop_created", shop=shop)
+        record("shop_updated", shop=shop, fields=["name"])
+        self.target = "akwaba_restore_test"
+
+    def tearDown(self):
+        backup.drop_alias("restauration")
+        with connection.cursor() as cursor:
+            cursor.execute(f"DROP DATABASE IF EXISTS {self.target}")
+
+    def test_backup_is_encrypted_and_restores_into_a_separate_database_with_a_valid_chain(self):
+        run("backup_db")
+        (name,) = [n for n in os.listdir(self.dir.name)]
+        self.assertTrue(name.endswith(".pgdump.fernet"))
+        raw = (Path(self.dir.name) / name).read_bytes()
+        self.assertFalse(raw.startswith(b"PGDMP"))
+        self.assertEqual(Fernet(KEY.encode()).decrypt(raw)[:5], b"PGDMP")
+
+        db = connection.settings_dict
+        with connection.cursor() as cursor:
+            cursor.execute(f"CREATE DATABASE {self.target}")
+        url = f"postgres://{db['USER']}:{db['PASSWORD']}@{db['HOST']}:{db['PORT'] or 5432}/{self.target}"
+        output = run("restore_db", str(Path(self.dir.name) / name), "--target-database-url", url)
+
+        self.assertIn("audit_auditevent: 2", output)
+        self.assertIn("Chaîne du journal : OK (2 événements vérifiés)", output)
+
+    def test_restoring_over_the_live_database_needs_force(self):
+        run("backup_db")
+        name = os.listdir(self.dir.name)[0]
+        db = connection.settings_dict
+        url = f"postgres://{db['USER']}:{db['PASSWORD']}@{db['HOST']}:{db['PORT'] or 5432}/{db['NAME']}"
+        with self.assertRaisesMessage(CommandError, "--force"):
+            run("restore_db", str(Path(self.dir.name) / name), "--target-database-url", url)

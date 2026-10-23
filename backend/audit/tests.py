@@ -12,6 +12,7 @@ from core.testing import (
     CLIENT_IP,
     PASSWORD,
     ApiTestCase,
+    drop_audit_trigger,
     enable_mfa,
     make_member,
     make_order,
@@ -55,7 +56,7 @@ class AuditChainTests(TestCase):
     def test_a_row_edited_in_the_file_is_detected(self):
         _, tampered, _ = self.three_events()
         with connection.cursor() as cursor:  # l'attaquant a accès au fichier et retire les triggers
-            cursor.execute("DROP TRIGGER audit_auditevent_no_update")
+            drop_audit_trigger("audit_auditevent_no_update")
             cursor.execute("UPDATE audit_auditevent SET actor_email = 'innocent@example.ci' WHERE id = %s", [tampered.pk])
 
         report = verify_chain()
@@ -66,13 +67,21 @@ class AuditChainTests(TestCase):
     def test_a_row_deleted_in_the_file_is_detected(self):
         _, removed, following = self.three_events()
         with connection.cursor() as cursor:
-            cursor.execute("DROP TRIGGER audit_auditevent_no_delete")
+            drop_audit_trigger("audit_auditevent_no_delete")
             cursor.execute("DELETE FROM audit_auditevent WHERE id = %s", [removed.pk])
 
         report = verify_chain()
         self.assertFalse(report.ok)
         self.assertEqual(report.broken_id, following.pk)
         self.assertIn("maillon rompu", report.reason)
+
+    def test_truncate_is_refused_on_postgresql(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("TRUNCATE ne se bloque que sur PostgreSQL")
+        record("login_failed", email="a@example.ci")
+        with self.assertRaises(DatabaseError), transaction.atomic():
+            connection.cursor().execute("TRUNCATE audit_auditevent")
+        self.assertEqual(AuditEvent.objects.count(), 1)
 
     @FAST_HASHER
     def test_deleting_an_account_keeps_its_history(self):

@@ -293,8 +293,8 @@ def row_counts_alias(alias):
 
 def temporary_alias(alias, settings_dict):
     """Déclare une base supplémentaire pour la durée d'un contrôle."""
-    config = {**connections.databases["default"], **settings_dict}
-    connections.databases[alias] = config
+    # Les réglages par défaut de Django, sans rien reprendre de la base en service.
+    connections.databases[alias] = connections.configure_settings({"default": {}, alias: dict(settings_dict)})[alias]
     return alias
 
 
