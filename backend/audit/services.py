@@ -10,7 +10,7 @@ from .actions import ACTIONS
 from .models import AuditEvent
 
 
-def record(action, request=None, *, actor=None, email="", shop=None, target=None, category=None, severity=None, **metadata):
+def record(action, /, request=None, *, actor=None, email="", shop=None, target=None, category=None, severity=None, **metadata):
     """
     Ajoute un événement au journal.
 
