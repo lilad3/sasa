@@ -8,6 +8,7 @@ import type { PublicProduct } from "@/lib/types";
 
 import { AddControl, accentOf, CartButton, deliveryGroups, Letters, paymentLine, ProductImage, Sections, StockHint, ThemeFooter, type ThemeProps, type Tone } from "./parts";
 import { Scene } from "./scene";
+import { WasPrice } from "../product-details";
 
 const TONE: Tone = {
   muted: "text-encre-doux",
@@ -80,6 +81,7 @@ export function EpicerieTheme(props: ThemeProps) {
               {featured.description ? <p className="text-[14px] text-encre-doux">{featured.description}</p> : null}
               <div className="mt-auto flex items-center justify-between gap-3 pt-2">
                 <span className="large text-2xl font-black">{formatNumber(featured.price)} F</span>
+                <WasPrice product={featured} />
                 <AddControl product={featured} quantity={props.cart[featured.id] ?? 0} onChange={props.onChange} tone={TONE} />
               </div>
             </div>
@@ -187,6 +189,7 @@ function Row({ product, index, quantity, onChange }: { product: PublicProduct; i
         {product.description ? <span className="line-clamp-1 text-[13px] text-encre-doux">{product.description}</span> : null}
         <span className="flex items-baseline gap-2 pt-0.5">
           <span className="large text-[17px] font-black">{formatNumber(product.price)} F</span>
+          <WasPrice product={product} className="text-xs" />
           <StockHint product={product} className="text-xs font-semibold text-[#5c3d00]" />
         </span>
       </div>

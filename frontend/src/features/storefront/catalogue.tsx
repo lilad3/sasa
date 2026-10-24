@@ -4,6 +4,7 @@ import { type CSSProperties, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
+import { preorderText, ProductDetailList, WasPrice } from "./product-details";
 import type { PublicProduct } from "@/lib/types";
 
 import { CATEGORY_ART, DEFAULT_ART } from "./accent";
@@ -184,12 +185,16 @@ function ProductCard({
       <div className="flex flex-1 flex-col gap-2 px-2 pt-3 pb-1.5">
         <h3 className="text-[15px] leading-snug font-semibold">{product.name}</h3>
         {product.description ? <p className="line-clamp-2 text-[13px] text-encre-doux">{product.description}</p> : null}
+        <ProductDetailList details={product.details} className="text-encre-doux" />
         <div className="mt-auto flex items-center justify-between gap-3 pt-2">
           <div className="flex flex-col gap-0.5">
-            <Price value={product.price} className="text-[26px]" />
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              <Price value={product.price} className="text-[26px]" />
+              <WasPrice product={product} className="text-[#5c3d00]" />
+            </span>
             <StockNote product={product} />
           </div>
-          {!product.in_stock ? null : quantity > 0 ? (
+          {!product.orderable ? null : quantity > 0 ? (
             <QuantityStepper quantity={quantity} max={product.max_quantity} onChange={onChange} label={product.name} />
           ) : (
             <button
@@ -210,7 +215,9 @@ function ProductCard({
 
 function StockNote({ product }: { product: PublicProduct }) {
   // Couleurs foncées exprès : sur la vitre orangée, il faut 4,5:1 (l'indigo, l'ocre et le rouge habituels n'y arrivent pas).
-  if (!product.in_stock) return <span className="text-xs font-semibold text-[#8a2412]">Épuisé</span>;
+  if (!product.orderable) return <span className="text-xs font-semibold text-[#8a2412]">Épuisé</span>;
+  if (!product.in_stock) return <span className="text-xs font-semibold text-[#2f3aa8]">{preorderText(product.backorder_days)}</span>;
+  if (product.max_quantity === 1 && product.details.one_of_a_kind) return <span className="text-xs font-semibold text-[#5c3d00]">Pièce unique</span>;
   if (product.low_stock) return <span className="text-xs font-semibold text-[#5c3d00]">Plus que quelques pièces</span>;
   return <span className="text-xs text-[#2f3aa8]">En stock</span>;
 }

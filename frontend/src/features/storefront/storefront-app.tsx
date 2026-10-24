@@ -63,16 +63,16 @@ export function StorefrontApp({ shop, products, preview = false }: { shop: Store
     const byId = new Map(products.map((product) => [product.id, product]));
     return Object.entries(cart).flatMap(([id, quantity]) => {
       const product = byId.get(id);
-      return product?.in_stock ? [{ product, quantity: Math.min(quantity, product.max_quantity) }] : [];
+      return product?.orderable ? [{ product, quantity: Math.min(quantity, product.max_quantity) }] : [];
     });
   }, [cart, products]);
 
   // Django choisit le produit de couverture (à la une, sinon le plus vendu, sinon le plus cher) ;
   // s'il n'est plus dans la liste (vendu entre-temps), on retombe sur le plus cher en stock.
   const cover = useMemo(() => {
-    const chosen = shop.featured && products.find((p) => p.id === shop.featured?.product_id && p.in_stock);
+    const chosen = shop.featured && products.find((p) => p.id === shop.featured?.product_id && p.orderable);
     if (chosen && shop.featured) return { product: chosen, source: shop.featured.source };
-    const priciest = products.filter((p) => p.in_stock).reduce<PublicProduct | null>((best, p) => (!best || p.price > best.price ? p : best), null);
+    const priciest = products.filter((p) => p.orderable).reduce<PublicProduct | null>((best, p) => (!best || p.price > best.price ? p : best), null);
     return { product: priciest, source: "price" as const };
   }, [products, shop.featured]);
 
@@ -97,7 +97,7 @@ export function StorefrontApp({ shop, products, preview = false }: { shop: Store
   };
 
   const popular = useMemo(
-    () => shop.popular.flatMap((id) => products.filter((product) => product.id === id && product.in_stock)),
+    () => shop.popular.flatMap((id) => products.filter((product) => product.id === id && product.orderable)),
     [shop.popular, products],
   );
   const themeProps: ThemeProps = {

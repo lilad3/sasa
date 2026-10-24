@@ -13,3 +13,11 @@ export function mainImage(slug: string, product: { photos: ProductPhoto[]; image
   const [first] = product.photos;
   return first ? photoUrl(slug, first) : product.image_url || null;
 }
+
+/**
+ * La photo d'un produit pour l'équipe, relayée par /app/[shop]/photo/[id] : seule route qui montre la photo d'un
+ * brouillon ou d'un archivé (la route publique ne sert que les produits en vente).
+ */
+export function memberPhotoUrl(slug: string, productId: string, photo: ProductPhoto) {
+  return `/app/${encodeURIComponent(slug)}/photo/${photo.id}?p=${productId}&v=${photo.version}`;
+}

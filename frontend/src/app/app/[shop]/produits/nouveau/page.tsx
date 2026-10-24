@@ -36,7 +36,7 @@ async function NewProductFromRoute({ params }: Pick<PageProps<"/app/[shop]/produ
         </Link>
         <h1 className="mt-1.5 text-[clamp(24px,2.6vw,30px)] font-medium tracking-tight">Nouveau produit</h1>
       </header>
-      <ProductForm slug={shop} categories={overview.data.categories} />
+      <ProductForm slug={shop} categories={overview.data.categories} tagSuggestions={overview.data.tags.map((tag) => tag.label)} canCost={membership.permissions.includes("products.cost")} />
     </>
   );
 }

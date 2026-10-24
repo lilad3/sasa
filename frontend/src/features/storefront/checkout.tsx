@@ -58,6 +58,8 @@ export function Checkout({
 }) {
   const router = useRouter();
   const id = useId();
+  // Le délai le plus long des lignes en précommande : la commande part quand tout est prêt.
+  const waitDays = Math.max(0, ...lines.filter(({ product }) => product.availability === "preorder").map(({ product }) => product.backorder_days ?? 0));
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [zoneId, setZoneId] = useState("");
@@ -259,10 +261,16 @@ export function Checkout({
               <div key={product.id} className="flex justify-between gap-3">
                 <dt className="truncate text-encre-doux">
                   {quantity} × {product.name}
+                  {product.availability === "preorder" ? <span className="text-[#2f3aa8]"> · en précommande</span> : null}
                 </dt>
                 <dd className="whitespace-nowrap">{formatFcfa(product.price * quantity)}</dd>
               </div>
             ))}
+            {waitDays > 0 ? (
+              <p role="note" className="text-xs text-[#2f3aa8]">
+                Votre commande part quand tout est prêt : sous {waitDays} jour{waitDays > 1 ? "s" : ""}.
+              </p>
+            ) : null}
             {discount ? (
               <div className="flex justify-between gap-3 font-semibold">
                 <dt>
@@ -381,6 +389,11 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
           Merci {firstName}, votre commande est enregistrée.
         </h2>
         <p className="text-encre-doux">{shop.name} vous appelle au {receipt.phone} pour convenir de la livraison.</p>
+        {receipt.order.backorder_days ? (
+          <p className="text-[14px] font-semibold text-[#2f3aa8]">
+            Précommande : votre commande part quand tout est prêt, sous {receipt.order.backorder_days} jour{receipt.order.backorder_days > 1 ? "s" : ""}.
+          </p>
+        ) : null}
       </div>
       <dl className="grid gap-3 rounded-[18px] bg-[rgb(255_244_232/0.45)] p-4 sm:grid-cols-3">
         <div>

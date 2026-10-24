@@ -22,7 +22,7 @@ export function DeleteProduct({ slug, productId, name }: { slug: string; product
           <input type="hidden" name="slug" value={slug} />
           <input type="hidden" name="product" value={productId} />
           <p id="suppression-question" className="text-sm">
-            Supprimer « {name} » ? Il disparaît du catalogue et de la vitrine. Pour l’arrêter un temps, décochez plutôt « En vente ».
+            Supprimer « {name} » ? Il disparaît du catalogue et de la vitrine. Pour le ranger sans rien perdre, archivez-le plutôt : il garde ses commandes et son historique de stock.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" variant="ghost" pending={pending} pendingLabel="Suppression…" className="border-danger/50 px-5 py-2.5 text-sm text-danger-clair hover:bg-danger/15">

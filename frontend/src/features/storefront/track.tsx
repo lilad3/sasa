@@ -151,6 +151,7 @@ function OrderStatusCard({ order }: { order: TrackedOrder }) {
           {order.items.map((item) => (
             <dd key={item.name} className="text-[14px]">
               {item.quantity} × {item.name}
+              {item.backorder_days ? <span className="block text-xs text-[#2f3aa8]">Précommande · sous {item.backorder_days} jour{item.backorder_days > 1 ? "s" : ""}</span> : null}
             </dd>
           ))}
         </div>

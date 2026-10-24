@@ -4,6 +4,7 @@ import { formatNumber } from "@/lib/format";
 
 import { AddControl, accentOf, CartButton, Letters, ProductImage, Sections, StockHint, ThemeFooter, type ThemeProps, type Tone } from "./parts";
 import { Scene } from "./scene";
+import { WasPrice } from "../product-details";
 
 const TONE: Tone = {
   muted: "text-encre-doux",
@@ -79,6 +80,7 @@ export function BeauteTheme(props: ThemeProps) {
             ) : null}
             <div className="th-reveal th-up flex items-center gap-4 pt-2" style={{ animationDelay: "300ms" }}>
               <span className="large text-[26px] font-extrabold">{formatNumber(featured.price)} F</span>
+              <WasPrice product={featured} />
               <AddControl product={featured} quantity={props.cart[featured.id] ?? 0} onChange={props.onChange} tone={{ ...TONE, button: accent.disc, ghost: accent.disc }} />
             </div>
           </Scene>
@@ -116,6 +118,7 @@ function BeauteCollection({ products, cart, onChange }: ThemeProps) {
               <div className="mt-auto flex items-center justify-between gap-2 px-1.5 pt-1">
                 <span className="flex min-w-0 flex-col">
                   <span className="large text-[clamp(14.5px,4vw,17px)] font-extrabold whitespace-nowrap text-[#1d5d85]">{formatNumber(product.price)} F</span>
+                  <WasPrice product={product} className="text-xs text-[#5c3d00]" />
                   <StockHint product={product} className="text-[11.5px] font-semibold text-[#5c3d00]" />
                 </span>
                 <AddControl product={product} quantity={cart[product.id] ?? 0} onChange={onChange} tone={TONE} compact />

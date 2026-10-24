@@ -52,7 +52,10 @@ export function Basket({
               <div className="row-span-2 size-10 overflow-hidden rounded-[10px]">
                 <ProductArt product={product} />
               </div>
-              <p className="truncate text-[13px] font-semibold">{product.name}</p>
+              <p className="truncate text-[13px] font-semibold">
+                {product.name}
+                {product.availability === "preorder" ? <span className="font-normal text-[#2f3aa8]"> · précommande</span> : null}
+              </p>
               <div className="flex items-center justify-between gap-2">
                 <QuantityStepper quantity={quantity} max={product.max_quantity} onChange={(q) => onChange(product, q)} label={product.name} size="sm" />
                 <span className="text-[13px] font-semibold whitespace-nowrap">{formatFcfa(product.price * quantity)}</span>

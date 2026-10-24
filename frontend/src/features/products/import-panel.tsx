@@ -17,9 +17,13 @@ const COLUMN_LABEL: Record<string, string> = {
   name: "Nom",
   price: "Prix",
   stock: "Stock",
-  category: "Rayon",
+  category: "Type de produit",
   description: "Description",
-  is_active: "En vente",
+  is_active: "Actif (ancienne colonne)",
+  status: "Statut",
+  compare_at_price: "Prix avant réduction",
+  cost: "Coût",
+  tags: "Étiquettes",
   low_stock_threshold: "Seuil",
   image_url: "Photo",
   file: "Fichier",
@@ -27,9 +31,9 @@ const COLUMN_LABEL: Record<string, string> = {
 
 // Point-virgule et BOM : Excel en français ouvre ce fichier directement, accents compris.
 const TEMPLATE =
-  "﻿sku;nom;prix;stock;categorie;description;actif;seuil;image\n" +
-  "PAGNE-001;Pagne wax 6 yards;12500;20;Pagnes;Coton imprimé, motif ananas;oui;5;\n" +
-  "SAC-014;Sac en raphia tressé;8000;6;Accessoires;;oui;3;\n";
+  "﻿sku;nom;prix;prix_barre;stock;categorie;description;statut;seuil;image;etiquettes\n" +
+  "PAGNE-001;Pagne wax 6 yards;12500;15000;20;Pagnes;Coton imprimé, motif ananas;actif;5;;Fait main|Cadeau\n" +
+  "SAC-014;Sac en raphia tressé;8000;;6;Accessoires;;brouillon;3;;\n";
 
 function downloadTemplate() {
   const url = URL.createObjectURL(new Blob([TEMPLATE], { type: "text/csv;charset=utf-8" }));
@@ -77,7 +81,7 @@ export function ImportPanel({ slug }: { slug: string }) {
           <span className="font-mono">sku</span>) est obligatoire. Une référence qui existe déjà met le produit à jour, une cellule vide ne change rien.
         </p>
         <ul className="carte flex flex-wrap gap-x-4 gap-y-1.5 rounded-carte p-3.5 font-mono text-[13px] text-texte-2">
-          {["sku", "nom", "prix", "stock", "categorie", "description", "actif", "seuil", "image"].map((column) => (
+          {["sku", "nom", "prix", "stock", "prix_barre", "categorie", "description", "statut", "seuil", "image", "etiquettes"].map((column) => (
             <li key={column}>{column}</li>
           ))}
         </ul>

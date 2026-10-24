@@ -30,6 +30,16 @@ export function voice(role: Role, shopName: string) {
       : role === "manager"
         ? `Tout est à jour pour ${shopName}.`
         : "Aucune commande à traiter pour l’instant.",
+    /** Les textes de la page Produits : « votre » vitrine pour le propriétaire, le nom de la boutique pour les autres. */
+    catalog: {
+      notVisible: own ? "Ce produit n’est pas visible sur votre vitrine." : `Ce produit n’est pas visible sur la vitrine de ${shopName}.`,
+      empty: own ? "Votre catalogue est vide." : "Le catalogue est vide pour l’instant.",
+      duplicated: "Copie créée en brouillon. Vérifiez le nom et le stock.",
+      archiveHint: "Rangé, garde son historique.",
+      costOwnerOnly: own ? "Seul vous voyez le coût et la marge." : "",
+      bulkDone: (count: number) => `${count} produit${count > 1 ? "s" : ""} modifié${count > 1 ? "s" : ""}.`,
+      lowerPrices: own ? "Baisser les prix de plusieurs produits d’un coup" : `Baisser les prix de plusieurs produits de ${shopName} d’un coup`,
+    },
     /** Sous « Offrir une réduction », pour un gérant : le plafond vient du propriétaire. */
     discountCap: (cap: number) => `En % seulement, jusqu’à ${cap} % : c’est votre plafond.`,
     goalSetBy: (goal: NonNullable<Goal["goal"]>) =>

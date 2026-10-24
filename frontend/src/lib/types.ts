@@ -66,7 +66,7 @@ export type Order = {
   status: OrderStatus;
   payment_method: PaymentMethod;
   customer: { name: string; phone: string; city: string; commune: string; landmark: string };
-  items: { product_id: string; name: string; unit_price: number; quantity: number; line_total: number }[];
+  items: { product_id: string; name: string; unit_price: number; quantity: number; line_total: number; from_stock?: number; backorder_days?: number }[];
   subtotal: number;
   /** Code de réduction utilisé (vide sans réduction) et remise sur le sous-total (docs/chantier-p5.md §1.6). */
   discount_code: string;
@@ -334,6 +334,8 @@ export type Problem = {
   discount_amount?: number;
   /** Limite du plan, sur `plan_limit_reached`. */
   limit?: number;
+  /** Stock restant, sur `stock_below_zero`. */
+  available?: number;
 };
 
 /* ---------- Boutique publique (contrat §4.4) ---------- */
@@ -421,10 +423,29 @@ export type PublicProduct = {
   photos: ProductPhoto[];
   in_stock: boolean;
   low_stock: boolean;
+  /** Commandable : en stock, ou vendable en précommande. C'est lui qui décide « Ajouter » ou « Épuisé » (docs/chantier-a2-produits.md §A2.4). */
+  orderable: boolean;
+  availability: "in_stock" | "low_stock" | "preorder" | "out_of_stock";
+  /** Délai promis en précommande (null hors précommande). */
+  backorder_days: number | null;
   max_quantity: number;
+  /** Prix avant réduction : affiché barré, jamais dans un calcul. `discount_percent` est arrondi à l'inférieur. */
+  compare_at_price: number | null;
+  discount_percent: number | null;
+  /** Seulement ce qui est renseigné ; les libellés sont écrits ici (features/storefront/product-details.tsx). */
+  details: ProductDetails;
 };
 
-export type PlacedOrder = { reference: string; total: number; status: OrderStatus; discount_amount: number };
+export type ProductDetails = {
+  condition?: "new" | "refurbished" | "used";
+  warranty_months?: number;
+  sold_by?: "piece" | "kg" | "sachet" | "tas" | "litre";
+  one_of_a_kind?: boolean;
+  made_to_order?: boolean;
+  bulky?: boolean;
+};
+
+export type PlacedOrder = { reference: string; total: number; status: OrderStatus; discount_amount: number; backorder_days?: number };
 
 /** Suivi d'une commande par le client : l'état seulement, ni adresse ni téléphone (contrat §4.4). */
 export type TrackedOrder = {
@@ -438,7 +459,7 @@ export type TrackedOrder = {
   delivery_fee: number;
   total: number;
   payment_method: PaymentMethod;
-  items: { name: string; quantity: number }[];
+  items: { name: string; quantity: number; backorder_days?: number }[];
   delivery: { city: string; commune: string };
 };
 

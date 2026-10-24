@@ -9,6 +9,7 @@ import type { Accent, PublicProduct, SectionId, Storefront, StorefrontDesign } f
 
 import { ACCENTS } from "../accent";
 import type { Line } from "../catalogue";
+import { preorderText } from "../product-details";
 import { Scene } from "./scene";
 
 /** Ce que la vitrine donne à un thème : les données, le panier et ses gestes. */
@@ -97,7 +98,7 @@ export function AddControl({
   tone: Tone;
   compact?: boolean;
 }) {
-  if (!product.in_stock) return <span className={cn("text-[13px] font-semibold", tone.muted)}>Épuisé</span>;
+  if (!product.orderable) return <span className={cn("text-[13px] font-semibold", tone.muted)}>Épuisé</span>;
   if (quantity > 0) {
     return (
       <div role="group" aria-label={`Quantité : ${product.name}`} className={cn("inline-flex items-center gap-0.5 rounded-full p-0.5", tone.button)}>
@@ -127,7 +128,8 @@ export function AddControl({
 
 /** « Plus qu'une pièce », « Plus que quelques pièces » : ce qui aide à décider, sans le stock exact. */
 export function StockHint({ product, className }: { product: PublicProduct; className?: string }) {
-  if (!product.in_stock) return null;
+  if (!product.orderable) return null;
+  if (!product.in_stock) return <span className={className}>{preorderText(product.backorder_days)}</span>;
   if (product.max_quantity === 1) return <span className={className}>Plus qu’une pièce</span>;
   if (product.low_stock) return <span className={className}>Plus que quelques pièces</span>;
   return null;

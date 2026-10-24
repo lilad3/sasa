@@ -7,6 +7,7 @@ import { formatNumber } from "@/lib/format";
 
 import { AddControl, accentOf, CartButton, ProductImage, Sections, StockHint, ThemeFooter, type ThemeProps, type Tone } from "./parts";
 import { Scene } from "./scene";
+import { WasPrice } from "../product-details";
 
 const TONE: Tone = {
   muted: "text-encre-doux",
@@ -172,6 +173,7 @@ function ArtisanatCollection({ products, cart, onChange }: ThemeProps) {
               </div>
               <div className="flex flex-col items-end gap-1.5">
                 <span className="large text-base font-black whitespace-nowrap">{formatNumber(product.price)} F</span>
+                <WasPrice product={product} className="text-xs" />
                 <AddControl product={product} quantity={cart[product.id] ?? 0} onChange={onChange} tone={TONE} compact />
               </div>
             </div>

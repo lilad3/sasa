@@ -12,7 +12,10 @@ import type { ImportReport, Product } from "./types";
 
 /* ---------- Fiche produit ---------- */
 
-export type ProductField = "name" | "sku" | "price" | "stock" | "low_stock_threshold" | "category" | "description" | "image_url";
+export type ProductField =
+  | "name" | "sku" | "price" | "stock" | "low_stock_threshold" | "category" | "description" | "image_url"
+  | "status" | "compare_at_price" | "cost" | "backorder_days" | "backorder_limit" | "tags" | "condition" | "warranty_months"
+  | "sold_by" | "made_to_order";
 
 export type ProductFormState = { error?: FormError; fields?: Partial<Record<ProductField, string>>; done?: string };
 
@@ -23,8 +26,16 @@ const Slug = z.string().regex(/^[a-z0-9-]{1,60}$/);
 function whole(min: number, max: number, message: string) {
   return z
     .string()
-    .transform((value) => value.replace(/[\s  ]/g, "").replace(/f(cfa)?$/i, ""))
+    .transform((value) => value.replace(/[\s\u00a0\u202f]/g, "").replace(/f(cfa)?$/i, ""))
     .pipe(z.string().regex(/^\d+$/, message).transform(Number).pipe(z.number().min(min, message).max(max, message)));
+}
+
+/** Comme `whole`, mais une saisie vide donne null (champ facultatif : prix barré, coût, garantie). */
+function optionalWhole(min: number, max: number, message: string) {
+  return z
+    .string()
+    .transform((value) => value.replace(/[\s\u00a0\u202f]/g, "").replace(/f(cfa)?$/i, ""))
+    .pipe(z.union([z.literal("").transform(() => null), whole(min, max, message)]));
 }
 
 // Les mêmes règles que ProductSerializer : Django reste juge, ceci évite seulement un aller-retour.
@@ -35,7 +46,8 @@ const ProductInput = z.object({
     .trim()
     .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/, "Lettres, chiffres, point, tiret ou soulignement, 40 au plus."),
   price: whole(1, 100_000_000, "Prix en francs CFA, sans centimes."),
-  stock: whole(0, 1_000_000, "Quantité entière, 0 ou plus."),
+  // Le stock n'existe qu'à la création (stock de départ) : ensuite il s'ajuste avec une raison.
+  stock: whole(0, 1_000_000, "Quantité entière, 0 ou plus.").optional(),
   low_stock_threshold: whole(0, 10_000, "Nombre entier, 0 ou plus."),
   category: z.string().trim().max(40, "40 caractères au maximum."),
   description: z.string().trim().max(2000, "2 000 caractères au maximum."),
@@ -44,10 +56,25 @@ const ProductInput = z.object({
     .trim()
     .max(200, "200 caractères au maximum.")
     .refine((value) => value === "" || /^https:\/\/\S+$/i.test(value), "Adresse d’image en https:// attendue."),
-  is_active: z.boolean(),
+  status: z.enum(["draft", "active", "archived"]).optional(),
+  compare_at_price: optionalWhole(2, 100_000_000, "Prix en francs CFA, sans centimes.").optional(),
+  cost: optionalWhole(0, 100_000_000, "Coût en francs CFA, sans centimes.").optional(),
+  allow_backorder: z.boolean(),
+  backorder_days: optionalWhole(1, 60, "Un nombre de jours, de 1 à 60."),
+  backorder_limit: whole(1, 10_000, "Un nombre entre 1 et 10 000.").optional(),
+  tags: z.array(z.string().trim().min(1).max(30, "30 caractères au maximum.")).max(10, "10 étiquettes au plus."),
+  condition: z.enum(["", "new", "refurbished", "used"]),
+  warranty_months: optionalWhole(1, 60, "Une durée de 1 à 60 mois."),
+  sold_by: z.enum(["piece", "kg", "sachet", "tas", "litre"]),
+  one_of_a_kind: z.boolean(),
+  made_to_order: z.boolean(),
+  bulky: z.boolean(),
 });
 
-const FIELDS: ProductField[] = ["name", "sku", "price", "stock", "low_stock_threshold", "category", "description", "image_url"];
+const FIELDS: ProductField[] = [
+  "name", "sku", "price", "stock", "low_stock_threshold", "category", "description", "image_url", "status", "compare_at_price",
+  "cost", "backorder_days", "backorder_limit", "tags", "condition", "warranty_months", "sold_by", "made_to_order",
+];
 
 /** Les erreurs de Django par champ, avec son message (déjà en français). */
 function fieldErrors(problem: Problem): ProductFormState["fields"] {
@@ -71,19 +98,33 @@ export async function saveProduct(_previous: ProductFormState, formData: FormDat
     name: text("name"),
     sku: text("sku"),
     price: text("price"),
-    stock: text("stock"),
+    stock: id ? undefined : text("stock"),
     low_stock_threshold: text("low_stock_threshold"),
     category: text("category"),
     description: text("description"),
     image_url: text("image_url"),
-    is_active: formData.get("is_active") === "on",
+    status: formData.get("status") || undefined,
+    compare_at_price: text("compare_at_price"),
+    // Le coût n'est dans le formulaire que pour qui a le droit : sans le champ, la clé n'est jamais envoyée.
+    cost: formData.has("cost") ? text("cost") : undefined,
+    allow_backorder: formData.get("allow_backorder") === "on",
+    backorder_days: text("backorder_days"),
+    backorder_limit: formData.has("backorder_limit") ? text("backorder_limit") : undefined,
+    tags: formData.getAll("tags").map(String),
+    condition: text("condition"),
+    warranty_months: text("warranty_months"),
+    sold_by: text("sold_by") || "piece",
+    one_of_a_kind: formData.get("one_of_a_kind") === "on",
+    made_to_order: formData.get("made_to_order") === "on",
+    bulky: formData.get("bulky") === "on",
   });
   if (!parsed.success) {
-    const flat = z.flattenError(parsed.error).fieldErrors;
+    const flat = z.flattenError(parsed.error).fieldErrors as Partial<Record<ProductField, string[]>>;
     return { fields: Object.fromEntries(FIELDS.flatMap((field) => (flat[field]?.[0] ? [[field, flat[field][0]]] : []))) };
   }
 
   const base = `shops/${slug.data}/products`;
+  // undefined disparaît du JSON : seuls les champs présents dans le formulaire partent.
   const result = id
     ? await authedMutation<Product>(`${base}/${id.data}`, "PATCH", parsed.data)
     : await authedMutation<Product>(base, "POST", parsed.data);

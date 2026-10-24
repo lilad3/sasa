@@ -5,7 +5,7 @@ import { type ChangeEvent, startTransition, useActionState, useState } from "rea
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/features/auth/form-alert";
 import { cn } from "@/lib/cn";
-import { photoUrl } from "@/lib/photos";
+import { memberPhotoUrl } from "@/lib/photos";
 import type { ProductPhoto } from "@/lib/types";
 
 import { makeMainPhoto, type PhotoState, removePhoto, uploadPhoto } from "./photo-actions";
@@ -153,8 +153,8 @@ function PhotoSlot({ slug, productId, productName, photo, index }: PhotoSlotProp
   return (
     <li className="flex flex-col gap-2">
       <div className="relative aspect-square overflow-hidden rounded-[18px] border border-trait-doux bg-encre/60">
-        {/* eslint-disable-next-line @next/next/no-img-element -- photo relayée par /boutique/[slug]/photo (réencodée par Django) */}
-        <img src={photoUrl(slug, photo)} alt={`Photo ${index + 1} de ${productName}`} loading="lazy" className="size-full object-cover" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- photo relayée par /app/[shop]/photo (réservée à l’équipe, quel que soit le statut du produit) */}
+        <img src={memberPhotoUrl(slug, productId, photo)} alt={`Photo ${index + 1} de ${productName}`} loading="lazy" className="size-full object-cover" />
         {index === 0 ? (
           <span className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-full bg-nuit/80 px-2.5 py-1 text-[12px] font-semibold text-sable backdrop-blur">
             <span aria-hidden className="h-3 w-1 rounded-sm bg-current" />

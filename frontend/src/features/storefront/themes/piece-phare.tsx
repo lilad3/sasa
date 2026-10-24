@@ -5,6 +5,7 @@ import { formatNumber } from "@/lib/format";
 
 import { AddControl, accentOf, CartButton, ProductImage, Sections, StockHint, StorySection, ThemeFooter, type ThemeProps, type Tone } from "./parts";
 import { Scene } from "./scene";
+import { WasPrice } from "../product-details";
 
 const TONE: Tone = {
   muted: "text-texte-2",
@@ -65,6 +66,7 @@ export function PiecePhareTheme(props: ThemeProps) {
                 <span className="large text-[28px] font-extrabold" style={{ color: accent.onDark }}>
                   {formatNumber(featured.price)} F
                 </span>
+                <WasPrice product={featured} />
                 <AddControl product={featured} quantity={props.cart[featured.id] ?? 0} onChange={props.onChange} tone={{ ...TONE, button: accent.disc, ghost: accent.disc }} />
               </div>
             </>
@@ -109,6 +111,7 @@ function PiecePhareCollection({ products, cart, onChange, shop }: ThemeProps) {
                 <span className="large text-lg font-extrabold whitespace-nowrap" style={{ color: accent.onDark }}>
                   {formatNumber(product.price)} F
                 </span>
+                <WasPrice product={product} className="text-xs" />
               </div>
               {product.description ? (
                 <p className="th-reveal th-blur text-[14.5px] leading-relaxed text-texte-2" style={{ animationDelay: "600ms" }}>

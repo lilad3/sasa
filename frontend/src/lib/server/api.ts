@@ -109,6 +109,20 @@ export async function fetchPublicImage(path: string, context: RequestContext, ac
   }
 }
 
+/** Image servie à un membre de l'équipe (photo d'un brouillon) : la réponse brute, avec le jeton d'accès. */
+export async function fetchMemberImage(path: string, access: string, context: RequestContext, accept = "image/webp"): Promise<Response | null> {
+  const { apiUrl, secret } = settings();
+  const headers = new Headers({ Accept: accept, "X-Akwaba-Bff": secret, "X-Request-ID": newRequestId(), Authorization: `Bearer ${access}` });
+  if (context.ip) headers.set("X-Client-IP", context.ip);
+  if (context.userAgent) headers.set("X-Client-UA", context.userAgent.slice(0, 300));
+  if (SAFE_ID.test(context.deviceId)) headers.set("X-Device-Id", context.deviceId);
+  try {
+    return await fetch(`${apiUrl}/api/v1/${path}`, { headers, cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(10_000) });
+  } catch {
+    return null;
+  }
+}
+
 function toProblem(status: number, json: unknown): Problem {
   const body = json && typeof json === "object" ? (json as Record<string, unknown>) : {};
   return {
@@ -122,6 +136,7 @@ function toProblem(status: number, json: unknown): Problem {
     total: typeof body.total === "number" ? body.total : undefined,
     discount_amount: typeof body.discount_amount === "number" ? body.discount_amount : undefined,
     limit: typeof body.limit === "number" ? body.limit : undefined,
+    available: typeof body.available === "number" ? body.available : undefined,
   };
 }
 
