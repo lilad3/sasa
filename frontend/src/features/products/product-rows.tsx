@@ -306,7 +306,7 @@ function ProductCells({
         </span>
       </span>
       <span className={cn("text-right text-[13px] md:order-none md:text-left", state.text)}>{state.label}</span>
-      <span className="flex flex-wrap items-baseline gap-x-2 pl-[52px] text-sm font-semibold tabular-nums md:pl-0">
+      <span className="flex flex-wrap items-baseline gap-x-2 pl-[52px] text-sm font-semibold whitespace-nowrap tabular-nums md:pl-0">
         {formatFcfa(product.price)}
         {product.compare_at_price ? <del aria-label={`Ancien prix ${formatFcfa(product.compare_at_price)}`} className="text-xs font-normal text-texte-3">{formatFcfa(product.compare_at_price)}</del> : null}
       </span>

@@ -496,4 +496,25 @@ Frontend : `npm run lint` et `npm run build` ; parcours à la main avec captures
 
 ## Revue sécurité (Alice)
 
-*(à remplir)*
+Revue **bloquante**, appliquée à l'étape 2. Chaque point est codé et testé ; les autres décisions du contrat suivent les recommandations de l'auteur (décision n° 9 comprise : `product_stock_adjusted`, `product_status_changed`, `product_deleted`).
+
+- **B1 : baisse de prix en masse.** Toute action en masse de type prix qui baisse **au moins un** prix exige la confirmation renforcée (`require_reauth`, 403 `reauth_required` sinon, rien n'est modifié). L'événement `products_bulk_updated` passe alors en catégorie **Sécurité**, gravité **« à surveiller »** (`record(..., category=, severity=)`), avec le détail `lowered`. Il apparaît dans la vue « sensible » du journal du propriétaire. Une hausse ou une autre action reste en « Activité », info. Le front demande le mot de passe (ou le code 2FA) dans la feuille de confirmation.
+- **StockMovement : ne pas perdre la preuve.** Option retenue : **refuser la suppression** d'un produit qui a des mouvements autres que « initial » (409 `product_has_history`, « archivez-le plutôt »). La clé étrangère reste en CASCADE, mais la vue le garde ; l'admin Django refuse aussi la suppression dans ce cas. La suppression d'un produit sans historique est journalisée (`product_deleted`).
+- **Contrainte unique `(order, product, reason)`** pour `sold` et `cancelled` : **P08 (variantes) devra y ajouter `variant_id`**, sinon deux variantes d'un même produit dans une commande se heurteraient. À faire dans la migration qui pose la clé étrangère `StockMovement.variant`.
+- **Coût : ni tri ni filtre pour un non-propriétaire.** Tout paramètre de liste commençant par `cost` ou `margin`, et les tris `cost`/`margin`, répondent 400 `validation_error` à un non-propriétaire (jamais un 200 vide). Le propriétaire a `sort=cost|-cost|margin|-margin`.
+- **Précommande : `backorder_limit`** (défaut 20, 1 à 10 000). Le total des unités en précommande **en cours** (commandes en attente ou confirmées) plus la nouvelle part ne peut pas dépasser le plafond : sinon 409 `out_of_stock` (`available` = stock + place restante). Vérifié sous verrou de la ligne produit. Une annulation libère sa part.
+- **Concurrence du dernier article** : tests parallèles réels dans la suite (`test_stock_concurrency.py`, `TransactionTestCase`, base de test sur fichier : `DATABASES["default"]["TEST"]["NAME"]`), pas de script joint.
+- **Tests qu'Alice rejouera** : coût absent partout pour gérant et vendeur (`test_products_cost.py`, parcours de tout le JSON) ; brouillon et archivé refusés en appel direct, fiche, photo, commande (`test_products_status.py`) ; masse avec un identifiant d'une autre boutique, même réponse qu'un inconnu, rien de modifié (`test_products_bulk.py`) ; annulation qui ne remet le stock qu'une fois, aussi en parallèle ; invariant stock = somme des delta (`test_products_stock.py`, démo comprise).
+
+### Écarts par rapport au contrat de l'étape 1
+
+1. **Migration 0011 (suppression de `is_active`) non livrée.** Elle doit suivre le déploiement du code A2 (§A2.1). En attendant, la colonne est gelée sous le nom `legacy_is_active` (`db_column="is_active"`), tenue à jour par `Product.save()` et par la masse ; `Product.is_active` est une propriété.
+2. **Contrainte de base** `compare_at_price > price` ajoutée en plus de la règle du sérialiseur (filet de sécurité).
+3. **`record()`** : `action` devient positionnel seul (le détail `action` de la masse entrait en collision) ; ajout de `category` et `severity`.
+4. **Réponse de la liste des mouvements** : `{results, next_before}` (et non une simple liste), pour paginer par `before`.
+5. **`GET /products?status=`** (`draft|active|archived|all`) et `sort=` (`name`, `price`, `stock`, `recent`, et `cost`/`margin` pour le propriétaire) : paramètres nommés ici, le contrat ne les fixait pas.
+6. **Ajustement avec `count` inchangé** : 200 `{movement: null}` au lieu de 201.
+7. **Étiquettes, suggestions côté front** : la saisie propose les 30 étiquettes de `overview.tags` (liste locale), pas un appel `tags?q=` à chaque frappe.
+8. **Secteur (P04)** : non branché (`sector=null`), tous les détails sont dans « Plus de détails » ; une ligne suffira quand `Shop.sector` existera.
+9. **Pièce unique** : limitée à 1 par commande aussi côté serveur (409 `out_of_stock`).
+10. **Base de test sur fichier** pour toute la suite (concurrence) : `backend/test_db.sqlite3*` est ignoré par git.
