@@ -30,6 +30,9 @@ export function voice(role: Role, shopName: string) {
       : role === "manager"
         ? `Tout est à jour pour ${shopName}.`
         : "Aucune commande à traiter pour l’instant.",
+    notificationsIntro: own
+      ? "Choisissez ce que vous recevez par e-mail pour votre boutique."
+      : `Choisissez ce que vous recevez par e-mail pour ${shopName}.`,
     /** Sous « Offrir une réduction », pour un gérant : le plafond vient du propriétaire. */
     discountCap: (cap: number) => `En % seulement, jusqu’à ${cap} % : c’est votre plafond.`,
     goalSetBy: (goal: NonNullable<Goal["goal"]>) =>

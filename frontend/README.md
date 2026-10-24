@@ -31,6 +31,7 @@ Avant de pousser : `npm run lint` et `npm run build` (le build vérifie aussi le
 | `/app/[shop]/messages` | Tous les rôles | Le mot du patron : le propriétaire et les gérants écrivent à l'équipe, chacun confirme « C'est noté » |
 | `/app/[shop]/produits` | Tous les rôles (modification : propriétaire et gérant) | Catalogue, alertes de stock, fiche produit, import CSV (Pro et plus) |
 | `/app/[shop]/parametres` | Propriétaire | Onglets Boutique (vitrine, couleur, mode congé), Équipe (comptes et mots de passe provisoires), Plan, Clés API, Journal (carte « Sécurité de la boutique » et qui a fait quoi, 90 jours) |
+| `/app/[shop]/parametres/notifications` | Tous les rôles | Ses propres e-mails (nouvelle commande, stock bas, annulation, résumé du jour) : interrupteurs à enregistrement immédiat, e-mail de test. Page autonome : le lien « Gérer mes notifications » des e-mails y mène |
 | `/premiere-connexion` | Comptes créés par un patron | Remplacer le mot de passe provisoire avant d'entrer |
 
 ## Organisation du code

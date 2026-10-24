@@ -115,4 +115,5 @@ Chaque protection du contrat (§5) a son test :
 | `shops/plans.py` | Plans et limites, appliqués par le serveur |
 | `shops/api_keys.py` · `shops/public_api.py` | Clés API (empreinte seule, temps constant) et API publique `/api/public/v1/` |
 | `shops/catalog.py` · `shops/csv_import.py` | Catalogue, alertes de stock, import CSV tout ou rien |
+| `notifications/` | E-mails de notification (commandes, stock bas, annulation, résumé du jour) : `events.py` (liste fermée), `send.py` (anti-rafale, plafonds, disjoncteur, budget de 5 s), `triggers.py`, commandes `send_daily_summaries`, `send_held_notifications`, `send_test_emails`. Désactivés tant que `NOTIFICATIONS_ENABLED=1` n'est pas posé |
 | `core/spreadsheet.py` | Exports CSV pour Excel, formules neutralisées |

@@ -529,3 +529,23 @@ export type SecurityOverview = {
   last_export: { at: string; by: string; rows: number | null } | null;
   sensitive_events_7d: number;
 };
+
+/** Les e-mails que la personne reçoit pour une boutique (docs/chantier-a2-notifications.md §7.1). */
+export type NotificationEvent = {
+  id: string;
+  enabled: boolean;
+  /** Le réglage d'origine de son rôle. */
+  default: boolean;
+  /** Un choix personnel : enabled diffère du réglage d'origine. */
+  custom: boolean;
+  /** Résumé du jour seulement : l'e-mail contient (ou non) le chiffre d'affaires pour cette personne. */
+  includes_revenue?: boolean;
+};
+
+export type NotificationsSettings = {
+  /** L'envoi d'e-mails est-il actif sur ce serveur ? */
+  sending: boolean;
+  /** L'adresse du compte de la personne qui lit. */
+  email: string;
+  events: NotificationEvent[];
+};

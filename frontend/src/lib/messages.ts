@@ -45,6 +45,9 @@ const MESSAGES: Record<string, string> = {
   shop_on_vacation: "La boutique est en congé : elle ne prend pas de commande pour le moment.",
   file_too_large: "Fichier trop lourd : 512 Ko au maximum, soit environ 1 000 produits.",
   unsupported_file: "Envoyez un fichier .csv (dans Excel : Fichier, Enregistrer sous, CSV).",
+  invalid_event: "Ce réglage n’existe plus. La page est à jour.",
+  notifications_disabled: "L’envoi d’e-mails n’est pas encore activé sur ce serveur. Vos choix sont gardés.",
+  email_failed: "L’e-mail de test n’a pas pu partir. Réessayez dans un instant ; si cela continue, prévenez la personne qui gère le serveur.",
   // Boutique publique
   out_of_stock: "Un article de votre panier n’a plus assez de stock : la quantité a été ajustée.",
   price_changed: "Le total a changé depuis l’affichage de votre panier. Vérifiez le nouveau montant, puis confirmez.",
