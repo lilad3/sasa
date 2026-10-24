@@ -44,13 +44,8 @@ async function DeliveryContent({ slug, shopName }: { slug: string; shopName: str
         <p className="max-w-[64ch] text-[14px] text-texte-2">Les zones où vous livrez, ce que cela coûte et en combien de temps. Le client ne voit que les zones actives.</p>
         <p className="text-[13px] text-texte-3">{delivery.data.summary}</p>
       </header>
-      {/* key : après un enregistrement, les lignes repartent des valeurs du serveur (l'ordre seul ne les réinitialise pas). */}
-      <DeliveryZones
-        key={[...zones].sort((a, b) => a.id.localeCompare(b.id)).map((zone) => `${zone.id}:${zone.fee}:${zone.delay_hours}:${zone.is_active}`).join("|")}
-        slug={slug}
-        delivery={delivery.data}
-      />
-      <PickupForm key={JSON.stringify(pickup)} slug={slug} pickup={pickup} hasActiveZone={zones.some((zone) => zone.is_active)} />
+      <DeliveryZones slug={slug} delivery={delivery.data} />
+      <PickupForm slug={slug} pickup={pickup} hasActiveZone={zones.some((zone) => zone.is_active)} />
     </>
   );
 }

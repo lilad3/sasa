@@ -27,6 +27,7 @@ function grouped(zones: ShopZone[]): Group[] {
 }
 
 const toDraft = (zone: ShopZone): ZoneDraft => ({ fee: String(zone.fee), delay: String(zone.delay_hours), active: zone.is_active });
+const draftsOf = (zones: ShopZone[]) => Object.fromEntries(zones.map((zone) => [zone.id, toDraft(zone)]));
 
 /**
  * Les zones de livraison. Un seul bouton enregistre toutes les lignes modifiées (le serveur applique tout ou rien) ;
@@ -37,7 +38,15 @@ export function DeliveryZones({ slug, delivery }: { slug: string; delivery: Deli
   const [moved, moveAction, moving] = useActionState(reorderZones, initial);
   const [removed, removeAction, removing] = useActionState(deleteZone, initial);
   const [unreadable, setUnreadable] = useState<Record<string, string>>({});
-  const [drafts, setDrafts] = useState<Record<string, ZoneDraft>>(() => Object.fromEntries(delivery.zones.map((zone) => [zone.id, toDraft(zone)])));
+  const [drafts, setDrafts] = useState<Record<string, ZoneDraft>>(() => draftsOf(delivery.zones));
+  // Les valeurs du serveur changent après un enregistrement (pas après un simple changement d'ordre) : la saisie repart d'elles.
+  const serverKey = [...delivery.zones].sort((a, b) => a.id.localeCompare(b.id)).map((zone) => `${zone.id}:${zone.fee}:${zone.delay_hours}:${zone.is_active}`).join("|");
+  const [seen, setSeen] = useState(serverKey);
+  if (seen !== serverKey) {
+    setSeen(serverKey);
+    setDrafts(draftsOf(delivery.zones));
+    setUnreadable({});
+  }
 
   const changes = delivery.zones.filter((zone) => {
     const draft = drafts[zone.id];

@@ -14,7 +14,7 @@ Rappels communs (ceux de `chantier-p4.md` et `chantier-p5.md`) :
 |---|---|---|
 | 1 | Ce contrat + maquettes (`docs/maquettes/paiements-livraison/`) | à valider |
 | 2 | API : modèles, migrations, routes, checkout, journal, tests | **faite** (branche `claude/a2-paiements-livraison`) |
-| 3 | Front : pages Paramètres, checkout, confirmation, suivi | non commencée |
+| 3 | Front : pages Paramètres, checkout, confirmation, suivi | **faite** (branche `claude/a2-paiements-livraison`) |
 
 Hors périmètre : API Mobile Money réelle (aucun paiement ne passe par Akwaba, le client paie le commerçant directement), livraison gratuite sous condition (P13), livreurs (P10).
 
@@ -528,6 +528,16 @@ Ce qui a changé en réalisant l'étape 2. Tout le reste est appliqué tel quel 
 9. **Plan** : `PlanSpec.delivery_zones` (20 / 60 / 150), exposé dans `GET plans` ; `usage.delivery_zones` ajouté ; blocage de la rétrogradation.
 10. **Fabriques de test et démo** : `make_shop()` donne les 15 zones et les 5 moyens actifs (état d'une boutique d'avant le chantier) ; `seed_demo` active les 5 moyens des boutiques de démo (sans numéro) pour que la démo vende comme avant.
 11. **Course PostgreSQL** : un test vérifie que le verrou `SELECT … FOR UPDATE` est émis (ignoré sur SQLite) ; le vrai test à deux fils n'a pas pu tourner ici (pas de PostgreSQL dans l'environnement).
+
+### Écarts du front (étape 3)
+
+12. **Bandeau d'attente** : posé dans le layout de l'espace marchand (propriétaire seulement), avec le bouton « Voir et annuler » vers la page Paiements ; l'annulation se fait sur la page Paiements, dans la ligne du moyen, sans confirmation renforcée. La carte « Sécurité de la boutique » gagne un point « numéro de réception » (attente, changement dans les 7 jours, ou en ordre).
+13. **Limite de débit** : le message 429 donne un délai en heures ou en minutes (la limite est de 3 changements par jour).
+14. **Vitrine sans option de remise** (aucune zone active, pas de retrait) : bandeau « Commandes fermées », comme le mode congé. La couverture n'affiche plus « dès X F » sans zone et ses textes ne sont plus figés (« du Plateau à Korhogo » retiré).
+15. **Choix visuels non prévus au contrat, à valider** : composant interrupteur (orange allumé, bord sable éteint) ; préfixe « +225 » fixe à gauche du champ numéro ; en-têtes de ville en ocre majuscules dans la liste des zones ; encadré de retrait en texte avec filet encre à gauche ; texte de la fiche commande pour un paiement Mobile Money reformulé (« le client règle … avec la référence … »). Rien d'autre.
+16. Non fait : « Livrée » reste le nom de la dernière étape d'une commande en retrait (pas de vocabulaire « Retirée » sans décision).
+
+Vérifié dans un navigateur (Playwright, 1280 px) avec le serveur local : première saisie, remplacement avec attente de 24 h (les clients voient l'ancien numéro à la commande), nom imitant un opérateur refusé, limite de 3 par jour, commande en livraison et en retrait avec instructions. Non vérifié : 360 px, contraste mesuré de l'ocre, parcours au clavier seul.
 
 ## 12. À faire en production
 

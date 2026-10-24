@@ -30,6 +30,10 @@ function digitsOf(value: string) {
 
 type Draft = { enabled: boolean; number: string; name: string };
 
+function draftsOf(settings: PaymentSettings): Record<string, Draft> {
+  return Object.fromEntries(settings.methods.map((method) => [method.method, { enabled: method.enabled, number: localNumber(method.payout_number), name: method.payout_name }]));
+}
+
 /**
  * Les moyens de paiement de la boutique, en un seul formulaire (un PUT complet). Le serveur juge tout ; ce formulaire
  * prévient seulement : le bloc de confirmation apparaît dès qu'un numéro ou un nom change, et le dernier moyen actif ne
@@ -37,9 +41,14 @@ type Draft = { enabled: boolean; number: string; name: string };
  */
 export function PaymentsForm({ slug, settings, mfaEnabled }: { slug: string; settings: PaymentSettings; mfaEnabled: boolean }) {
   const [state, formAction, pending] = useActionState(savePayments, initial);
-  const [drafts, setDrafts] = useState<Record<string, Draft>>(() =>
-    Object.fromEntries(settings.methods.map((method) => [method.method, { enabled: method.enabled, number: localNumber(method.payout_number), name: method.payout_name }])),
-  );
+  const serverKey = JSON.stringify(settings.methods);
+  const [drafts, setDrafts] = useState<Record<string, Draft>>(() => draftsOf(settings));
+  // Après un enregistrement, le serveur renvoie ses valeurs : la saisie repart d'elles, sans démonter le formulaire (le message d'état reste).
+  const [seen, setSeen] = useState(serverKey);
+  if (seen !== serverKey) {
+    setSeen(serverKey);
+    setDrafts(draftsOf(settings));
+  }
   const fields = state.fields ?? {};
 
   const changed = settings.methods.filter(

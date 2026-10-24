@@ -11,7 +11,7 @@ import type { PaymentMethod, PaymentSettings, Problem } from "@/lib/types";
 const Slug = z.string().regex(/^[a-z0-9-]{1,60}$/);
 
 /** L'ordre des moyens envoyés à Django : les cinq, chacun une fois (contrat A2 §3.2). */
-export const PAYMENT_IDS = ["cash_on_delivery", "orange_money", "mtn_momo", "moov_money", "wave"] as const satisfies readonly PaymentMethod[];
+const PAYMENT_IDS = ["cash_on_delivery", "orange_money", "mtn_momo", "moov_money", "wave"] as const satisfies readonly PaymentMethod[];
 
 /** Texte brut, comme côté Django : ni balise ni caractère de contrôle. */
 const PLAIN = /^[^<>\x00-\x08\x0b\x0c\x0e-\x1f\x7f]*$/;

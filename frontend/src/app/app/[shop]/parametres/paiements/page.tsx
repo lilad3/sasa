@@ -46,8 +46,7 @@ async function PaymentsContent({ slug, shopName }: { slug: string; shopName: str
         </p>
         <p className="text-[13px] text-texte-3">{settings.data.summary}</p>
       </header>
-      {/* key : après un enregistrement, le formulaire repart des valeurs du serveur. */}
-      <PaymentsForm key={JSON.stringify(settings.data.methods)} slug={slug} settings={settings.data} mfaEnabled={me.data.mfa_enabled} />
+      <PaymentsForm slug={slug} settings={settings.data} mfaEnabled={me.data.mfa_enabled} />
     </>
   );
 }
