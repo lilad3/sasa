@@ -36,6 +36,21 @@ ROLE_PERMISSIONS = {
 GRANTABLE = frozenset({"team.manage_sellers", "team.presence", "storefront.edit", "discounts.give", "customers.export"})
 
 
+# Garde d'une route de lecture ouverte à tout membre de la boutique (le non-membre reçoit toujours 404). Ce n'est PAS un droit :
+# il n'est dans aucun ensemble, ne sort jamais de effective_permissions() ni de /me/shops, et seules des routes GET s'en servent
+# (un test échoue si une méthode d'écriture l'utilise). Les routes concernées filtrent elles-mêmes ce qu'elles montrent.
+ANY_MEMBER = "__member__"
+
+# L'ordre et les groupes de la page « Qui peut faire quoi ». Un droit absent d'ici sort quand même, à la fin.
+PERMISSION_ORDER = (
+    "orders.view", "orders.manage", "orders.export",
+    "products.view", "products.write",
+    "customers.view", "customers.loyalty", "customers.vip", "customers.export",
+    "team.view", "team.manage_sellers", "team.presence", "notes.send",
+    "dashboard.view", "storefront.edit", "discounts.give", "goals.manage", "shop.manage",
+)
+
+
 def effective_permissions(membership):
     """Les droits réels d'un membre : ceux de son rôle, plus ceux qu'on lui a accordés s'il est gérant."""
     permissions = ROLE_PERMISSIONS[membership.role]
@@ -64,7 +79,34 @@ class ShopScopedView(APIView):
         method = "GET" if request.method == "HEAD" else request.method
         # Les droits sont relus à chaque requête : un droit retiré ne sert plus dès la suivante.
         self.permissions = effective_permissions(membership)
-        if self.permission_by_method.get(method) not in self.permissions:
+        required = self.permission_by_method.get(method)
+        if required != ANY_MEMBER and required not in self.permissions:
             raise PermissionDenied("Votre rôle dans cette boutique ne permet pas cette action.")
         self.membership = membership
         self.shop = membership.shop
+
+
+def permissions_matrix(membership):
+    """
+    Les règles de chaque rôle et la situation de la personne qui lit (docs/chantier-a2-parametres.md §4.2). Tout vient de
+    ROLE_PERMISSIONS et GRANTABLE : un droit ajouté là apparaît ici sans autre changement. Ni les droits accordés aux autres,
+    ni les plafonds de remise, ni aucun nom.
+    """
+    known = set(GRANTABLE).union(*ROLE_PERMISSIONS.values())
+    codes = [code for code in PERMISSION_ORDER if code in known] + sorted(known - set(PERMISSION_ORDER))
+    mine = effective_permissions(membership)
+    return {
+        "roles": [Role.OWNER, Role.MANAGER, Role.SELLER],
+        "you": {"role": membership.role},
+        "permissions": [
+            {
+                "code": code,
+                "owner": code in ROLE_PERMISSIONS[Role.OWNER],
+                "manager": code in ROLE_PERMISSIONS[Role.MANAGER],
+                "seller": code in ROLE_PERMISSIONS[Role.SELLER],
+                "grantable": code in GRANTABLE,
+                "yours": code in mine,
+            }
+            for code in codes
+        ],
+    }

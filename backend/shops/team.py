@@ -64,7 +64,7 @@ def member_payload(membership, *, with_email):
     if with_email:
         data["email"] = user.email
         if membership.role == Role.MANAGER:
-            data["grants"] = sorted(membership.grants or [])
+            data["grants"] = sorted(set(membership.grants or []) & GRANTABLE)
             data["discount_cap_percent"] = membership.discount_cap_percent
     return data
 

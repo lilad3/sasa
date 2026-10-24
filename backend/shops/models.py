@@ -31,6 +31,22 @@ class Accent(models.TextChoices):
     CORAIL = "corail", "Corail"
 
 
+class Sector(models.TextChoices):
+    """
+    Le métier de la boutique. Une liste fermée, jamais de texte libre. Il sert à l'équipe et au choix du thème :
+    la vitrine publique ne le montre pas (docs/chantier-a2-parametres.md §3.4).
+    """
+
+    RESTAURANT = "restaurant", "Restaurant"
+    MODE = "mode", "Mode et vêtements"
+    TECH = "tech", "Tech et électronique"
+    BEAUTE = "beaute", "Beauté et soins"
+    EPICERIE = "epicerie", "Épicerie et alimentation"
+    MAISON = "maison", "Maison et déco"
+    ARTISANAT = "artisanat", "Artisanat"
+    AUTRE = "autre", "Autre"
+
+
 class Shop(models.Model):
     """Une boutique Akwaba. Un compte peut en avoir plusieurs, avec un rôle dans chacune."""
 
@@ -42,6 +58,7 @@ class Shop(models.Model):
     description = models.CharField(max_length=280, blank=True)
     city = models.CharField("ville", max_length=60, blank=True)
     accent = models.CharField("couleur de la vitrine", max_length=10, choices=Accent.choices, default=Accent.ORANGE)
+    sector = models.CharField("secteur", max_length=12, choices=Sector.choices, default=Sector.AUTRE)
     # Un client devient fidèle à partir de ce nombre de commandes livrées (réglable de 1 à 50).
     loyalty_threshold = models.PositiveSmallIntegerField("seuil de fidélité", default=3)
     # Mode vacances : la vitrine reste visible, mais les commandes sont fermées jusqu'à la date de retour.

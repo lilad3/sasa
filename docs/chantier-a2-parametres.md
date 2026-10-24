@@ -1,6 +1,6 @@
 # Chantier A2 · P04 : Paramètres, le cadre
 
-Branche `claude/a2-parametres`, **sur `main`** (après le lot 3 de P5). **Étape 1 : ce fichier est le contrat, rien n'est codé.** Il est validé par l'utilisateur avant l'étape 2. Frontend : Marc. Backend : Koffi (§5).
+Branche `claude/a2-parametres`, **sur `main`** (après le lot 3 de P5). **Étape 1 : ce fichier est le contrat, validé côté technique (avec les recommandations de l'auteur, dont D9 : `ANY_MEMBER`).** L'étape 2 est faite pour le **backend seulement** ; le front (les écrans de la liste) attend le choix visuel de l'utilisateur et n'est pas codé. Frontend : Marc. Backend : Koffi (§5).
 
 Rappels communs (ceux de `chantier-p5.md`) :
 - migrations nouvelles seulement, compatibles SQLite et PostgreSQL. D'autres chantiers en ajoutent en parallèle : ici les migrations sont citées **sans numéro** (`shops 00NN_secteur`), la renumérotation se fait à l'intégration ;
@@ -11,7 +11,7 @@ Rappels communs (ceux de `chantier-p5.md`) :
 
 | Lot | Branche | État |
 |---|---|---|
-| P04 · Paramètres, le cadre | `claude/a2-parametres` | **contrat à valider**, rien n'est codé |
+| P04 · Paramètres, le cadre | `claude/a2-parametres` | **contrat validé ; backend fait** (secteur, résumé, rôles, historique du plan, revue d'Alice intégrée) ; **front en attente du choix visuel** |
 
 ---
 
@@ -96,6 +96,16 @@ Le vendeur ne voit donc qu'**une** ligne : Sécurité. Son accès à `/parametre
 | `?onglet=` inconnu | la liste |
 | `/app/{shop}/securite[?journal=N]` | `/parametres/securite[?journal=N]` (le journal personnel garde son paramètre `journal`) |
 
+**Règle pour Marc : une redirection ne recopie jamais la requête** (revue d'Alice, 1). L'adresse de destination est reconstruite **seulement à partir de valeurs contrôlées** :
+- `onglet` : comparé à la liste fermée du tableau (`boutique`, `plan`, `cles`, `journal`, `equipe`) ; tout autre texte, y compris un tableau (`?onglet=a&onglet=b`), donne la liste. La destination vient de la **colonne « Nouveau »**, jamais de la valeur reçue ;
+- `type` : **`sensible` ou `tout`**, sinon la valeur par défaut (le paramètre est alors omis) ;
+- `page` et `journal` : **entiers de 1 à 1000** (`/^[0-9]{1,4}$/`, puis bornes), sinon omis. Pas de `parseInt` laxiste (`1e3`, `1abc`, `-1`, `0x10`, espaces) ;
+- le slug de la boutique vient de la route déjà validée par Next, jamais de la requête ; la destination commence toujours par `/app/{shop}/` ;
+- rien d'autre n'est copié : ni `next`, ni `url`, ni les paramètres inconnus ;
+- la redirection est faite par `redirect()` sur une chaîne fabriquée (jamais `new URL(valeurRecue)`), en 307.
+
+Tests piégés attendus (étape 2 front, un par ligne) : `?onglet=//exemple.com`, `?onglet=https://exemple.com`, `?onglet=javascript:alert(1)`, `?onglet=%0d%0aSet-Cookie:x=1`, `?onglet=journal&type=%0d%0a`, `?onglet=journal&type=//exemple.com`, `?onglet=journal&page=//exemple.com`, `?onglet=journal&page=1000000`, `?onglet=journal&page=-1`, `?onglet=journal&page=1e3`, `/securite?journal=//exemple.com`, `/securite?journal=javascript:`, `?onglet=` répété, `?onglet=constructor` et `?onglet=__proto__` (recherche dans un objet : utiliser `Object.hasOwn` ou un `Map`). Résultat attendu : toujours une adresse **interne** sans le texte reçu (`Location` commençant par `/app/{shop}/`, sans `//`, sans retour à la ligne, sans `javascript:`).
+
 Le menu latéral (`nav-links.tsx`) : le lien fixe « Sécurité » devient **« Paramètres »** (icône `settings`, déjà dessinée) pour tous les rôles ; « La vitrine » disparaît du menu (le gérant passe par la liste). La rubrique « Sécurité » reste atteignable par la liste et par la recherche. Tous les liens internes vers `/securite` et `?onglet=` (`produits`, `ma-boutique/editor`, `add-member-form`, `security-card`, `journal`, `sidebar`) sont remplacés ; un `grep` sert de test (étape 2).
 
 ### 3.2 Chaque ligne affiche son état
@@ -120,6 +130,7 @@ Aucun état ne contient de chiffre d'affaires, de nom de client, de téléphone 
 - Libellé réel « Rechercher un paramètre » (pas seulement un `placeholder`). Motif ARIA *combobox* : `role="combobox"`, `aria-expanded`, `aria-controls`, liste `role="listbox"`, flèches haut/bas, Entrée ouvre, Échap ferme. Résultats annoncés dans une zone `aria-live="polite"` (« 2 résultats »).
 - Cherche dans libellé + mots-clés, **sans accents ni casse** (`wave`, `Wave`, `ÉQUIPE` = `equipe`), par préfixe de mot. Au plus 5 résultats. Rien d'autre qu'une entrée : pas de recherche dans les données.
 - **Elle ne cherche que dans les entrées que cette personne voit** (la liste filtrée par le serveur, 4.1) : un vendeur qui tape « clé » n'apprend pas qu'une page Avancé existe.
+- **« Qui peut faire quoi » et le vendeur** (reformulé, revue d'Alice, 3) : la route `GET /permissions` est **lisible par tout membre, vendeur compris**. C'est voulu et ce n'est **pas** un changement de comportement : ces règles sont celles de la plateforme (les mêmes pour toutes les boutiques), le serveur les applique de toute façon, et les connaître ne donne aucun accès. Ce que la route ne dit jamais : les droits accordés à une autre personne, les plafonds de réduction, un nom, un e-mail. En revanche **l'interface ne propose pas** cette page à un vendeur : la rubrique « Utilisateurs et rôles » ne figure pas dans sa liste ni dans sa recherche (3.4 et 4.1). Ce qu'il peut lire par l'API est ce qu'il peut déjà déduire de ses propres droits et de la page « Votre rôle ».
 - Aucune requête réseau : tout se fait dans le navigateur, sur la configuration et la liste reçue.
 
 ### 3.4 Détail des entrées livrées
@@ -212,7 +223,7 @@ Règles d'accès (calculées à partir de `self.permissions`, jamais du rôle se
 
 ### 4.2 `GET /shops/{slug}/permissions`
 
-Droit : tout membre. Sert la page « Qui peut faire quoi », **générée depuis `ROLE_PERMISSIONS` et `GRANTABLE`** : aucune liste de droits n'est recopiée dans le front, un nouveau droit apparaît sans toucher à cette route.
+Droit : tout membre, vendeur compris (voir 3.3 : les règles de rôles ne sont pas un secret, et la route ne montre rien de personnel). Sert la page « Qui peut faire quoi », **générée depuis `ROLE_PERMISSIONS` et `GRANTABLE`** : aucune liste de droits n'est recopiée dans le front, un nouveau droit apparaît sans toucher à cette route.
 
 ```json
 { "roles": ["owner", "manager", "seller"],
@@ -376,4 +387,24 @@ Selon le lecteur, en écriture neutre (jamais « le patron », « la patronne »
 
 ## Revue sécurité (Alice)
 
-*(À remplir par Alice avant l'étape 2.)*
+**Aucun bloquant.** Quatre demandes, toutes appliquées :
+
+1. **Redirections** (`?onglet=`, et `/securite` s'il y a une partie côté serveur) : l'adresse est reconstruite seulement à partir de valeurs contrôlées, jamais en recopiant la requête. La règle pour Marc (`type` ∈ {`sensible`, `tout`}, `page` et `journal` entiers de 1 à 1000) et les tests piégés attendus (`//exemple.com`, `%0d%0a`, `javascript:`…) sont écrits en 3.1. Il n'y a **aucune** redirection côté serveur Django : tout est dans les pages Next.
+2. **`ANY_MEMBER` ne sort jamais** de `effective_permissions` ni de `/me/shops`, même injecté dans `Membership.grants` : testé (`AnyMemberTests`). En le testant, on a trouvé que `/me/shops` et la liste de l'équipe (`/members`) recopiaient `Membership.grants` tel quel : ils sont maintenant **filtrés par `GRANTABLE`**. Aucune valeur légitime n'est perdue (l'API refuse déjà tout code hors `GRANTABLE` à l'écriture) ; c'est le seul changement de comportement existant de cette étape, et il ne touche que des données invalides. Un autre test échoue si une méthode d'écriture d'une vue utilise `ANY_MEMBER`.
+3. **`/permissions` lisible par le vendeur** : reformulé en 3.3 et 4.2 (pas de changement de comportement).
+4. **Note pour Marc** : voir la section suivante.
+
+## Notes pour Marc (front, à faire après le choix visuel)
+
+- **`MfaPanel` déménage dans `/parametres/securite`** (section « Mon compte », 3.4). Le front du **correctif 2FA** (le mot de passe est demandé **avant** l'écran de la double authentification) est donc **intégré une seule fois, dans cette page** : ne pas le porter d'abord dans `/securite` puis le redéplacer. L'ancienne `/securite` ne garde que sa redirection (3.1).
+- La liste des écrans consomme `GET settings/summary` : le texte et le ton d'une ligne sont fabriqués par le serveur, à afficher tels quels. Les francs y sont écrits comme `formatFcfa` : espace fine insécable (U+202F) entre les milliers, puis une espace normale et « F » (« 9 900 F »). Le front fait foi : si `formatFcfa` change, on aligne `shops/settings_summary.py`.
+- `GET settings` renvoie maintenant `sector` (valeur) ; `PATCH settings` l'accepte (liste fermée, 400 sinon). Libellés des 8 secteurs : dans le tableau de 3.4 (le serveur ne les renvoie pas). Le secteur n'est jamais dans la vitrine publique.
+- `GET permissions` : la liste de droits vient du serveur ; `grants.ts` doit fournir un libellé pour **chaque** code (`PERMISSION_TEXT`) : le test de couverture (5.5) est prêt, il est ignoré tant que `PERMISSION_TEXT` n'existe pas.
+- `GET plan/history` : au plus 24 éléments, 12 mois, `{ results: [{ id, at, previous_plan, new_plan, actor: { name, is_you } }] }`.
+
+## Notes d'implémentation (étape 2, backend)
+
+- Migration `shops 0009_secteur` (un seul `AddField` avec défaut `autre`) ; aucune migration `audit`, aucune nouvelle action : le secteur passe par `shop_updated` (`fields` contient `sector`, sans l'ancienne ni la nouvelle valeur).
+- `shops/settings_summary.py` : états, `SettingsSummaryView`, `PermissionsView`. `shops/permissions.py` : `ANY_MEMBER`, `PERMISSION_ORDER`, `permissions_matrix`. `shops/shop_settings.py` : `PlanHistoryView`.
+- Interprétations : (a) la limite de 90 % ne s'applique pas à un plan à une seule personne (le plan Gratuit : « 1 sur 1 » serait un faux signal permanent) ; (b) la limite de débit du résumé est comptée par appartenance ; (c) `/permissions` n'est pas limitée en plus de la limite générale de 300 par minute ; (d) un événement d'historique sans compte retrouvé affiche l'e-mail gardé au journal comme nom.
+- `seed_demo` : Maison Adjoua `mode`, Comptoir Fofana `epicerie`.

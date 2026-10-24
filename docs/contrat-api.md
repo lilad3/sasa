@@ -410,6 +410,7 @@ Les codes de mot de passe dans `errors.password` sont : `password_too_short` · 
 | `POST /shops/{slug}/members` | 20 / h | boutique |
 | `POST /shops/{slug}/notes` | 30 / h | auteur |
 | `POST /shops/{slug}/orders/{id}/notes` | 60 / h | auteur |
+| `GET /shops/{slug}/settings/summary` | 120 / min | membre |
 | `/api/public/v1/*` | 120 / min | clé API |
 | Reste de `/api/v1/` | 300 / min | utilisateur |
 
@@ -542,7 +543,10 @@ type SecurityEvent = {
 | ✓ | `GET` · `POST /api-keys` · `DELETE /api-keys/{id}` | propriétaire (+ confirmation renforcée et plan Pro+ pour créer) | La clé complète n'apparaît que dans la réponse du `POST` ; alerte e-mail à la création |
 | ✓ | `GET /activity?type=sensible\|tout&page=` | propriétaire | Journal de la boutique, 90 jours, paginé (§2.10) |
 | ✓ | `GET /security-overview` | propriétaire | Faits de sécurité : 2FA de l'équipe, clés endormies, essais refusés, dernier export (§2.10) |
-| ✓ | `GET` · `PATCH /settings` | propriétaire | Profil de la vitrine, couleur (Pro+), mode vacances (`vacation_active`, `vacation_message`, `vacation_until`) |
+| ✓ | `GET` · `PATCH /settings` | propriétaire | Profil de la vitrine, couleur (Pro+), secteur (`sector`, liste fermée de 8 : `restaurant`, `mode`, `tech`, `beaute`, `epicerie`, `maison`, `artisanat`, `autre` ; jamais public), mode vacances (`vacation_active`, `vacation_message`, `vacation_until`) |
+| ✓ | `GET /settings/summary` | tous | La liste des Paramètres : `{ entries: [{ id, scope?, state: { text, tone } }] }`, seulement les rubriques permises et prêtes, texte fabriqué par le serveur, aucune donnée de vente ni de client · 120 / min et par membre |
+| ✓ | `GET /permissions` | tous (vendeur compris) | « Qui peut faire quoi » : `{ roles, you, permissions: [{ code, owner, manager, seller, grantable, yours }] }`, généré depuis `ROLE_PERMISSIONS` et `GRANTABLE` ; rien des droits accordés aux autres |
+| ✓ | `GET /plan/history` | propriétaire | Changements de plan des 12 derniers mois (24 au plus), lus dans le journal : `{ results: [{ id, at, previous_plan, new_plan, actor: { name, is_you } }] }` |
 | ✓ | `GET` · `POST /members` · `PATCH` · `DELETE /members/{user_id}` · `POST /members/{user_id}/temporary-password` | voir : tous · gérer : propriétaire (+ confirmation renforcée) | §2.15 |
 | ✓ | `GET /notes?unread=1` · `POST /notes` · `POST /notes/{id}/read` · `DELETE /notes/{id}` | lire : tous · écrire : propriétaire, gérant | Le mot du patron ; `DELETE` retire la note (auteur ou propriétaire) sans l'effacer de l'historique |
 

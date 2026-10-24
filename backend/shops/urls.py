@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import activity, api_keys, catalog, customers, design, discounts, goals, logo, photos, presence, shop_settings, storefront, team, views
+from . import activity, api_keys, catalog, customers, design, discounts, goals, logo, photos, presence, settings_summary, shop_settings, storefront, team, views
 
 urlpatterns = [
     path("shops/<slug:slug>/dashboard", views.DashboardView.as_view()),
@@ -46,6 +46,9 @@ urlpatterns = [
     path("shops/<slug:slug>/notes/<uuid:note_id>/read", team.TeamNoteReadView.as_view()),
     # Paramètres, plan, clés API
     path("shops/<slug:slug>/settings", shop_settings.ShopSettingsView.as_view()),
+    path("shops/<slug:slug>/settings/summary", settings_summary.SettingsSummaryView.as_view()),
+    path("shops/<slug:slug>/permissions", settings_summary.PermissionsView.as_view()),
+    path("shops/<slug:slug>/plan/history", shop_settings.PlanHistoryView.as_view()),
     path("shops/<slug:slug>/plans", shop_settings.PlanListView.as_view()),
     path("shops/<slug:slug>/plan", shop_settings.PlanChangeView.as_view()),
     path("shops/<slug:slug>/api-keys", api_keys.ApiKeyListView.as_view()),

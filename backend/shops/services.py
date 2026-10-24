@@ -3,7 +3,7 @@ import secrets
 from django.utils.text import slugify
 
 from .models import Membership, Role, Shop, ShopLogo
-from .permissions import effective_permissions
+from .permissions import GRANTABLE, effective_permissions
 
 
 def create_shop_for_owner(user, name, plan="free"):
@@ -30,7 +30,7 @@ def memberships_for(user):
             "plan": m.shop.plan,
             # Les droits réels : ceux du rôle, plus ceux accordés à un gérant.
             "permissions": sorted(effective_permissions(m)),
-            "grants": sorted(m.grants or []) if m.role == Role.MANAGER else [],
+            "grants": sorted(set(m.grants or []) & GRANTABLE) if m.role == Role.MANAGER else [],
             # Le plafond de ses remises, pour régler le formulaire « Offrir une réduction » (null sans le droit).
             "discount_cap_percent": m.discount_cap_percent if m.role == Role.MANAGER else None,
             "logo_version": logos.get(m.shop_id),

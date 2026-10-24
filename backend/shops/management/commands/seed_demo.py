@@ -36,11 +36,13 @@ DEMO_STOREFRONTS = {
         "description": "Karité, cacao, café de Man et artisanat tissé main : le meilleur d'ici, livré en 24 h dans le Grand Abidjan.",
         "city": "Cocody, Abidjan",
         "accent": "orange",
+        "sector": "mode",
     },
     "comptoir-fofana": {
         "description": "Épicerie et cosmétiques naturels du Nord, sélectionnés à Korhogo.",
         "city": "Korhogo",
         "accent": "indigo",
+        "sector": "epicerie",
     },
 }
 
