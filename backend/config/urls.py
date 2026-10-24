@@ -14,6 +14,7 @@ urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
     path("api/v1/", include("accounts.urls")),
     path("api/v1/", include("shops.urls")),
+    path("api/v1/", include("notifications.urls")),
     # API publique : clé API, pas de BFF (appels de serveur à serveur des intégrations).
     path("api/public/v1/", include("shops.public_api")),
     # Même en DEBUG, une route d'API inconnue répond en JSON : le BFF ne reçoit jamais de page HTML.

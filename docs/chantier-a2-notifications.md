@@ -1,6 +1,6 @@
 # Chantier A2 · P06 : Notifications
 
-Branche `claude/a2-notifications`, **sur `main`** (après le lot 3 de P5). **Étape 1 : ce fichier est le contrat, rien n'est codé.** Il est validé par l'utilisateur avant l'étape 2. Frontend : Marc. Backend : Koffi (§9).
+Branche `claude/a2-notifications`, **sur `main`** (après le lot 3 de P5). **Étape 1 : ce fichier est le contrat, validé par Kavin avec les recommandations de l'auteur (dont D8).** L'étape 2 (backend et front) est faite sur cette branche ; les écarts sont notés dans les sections concernées. Frontend : Marc. Backend : Koffi (§9).
 
 Rappels communs (ceux de `chantier-p5.md`) :
 - migrations nouvelles seulement, compatibles SQLite et PostgreSQL. D'autres chantiers en ajoutent en parallèle : ici **une seule migration, dans une nouvelle application** (`notifications 0001_initial`), donc aucun numéro à renuméroter dans `shops` ni `audit` ;
@@ -11,7 +11,7 @@ Rappels communs (ceux de `chantier-p5.md`) :
 
 | Lot | Branche | État |
 |---|---|---|
-| P06 · Notifications par e-mail | `claude/a2-notifications` | **contrat à valider**, rien n'est codé |
+| P06 · Notifications par e-mail | `claude/a2-notifications` | **contrat validé, étape 2 faite** (revue d'Alice intégrée) |
 
 ---
 
@@ -143,7 +143,9 @@ Création de l'état : `get_or_create` avec reprise sur `IntegrityError` (deux p
 
 ### 5.5 Disjoncteur et délai
 
-- `EMAIL_TIMEOUT` à **5 s** (réglage Django, **absent aujourd'hui** : sans lui, une connexion qui pend bloque la requête sans limite).
+- `EMAIL_TIMEOUT` à **5 s** (réglage Django, **absent aujourd'hui** : sans lui, une connexion qui pend bloque la requête sans limite). Il s'applique **à chaque opération réseau** (connexion, chaque envoi), pas au total.
+- **Budget de temps TOTAL de 5 s par déclencheur** (revue d'Alice, 1). Les callbacks `on_commit` tournent **avant** que la réponse parte : tout le travail d'un déclencheur (destinataires, rendu, connexion, envois) tient dans 5 s au total, mesurées avec une horloge monotone. Le délai du socket est réduit au temps qui reste avant chaque envoi. Au-delà, **les messages restants sont retenus (`held`) et partent plus tard** (prochain événement ou balayage), jamais perdus. Une commande passée en boutique déclenche **un seul** callback (nouvelle commande **et** stock bas, dans le même budget) : deux callbacks auraient deux budgets et pourraient additionner 10 s. Le BFF coupe un appel à **10 s** (`AbortSignal.timeout(10_000)` dans `lib/server/api.ts` ; l'énoncé parlait de 20 s : c'est la valeur du code qui fait foi) : avec 5 s d'e-mail au pire, la commande reste sous le délai.
+- **Même `Idempotency-Key` si le client réessaie** (vérifié) : `features/storefront/checkout.tsx` ne régénère la clé que si le contenu de la commande change (`attempt.current?.signature !== signature`). Un réessai après un délai dépassé rejoue la commande déjà enregistrée (`IdempotencyRecord`), sans seconde commande ni second e-mail. Un test garde cette ligne.
 - Après un échec de connexion, le serveur n'essaie plus d'envoyer pendant **5 minutes** (clé de cache `notify:breaker`) : les messages sont retenus. Un serveur d'e-mail en panne ne ralentit donc pas chaque commande de 5 s.
 - Pas de thread, pas de file : l'hébergement gratuit n'offre pas de processus de fond (10.3). Quand il y en aura un, le déclencheur passera dans la file sans changer le contrat (D5).
 
@@ -354,7 +356,8 @@ D'après la documentation de PythonAnywhere (à **revérifier au moment du dépl
 
 1. `manage.py send_daily_summaries --dry-run` : liste qui recevrait quoi, n'envoie rien.
 2. Page Notifications → « M'envoyer un e-mail de test » : l'e-mail arrive, **hors spams**, avec les bonnes couleurs et un lien « Gérer mes notifications » qui ouvre bien la page.
-3. Passer une commande de test depuis la vitrine : le propriétaire reçoit « Nouvelle commande ».
+3. **Une alerte de sécurité de test** (revue d'Alice, 3). Les e-mails de sécurité (`accounts/emails.py`) ne passent pas par le module Notifications mais utilisent **les mêmes variables SMTP** : il faut s'assurer qu'ils arrivent aussi. `manage.py send_test_emails adresse@du-compte` envoie, à un compte existant et à lui seul, l'e-mail de test **et** l'alerte « Nouvelle connexion à votre compte Akwaba » (celle d'une connexion depuis un nouvel appareil). À défaut, se connecter depuis un navigateur jamais utilisé pour provoquer la vraie alerte. Les deux doivent arriver, hors spams.
+4. Passer une commande de test depuis la vitrine : le propriétaire reçoit « Nouvelle commande ».
 
 ## 11. Tests prévus
 
@@ -409,6 +412,7 @@ Front : `npm run lint` et `npm run build` ; page à 375 px et 1280 px pour les t
 - **Retard ou perte apparente en cas de rafale** (hébergement gratuit) : les messages retenus ne partent qu'au prochain événement ou au balayage quotidien (D4).
 - **Latence de la commande** : l'envoi se fait dans la requête qui crée la commande, après validation. Borné à 5 s par déclencheur et coupé par le disjoncteur après un échec ; sans cela, un serveur d'e-mail lent ralentirait chaque commande de vos clients.
 - **Abus par commandes** : quelqu'un qui passe beaucoup de vraies commandes pourrait submerger l'équipe : fenêtre de 10 minutes par personne, plafond de 200 e-mails par jour et par boutique, et les limites existantes de la vitrine (10 commandes par heure et par IP).
+- **Le plafond de 200 e-mails par jour peut être épuisé par de fausses commandes** (revue d'Alice, 2). Avec des IP différentes, une personne malveillante peut passer assez de commandes pour atteindre les 200 e-mails de la boutique : les notifications **réelles** de la journée sont alors retenues, donc retardées, jusqu'au lendemain (le résumé du jour compte aussi dans les 200). Rien n'est perdu et les commandes restent visibles en direct dans l'espace marchand, mais l'équipe peut croire qu'il ne s'est rien passé. Atténuations : la fenêtre de 10 minutes limite chaque personne à un message par événement et par fenêtre, les limites existantes de la vitrine (10 commandes par heure et par IP) ralentissent l'abus, et le journal `notifications: plafond quotidien atteint` le signale à l'exploitant. Pas de plafond séparé « commandes réelles » : on ne sait pas distinguer une fausse commande d'une vraie à l'envoi.
 - **Fuite de données par e-mail** : un e-mail sort du contrôle d'Akwaba. C'est pourquoi aucun téléphone, nom ni adresse n'y figure, le lien est protégé par la connexion, et le chiffre d'affaires reste lié à `dashboard.view`.
 - **Conflits de migration** : une seule nouvelle application, une seule migration, aucun numéro partagé ; la dépendance vers `shops` se corrige à l'intégration.
 - **Dépendance avec P04** : la page marche sans lui (adresse directe) ; pour qu'elle apparaisse dans la liste des paramètres, P04 doit être intégré d'abord.
@@ -417,4 +421,17 @@ Front : `npm run lint` et `npm run build` ; page à 375 px et 1280 px pour les t
 
 ## Revue sécurité (Alice)
 
-*(À remplir par Alice avant l'étape 2.)*
+**Aucun bloquant.** Quatre demandes, toutes appliquées :
+
+1. **Budget de temps total de 5 s par déclencheur.** Les callbacks `on_commit` tournent avant que la réponse parte ; `EMAIL_TIMEOUT` s'applique par opération. Au-delà de 5 s au total, le reste est retenu (`held`) et envoyé plus tard. Une commande ne doit jamais dépasser le délai du BFF à cause des e-mails. Appliqué en 5.5 ; testé avec une horloge simulée (deux messages partent, les autres sont retenus, puis repartent au balayage). Vérifié aussi : la vitrine garde la même `Idempotency-Key` quand le client réessaie (5.5).
+2. **Le plafond de 200 e-mails par jour et par boutique peut être épuisé par de fausses commandes** : écrit dans les risques (14).
+3. **La vérification de production (10.4) envoie aussi une alerte de sécurité de test** (connexion depuis un nouvel appareil), pas seulement l'e-mail de test : `manage.py send_test_emails`.
+4. **`EMAIL_HOST_PASSWORD` et les variables SMTP** sont listées dans le rapport de livraison, rubrique « À faire en production » (le guide `exploitation.md` est tenu sur une autre branche : il n'est pas modifié ici).
+
+## Notes d'implémentation (étape 2)
+
+- Un seul callback par commande : `triggers.notify_order_placed(shop_id, order_id, low_stock_ids)` (nouvelle commande et stock bas partagent un budget et une connexion). `notify_order_cancelled(shop_id, order_id, previous_status)` pour l'annulation. Les identifiants de boutique sont passés pour relire la commande avec `.for_shop()`.
+- Les journaux de pannes portent le **nom de la classe de l'exception**, pas son message ni la trace (`logger.error`, au lieu de `logger.exception`) : un message d'exception SMTP peut contenir une adresse.
+- `NOTIFICATIONS_ENABLED` vaut **0 par défaut** (activation explicite en production) ; avec la console comme serveur d'e-mail et l'envoi activé, les messages s'affichent dans le terminal (développement) et `sending` reste faux.
+- « À traiter » du résumé du jour = commandes en attente ou confirmées ; les commandes de démonstration ne comptent pas dans le résumé.
+- `manage.py send_test_emails <adresse>` (nouveau, 10.4).

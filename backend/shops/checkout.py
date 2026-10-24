@@ -8,12 +8,14 @@ et le stock est décrémenté dans la même transaction que la création de la c
 import hashlib
 import json
 from datetime import timedelta
+from functools import partial
 
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
 from core.exceptions import ProblemError
+from notifications.triggers import notify_order_placed
 
 from .delivery import find_zone
 from .discount_codes import invalid as discount_invalid
@@ -112,6 +114,7 @@ def place_order(shop, data, idempotency_key):
             )
             for line in lines
         )
+        crossed = []
         for line in lines:
             # Décrément conditionnel : même si deux écritures se croisaient, le stock ne passerait pas sous zéro.
             updated = Product.objects.filter(pk=line["product"].pk, stock__gte=line["quantity"]).update(
@@ -119,10 +122,28 @@ def place_order(shop, data, idempotency_key):
             )
             if updated != 1:
                 raise ProblemError(409, "out_of_stock", "Un article vient d'être épuisé.")
+            if _crosses_threshold(line["product"], line["quantity"]):
+                crossed.append(line["product"].pk)
 
         response = {"reference": order.reference, "total": order.total, "status": order.status, "discount_amount": order.discount_amount}
         IdempotencyRecord.objects.create(shop=shop, key=idempotency_key, request_hash=fingerprint, response=response)
+        # Les e-mails partent une fois la transaction validée, jamais pendant : si elle est annulée, rien ne part,
+        # et une panne d'e-mail ne peut pas toucher la commande (notifications/triggers.py).
+        transaction.on_commit(partial(notify_order_placed, shop.pk, order.pk, crossed), robust=True)
     return response, order
+
+
+def _crosses_threshold(product, quantity):
+    """Le produit vient de passer sous son seuil d'alerte (ou à zéro) : une alerte, pas une à chaque commande."""
+    threshold = product.low_stock_threshold
+    if product.stock - quantity > threshold and product.stock - quantity != 0:
+        return False
+    # Près du seuil : on relit le stock réel plutôt que celui lu au début de la requête.
+    after = Product.objects.filter(pk=product.pk).values_list("stock", flat=True).first()
+    if after is None:
+        return False
+    before = after + quantity
+    return (before > threshold and after <= threshold) or after == 0
 
 
 def priced_lines(shop, items):

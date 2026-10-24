@@ -294,7 +294,7 @@ Pensé pour le cybercafé, le téléphone prêté et la tablette du comptoir. Il
 - Next :
   - CSP avec nonce, `frame-ancestors 'none'`, `Permissions-Policy` minimale ;
   - la page de réinitialisation du mot de passe retire le jeton de l'URL dès l'arrivée et envoie `Referrer-Policy: no-referrer`.
-- Secrets : uniquement dans `.env`, qui n'est jamais commité. Liste : `DJANGO_SECRET_KEY`, `JWT_SIGNING_KEY`, `BFF_SHARED_SECRET`, `TOTP_ENCRYPTION_KEY`, `AUDIT_HMAC_KEY`.
+- Secrets : uniquement dans `.env`, qui n'est jamais commité. Liste : `DJANGO_SECRET_KEY`, `JWT_SIGNING_KEY`, `BFF_SHARED_SECRET`, `TOTP_ENCRYPTION_KEY`, `AUDIT_HMAC_KEY`, `EMAIL_HOST_PASSWORD` (e-mails de notification, si un serveur SMTP est configuré).
 - Sessions de l'admin : cookie `akwaba_admin`, 2 h au maximum, `SameSite=Strict`, supprimé à la fermeture du navigateur.
 - Les compteurs de limitation vivent dans un cache Django **en base** (`createcachetable`), partagé entre les processus. Avec `LocMemCache`, chaque processus aurait ses propres compteurs, et la limite serait contournée.
 
@@ -384,7 +384,10 @@ Les erreurs sont inspirées de la RFC 9457 et envoyées avec `Content-Type: appl
 | 409 | `password_already_chosen` | La personne a déjà son mot de passe : elle passe par « Mot de passe oublié » |
 | 409 | `plan_too_small` | Passage à un plan inférieur impossible (produits, équipe ou clés en trop, détail fourni) |
 | 409 | `too_many_api_keys` | 10 clés actives au maximum |
+| 400 | `invalid_event` | Réglage de notification inconnu, non prêt ou non permis : toujours la même réponse (§4.3) |
 | 409 | `shop_on_vacation` | Vitrine en congé : la commande n'est pas prise |
+| 409 | `notifications_disabled` | E-mail de test : l'envoi n'est pas activé sur ce serveur |
+| 502 | `email_failed` | E-mail de test : le serveur d'e-mail n'a pas répondu |
 | 413 | `file_too_large` | Import CSV refusé |
 | 415 | `unsupported_file` | Import CSV refusé |
 | 423 | `account_locked` | Compte à rebours depuis `retry_after` |
@@ -410,6 +413,9 @@ Les codes de mot de passe dans `errors.password` sont : `password_too_short` · 
 | `POST /shops/{slug}/members` | 20 / h | boutique |
 | `POST /shops/{slug}/notes` | 30 / h | auteur |
 | `POST /shops/{slug}/orders/{id}/notes` | 60 / h | auteur |
+| `PUT /shops/{slug}/notifications` | 60 / h | membre |
+| `POST /shops/{slug}/notifications/test` | 3 / h · 20 / jour | membre · boutique |
+| E-mails de notification envoyés | 200 / jour (le reste est retenu, jamais une erreur) · 1 par personne et par événement toutes les 10 min | boutique · membre |
 | `/api/public/v1/*` | 120 / min | clé API |
 | Reste de `/api/v1/` | 300 / min | utilisateur |
 
@@ -542,6 +548,8 @@ type SecurityEvent = {
 | ✓ | `GET` · `POST /api-keys` · `DELETE /api-keys/{id}` | propriétaire (+ confirmation renforcée et plan Pro+ pour créer) | La clé complète n'apparaît que dans la réponse du `POST` ; alerte e-mail à la création |
 | ✓ | `GET /activity?type=sensible\|tout&page=` | propriétaire | Journal de la boutique, 90 jours, paginé (§2.10) |
 | ✓ | `GET /security-overview` | propriétaire | Faits de sécurité : 2FA de l'équipe, clés endormies, essais refusés, dernier export (§2.10) |
+| ✓ | `GET` · `PUT /notifications` | tous | Ses propres e-mails dans cette boutique : `{ sending, email, events[] }` ; `PUT` partiel `{ events: { id: bool } }`, `400 invalid_event` identique pour inconnu, non prêt ou non permis ; ni confirmation renforcée ni journal (docs/chantier-a2-notifications.md §7) |
+| ✓ | `POST /notifications/test` | tous | E-mail de test vers l'adresse du compte seulement · `409 notifications_disabled` · `502 email_failed` |
 | ✓ | `GET` · `PATCH /settings` | propriétaire | Profil de la vitrine, couleur (Pro+), mode vacances (`vacation_active`, `vacation_message`, `vacation_until`) |
 | ✓ | `GET` · `POST /members` · `PATCH` · `DELETE /members/{user_id}` · `POST /members/{user_id}/temporary-password` | voir : tous · gérer : propriétaire (+ confirmation renforcée) | §2.15 |
 | ✓ | `GET /notes?unread=1` · `POST /notes` · `POST /notes/{id}/read` · `DELETE /notes/{id}` | lire : tous · écrire : propriétaire, gérant | Le mot du patron ; `DELETE` retire la note (auteur ou propriétaire) sans l'effacer de l'historique |

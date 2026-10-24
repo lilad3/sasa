@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'accounts',
     'shops',
     'audit',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -169,7 +170,20 @@ EMAIL_BACKEND = os.environ.get(
     'django.core.mail.backends.console.EmailBackend',
 )
 
-DEFAULT_FROM_EMAIL = 'Akwaba <no-reply@akwaba.test>'
+EMAIL_HOST = os.environ.get('EMAIL_HOST') or 'localhost'
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT') or '25')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', '0') == '1'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+# Délai par opération réseau. Sans lui, une connexion qui pend bloquerait la requête sans limite.
+# Le budget TOTAL d'un déclencheur est plus court encore (notifications/send.py, 5 s).
+EMAIL_TIMEOUT = int(os.environ.get('DJANGO_EMAIL_TIMEOUT') or '5')
+
+DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL') or 'Akwaba <no-reply@akwaba.test>'
+
+# E-mails de notification (commandes, stock, résumé du jour). Désactivés tant qu'on ne les active pas explicitement :
+# docs/chantier-a2-notifications.md §10.
+NOTIFICATIONS_ENABLED = os.environ.get('NOTIFICATIONS_ENABLED', '0') == '1'
 
 
 # Cache en base : les compteurs de limitation sont partagés entre tous les processus.

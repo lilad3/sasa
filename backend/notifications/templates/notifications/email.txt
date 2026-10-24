@@ -1,0 +1,13 @@
+{% autoescape off %}{{ greeting }}
+
+{{ intro }}
+{% if lines %}
+{% for line in lines %}{% if lines|length > 1 %}- {% endif %}{{ line }}
+{% endfor %}{% endif %}
+{{ button_label }} : {{ button_url }}
+
+{{ reason }}
+Gérer mes notifications : {{ manage_url }}
+
+L'équipe Akwaba
+{% endautoescape %}

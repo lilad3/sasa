@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta
+from functools import partial
 
 from django.db import transaction
 from django.db.models import Q
@@ -14,6 +15,7 @@ from core.exceptions import ProblemError
 from core.pagination import PagePagination
 from core.ratelimit import enforce
 from core.spreadsheet import excel_csv, phone_cell
+from notifications.triggers import notify_order_cancelled
 
 from .dashboard import PERIODS, dashboard_summary, order_counts
 from .demo import generate_demo_data
@@ -105,6 +107,10 @@ class OrderDetailView(ShopScopedView):
                     previous_status=previous_status,
                     new_status=new_status,
                 )
+                if new_status == OrderStatus.CANCELLED:
+                    transaction.on_commit(
+                        partial(notify_order_cancelled, self.shop.pk, order.pk, previous_status), robust=True
+                    )
         return Response(OrderDetailSerializer(order).data)
 
     def _order(self, order_id):
