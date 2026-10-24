@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import activity, api_keys, catalog, customers, design, discounts, goals, logo, photos, presence, shop_settings, storefront, team, views
+from . import activity, api_keys, bulk, catalog, customers, design, discounts, goals, logo, photos, presence, shop_settings, storefront, team, views
 
 urlpatterns = [
     path("shops/<slug:slug>/dashboard", views.DashboardView.as_view()),
@@ -13,8 +13,14 @@ urlpatterns = [
     # Catalogue
     path("shops/<slug:slug>/products", catalog.ProductListView.as_view()),
     path("shops/<slug:slug>/products/overview", catalog.ProductOverviewView.as_view()),
+    path("shops/<slug:slug>/products/tags", catalog.ProductTagListView.as_view()),
+    path("shops/<slug:slug>/products/bulk", bulk.ProductBulkView.as_view()),
     path("shops/<slug:slug>/products/import", catalog.ProductImportView.as_view()),
     path("shops/<slug:slug>/products/<uuid:product_id>", catalog.ProductDetailView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/duplicate", catalog.ProductDuplicateView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/stock", catalog.ProductStockView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/stock-movements", catalog.ProductMovementsView.as_view()),
+    path("shops/<slug:slug>/products/<uuid:product_id>/photos/<uuid:photo_id>/image", photos.MemberPhotoView.as_view()),
     path("shops/<slug:slug>/products/<uuid:product_id>/photos", photos.ProductPhotoListView.as_view()),
     path("shops/<slug:slug>/products/<uuid:product_id>/photos/<uuid:photo_id>", photos.ProductPhotoDetailView.as_view()),
     path("shops/<slug:slug>/products/<uuid:product_id>/photos/<uuid:photo_id>/main", photos.ProductPhotoMainView.as_view()),

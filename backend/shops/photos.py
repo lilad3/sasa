@@ -22,7 +22,7 @@ from core.exceptions import ProblemError
 from core.ratelimit import enforce
 
 from .images import ImageResponseMixin, open_upload
-from .models import Product, ProductPhoto
+from .models import Product, ProductPhoto, ProductStatus
 from .permissions import ShopScopedView
 from .storefront import StorefrontView, photos_payload, storefront_shop
 
@@ -119,7 +119,7 @@ class ProductFeaturedView(ProductScopedView):
 
     def put(self, request, slug, product_id):
         product = self.product(product_id)
-        if not product.is_active:
+        if product.status != ProductStatus.ACTIVE:
             raise ProblemError(409, "product_inactive", "Ce produit n'est pas en vente : remettez-le en vente avant de le mettre à la une.")
         if not product.is_featured:
             try:
@@ -141,18 +141,40 @@ class ProductFeaturedView(ProductScopedView):
 
 class StorefrontPhotoView(ImageResponseMixin, StorefrontView):
     """
-    Public (derrière le BFF) : le WebP réencodé. L'identifiant est un UUID aléatoire, publié seulement
-    pour les produits en vente ; pour un produit masqué, seule l'équipe le connaît.
+    Public (derrière le BFF) : le WebP réencodé, pour les produits en vente seulement. Un brouillon ou un
+    archivé répond 404 même si l'on connaît l'identifiant : l'équipe passe par la route membre.
     """
 
     def get(self, request, slug, photo_id):
         shop = storefront_shop(slug)
-        photo = ProductPhoto.objects.for_shop(shop).filter(pk=photo_id).only("image").first()
+        photo = (
+            ProductPhoto.objects.for_shop(shop)
+            .filter(pk=photo_id, product__status=ProductStatus.ACTIVE)
+            .only("image")
+            .first()
+        )
         if photo is None:
             raise NotFound("Photo introuvable.")
         response = HttpResponse(bytes(photo.image), content_type="image/webp")
         response["X-Content-Type-Options"] = "nosniff"
         # L'adresse change avec la version (?v=…) : le navigateur peut garder l'image longtemps.
         response["Cache-Control"] = "public, max-age=31536000, immutable"
+        response["Content-Security-Policy"] = "default-src 'none'; sandbox"
+        return response
+
+
+class MemberPhotoView(ImageResponseMixin, ProductScopedView):
+    """L'image d'une photo pour l'équipe, quel que soit le statut du produit (un brouillon n'a pas de photo publique)."""
+
+    permission_by_method = {"GET": "products.view"}
+
+    def get(self, request, slug, product_id, photo_id):
+        product = self.product(product_id)
+        photo = ProductPhoto.objects.for_shop(self.shop).filter(product=product, pk=photo_id).only("image").first()
+        if photo is None:
+            raise NotFound("Photo introuvable.")
+        response = HttpResponse(bytes(photo.image), content_type="image/webp")
+        response["X-Content-Type-Options"] = "nosniff"
+        response["Cache-Control"] = "private, no-store"
         response["Content-Security-Policy"] = "default-src 'none'; sandbox"
         return response

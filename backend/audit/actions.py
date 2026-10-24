@@ -69,6 +69,12 @@ ACTIONS = {
     "loyalty_threshold_changed": (B, INFO, "Seuil de fidélité modifié"),
     "shop_logo_changed": (B, INFO, "Logo de la boutique modifié"),
     "product_featured": (B, INFO, "Produit mis à la une"),
+    "product_duplicated": (B, INFO, "Produit dupliqué"),
+    # Passe en catégorie Sécurité, « à surveiller », quand un prix baisse (voir record(..., category=, severity=)).
+    "products_bulk_updated": (B, INFO, "Produits modifiés en masse"),
+    "product_stock_adjusted": (B, INFO, "Stock ajusté"),
+    "product_status_changed": (B, INFO, "Statut d'un produit modifié"),
+    "product_deleted": (B, INFO, "Produit supprimé"),
     "storefront_published": (B, INFO, "Vitrine publiée"),
     "storefront_restored": (B, INFO, "Ancienne version de la vitrine reprise"),
     # Administration de la plateforme

@@ -181,7 +181,7 @@ class FeaturedTests(PhotoTestCase):
 
     def test_hidden_product_cannot_be_featured(self):
         self.authenticate(self.owner)
-        Product.objects.filter(pk=self.karite.pk).update(is_active=False)
+        Product.objects.filter(pk=self.karite.pk).update(status="draft")
         self.assertProblem(self.feature(self.karite), 409, "product_inactive")
 
     def test_storefront_edit_is_required(self):

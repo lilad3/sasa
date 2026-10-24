@@ -22,6 +22,8 @@ ROLE_PERMISSIONS = {
         {
             "shop.manage", "goals.manage", "customers.vip",
             "team.manage_sellers", "team.presence", "storefront.edit", "discounts.give", "customers.export",
+            # Le coût d'achat révèle la marge : propriétaire seulement, jamais délégable (absent de GRANTABLE).
+            "products.cost",
         }
     ),
     Role.MANAGER: MANAGER_DEFAULT,

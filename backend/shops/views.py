@@ -15,6 +15,7 @@ from core.pagination import PagePagination
 from core.ratelimit import enforce
 from core.spreadsheet import excel_csv, phone_cell
 
+from . import stock
 from .dashboard import PERIODS, dashboard_summary, order_counts
 from .demo import generate_demo_data
 from .models import STATUS_TIMESTAMP, Channel, Order, OrderNote, OrderStatus, PaymentMethod
@@ -78,7 +79,7 @@ class OrderDetailView(ShopScopedView):
         serializer.is_valid(raise_exception=True)
         new_status = serializer.validated_data["status"]
         with transaction.atomic():
-            order = self._order(order_id)
+            order = self._order(order_id, lock=True)
             if new_status != order.status:
                 if not order.can_become(new_status):
                     raise ProblemError(
@@ -105,15 +106,19 @@ class OrderDetailView(ShopScopedView):
                     previous_status=previous_status,
                     new_status=new_status,
                 )
+                if new_status == OrderStatus.CANCELLED:
+                    # La part prélevée sur le stock revient, une seule fois (annuler est définitif).
+                    stock.restore_for_order(order, request.user)
         return Response(OrderDetailSerializer(order).data)
 
-    def _order(self, order_id):
-        return shop_order(self.shop, order_id)
+    def _order(self, order_id, lock=False):
+        return shop_order(self.shop, order_id, lock=lock)
 
 
-def shop_order(shop, order_id):
+def shop_order(shop, order_id, lock=False):
     # Une commande d'une autre boutique donne 404, comme une commande inexistante.
-    order = Order.objects.for_shop(shop).prefetch_related("items", "notes").filter(pk=order_id).first()
+    orders = Order.objects.for_shop(shop).prefetch_related("items", "notes")
+    order = (orders.select_for_update() if lock else orders).filter(pk=order_id).first()
     if order is None:
         raise NotFound("Commande introuvable.")
     return order

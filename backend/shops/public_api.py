@@ -56,6 +56,7 @@ def public_product(product):
         "category": product.category,
         "price": product.price,
         "stock": product.stock,
+        "status": product.status,
         "is_active": product.is_active,
         "image_url": product.image_url or None,
         "updated_at": product.updated_at,

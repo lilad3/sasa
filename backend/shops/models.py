@@ -87,6 +87,26 @@ class ShopScopedQuerySet(models.QuerySet):
         return self.filter(shop=shop)
 
 
+class ProductStatus(models.TextChoices):
+    DRAFT = "draft", "Brouillon"
+    ACTIVE = "active", "Actif"
+    ARCHIVED = "archived", "Archivé"
+
+
+class Condition(models.TextChoices):
+    NEW = "new", "Neuf"
+    REFURBISHED = "refurbished", "Reconditionné"
+    USED = "used", "Occasion"
+
+
+class SoldBy(models.TextChoices):
+    PIECE = "piece", "Pièce"
+    KG = "kg", "Kilo"
+    SACHET = "sachet", "Sachet"
+    TAS = "tas", "Tas"
+    LITRE = "litre", "Litre"
+
+
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="products")
@@ -99,7 +119,26 @@ class Product(models.Model):
     stock = models.PositiveIntegerField(default=0)
     # Sous ce seuil (inclus), le produit apparaît dans « Bientôt en rupture » et la vitrine annonce « derniers articles ».
     low_stock_threshold = models.PositiveIntegerField("seuil d'alerte de stock", default=5)
-    is_active = models.BooleanField(default=True)
+    # Statut de la fiche (docs/chantier-a2-produits.md §A2.1) : seul « active » est visible et commandable.
+    status = models.CharField("statut", max_length=10, choices=ProductStatus.choices, default=ProductStatus.ACTIVE)
+    # Ancienne colonne, gelée le temps du déploiement (supprimée par une migration ultérieure) : le code ne lit que `status`.
+    legacy_is_active = models.BooleanField(default=True, db_column="is_active")
+    # Prix avant réduction : affiché barré, jamais dans un calcul. Strictement supérieur au prix.
+    compare_at_price = models.PositiveIntegerField("prix barré", null=True, blank=True)
+    # Coût d'achat : réservé au propriétaire (droit products.cost), jamais publié.
+    cost = models.PositiveIntegerField("coût d'achat", null=True, blank=True)
+    # Vendre en rupture : la part au-delà du stock est une précommande, livrée sous `backorder_days`.
+    allow_backorder = models.BooleanField("précommande", default=False)
+    backorder_days = models.PositiveSmallIntegerField("délai de précommande (jours)", null=True, blank=True)
+    # Plafond des unités en précommande en cours : la commande se passe sans compte.
+    backorder_limit = models.PositiveIntegerField("plafond de précommandes", default=20)
+    # Champs par secteur (tous facultatifs, listes fermées ; le serveur n'en dépend pas).
+    condition = models.CharField("état", max_length=12, choices=Condition.choices, blank=True)
+    warranty_months = models.PositiveSmallIntegerField("garantie (mois)", null=True, blank=True)
+    sold_by = models.CharField("unité de vente", max_length=8, choices=SoldBy.choices, default=SoldBy.PIECE)
+    one_of_a_kind = models.BooleanField("pièce unique", default=False)
+    made_to_order = models.BooleanField("fabriqué sur commande", default=False)
+    bulky = models.BooleanField("gros colis", default=False)
     image_url = models.URLField(blank=True)
     # Le produit de la couverture de la vitrine, choisi par la boutique (docs/chantier-p5.md §2.1).
     is_featured = models.BooleanField("à la une", default=False)
@@ -114,10 +153,28 @@ class Product(models.Model):
             models.UniqueConstraint(fields=["shop", "sku"], name="unique_product_sku"),
             models.UniqueConstraint(fields=["shop", "slug"], name="unique_product_slug"),
             models.UniqueConstraint(fields=["shop"], condition=models.Q(is_featured=True), name="one_featured_product_per_shop"),
+            models.CheckConstraint(condition=models.Q(compare_at_price__isnull=True) | models.Q(compare_at_price__gt=models.F("price")), name="compare_at_above_price"),
         ]
+        indexes = [models.Index(fields=["shop", "status"], name="product_shop_status")]
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_active(self):
+        """Compatibilité des réponses d'API : lecture seule, dérivée du statut."""
+        return self.status == ProductStatus.ACTIVE
+
+    @property
+    def orderable(self):
+        return self.status == ProductStatus.ACTIVE and (self.stock > 0 or self.allow_backorder)
+
+    def save(self, *args, **kwargs):
+        # La colonne gelée suit le statut : un ancien code encore en ligne pendant le déploiement ne montre pas un brouillon.
+        self.legacy_is_active = self.status == ProductStatus.ACTIVE
+        if kwargs.get("update_fields") is not None and "status" in kwargs["update_fields"]:
+            kwargs["update_fields"] = {*kwargs["update_fields"], "legacy_is_active"}
+        super().save(*args, **kwargs)
 
 
 class OrderStatus(models.TextChoices):
@@ -229,6 +286,9 @@ class OrderItem(models.Model):
     unit_price = models.PositiveIntegerField()
     quantity = models.PositiveSmallIntegerField()
     line_total = models.PositiveIntegerField()
+    # La part prélevée sur le stock ; le reste est de la précommande, promise sous `backorder_days` (copié à la commande).
+    from_stock = models.PositiveSmallIntegerField(default=0)
+    backorder_days = models.PositiveSmallIntegerField(default=0)
 
     def __str__(self):
         return f"{self.quantity} × {self.name}"
@@ -505,3 +565,75 @@ class IdempotencyRecord(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=["shop", "key"], name="unique_idempotency_key")]
         indexes = [models.Index(fields=["created_at"])]
+
+
+class ProductTag(models.Model):
+    """Une étiquette de rangement (docs/chantier-a2-produits.md §A2.6). `key` sert à comparer : sans accents ni casse."""
+
+    MAX_PER_PRODUCT = 10
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="product_tags")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="tags")
+    label = models.CharField(max_length=30)
+    key = models.CharField(max_length=60)
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["key"]
+        constraints = [models.UniqueConstraint(fields=["product", "key"], name="unique_product_tag")]
+        indexes = [models.Index(fields=["shop", "key"], name="tag_shop_key")]
+
+
+class StockReason(models.TextChoices):
+    INITIAL = "initial", "Stock de départ"
+    RECEIVED = "received", "Réception"
+    SOLD = "sold", "Vendu"
+    CANCELLED = "cancelled", "Annulation"
+    RETURNED = "returned", "Retour client"
+    DAMAGED = "damaged", "Casse ou perte"
+    CORRECTION = "correction", "Correction"
+    IMPORT = "import", "Import"
+
+
+class StockMovement(models.Model):
+    """
+    Une variation de stock, en ajout seul (docs/chantier-a2-produits.md §A2.7). Invariant : pour tout produit,
+    stock == somme des delta. Un produit qui a un historique autre que « initial » ne se supprime pas : on l'archive.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="stock_movements")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="movements")
+    # P08 en fera une clé étrangère vers sa table de variantes (la contrainte unique des ventes devra alors l'inclure).
+    variant_id = models.UUIDField(null=True, blank=True)
+    delta = models.IntegerField()
+    stock_after = models.PositiveIntegerField()
+    reason = models.CharField(max_length=12, choices=StockReason.choices)
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_movements")
+    order_reference = models.CharField(max_length=7, blank=True)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    actor_name = models.CharField(max_length=160, blank=True)
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    objects = ShopScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [models.Index(fields=["shop", "product", "-created_at"], name="movement_product_date")]
+        constraints = [
+            models.CheckConstraint(condition=~models.Q(delta=0), name="movement_delta_not_zero"),
+            # Une vente et une remise au plus par ligne de commande.
+            models.UniqueConstraint(
+                fields=["order", "product", "reason"],
+                condition=models.Q(reason__in=["sold", "cancelled"]),
+                name="unique_order_product_reason",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise RuntimeError("Un mouvement de stock ne se modifie pas.")
+        super().save(*args, **kwargs)

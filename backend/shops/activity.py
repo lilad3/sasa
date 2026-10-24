@@ -44,6 +44,11 @@ DETAILS = {
     "loyalty_threshold_changed": ("previous", "threshold"),
     "shop_logo_changed": ("change",),
     "product_featured": ("change",),
+    "product_duplicated": ("source",),
+    "products_bulk_updated": ("count", "action", "status", "reason", "lowered"),
+    "product_stock_adjusted": ("delta", "reason"),
+    "product_status_changed": ("previous", "new"),
+    "product_deleted": (),
     "storefront_published": ("number", "theme"),
     "storefront_restored": ("number",),
 }

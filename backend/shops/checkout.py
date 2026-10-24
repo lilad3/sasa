@@ -18,7 +18,8 @@ from core.exceptions import ProblemError
 from .delivery import find_zone
 from .discount_codes import invalid as discount_invalid
 from .discount_codes import usable_discount
-from .models import Channel, Customer, Discount, IdempotencyRecord, Order, OrderItem, OrderStatus, Product, new_reference
+from . import stock
+from .models import Channel, Customer, Discount, IdempotencyRecord, Order, OrderItem, OrderStatus, Product, ProductStatus, new_reference
 
 IDEMPOTENCY_TTL = timedelta(hours=24)
 
@@ -101,6 +102,19 @@ def place_order(shop, data, idempotency_key):
         )
         # La fiche client suit le dernier nom donné avec ce numéro ; un fidèle nommé le reste.
         Customer.objects.update_or_create(shop=shop, phone=customer["phone"], defaults={"name": customer["name"]})
+        # Le prélèvement se fait ici, sous verrou de ligne et par mise à jour conditionnelle (stock.sell), dans l'ordre
+        # des identifiants : le stock ne passe jamais sous zéro, et chaque prélèvement a son mouvement.
+        taken = {}
+        for index, line in sorted(enumerate(lines), key=lambda entry: str(entry[1]["product"].pk)):
+            try:
+                taken[index] = stock.sell(line["product"].pk, line["quantity"], shop=shop, order=order)
+            except stock.StockError as error:
+                if error.code != "out_of_stock":
+                    raise
+                raise ProblemError(
+                    409, "out_of_stock", "Un article vient d'être épuisé.",
+                    errors={f"items.{index}.quantity": [{"code": "out_of_stock", "message": str(error.detail), "available": error.extra.get("available")}]},
+                ) from None
         OrderItem.objects.bulk_create(
             OrderItem(
                 order=order,
@@ -109,27 +123,31 @@ def place_order(shop, data, idempotency_key):
                 unit_price=line["product"].price,
                 quantity=line["quantity"],
                 line_total=line["line_total"],
+                from_stock=taken[index][0],
+                backorder_days=taken[index][1],
             )
-            for line in lines
+            for index, line in enumerate(lines)
         )
-        for line in lines:
-            # Décrément conditionnel : même si deux écritures se croisaient, le stock ne passerait pas sous zéro.
-            updated = Product.objects.filter(pk=line["product"].pk, stock__gte=line["quantity"]).update(
-                stock=F("stock") - line["quantity"]
-            )
-            if updated != 1:
-                raise ProblemError(409, "out_of_stock", "Un article vient d'être épuisé.")
 
-        response = {"reference": order.reference, "total": order.total, "status": order.status, "discount_amount": order.discount_amount}
+        response = {
+            "reference": order.reference,
+            "total": order.total,
+            "status": order.status,
+            "discount_amount": order.discount_amount,
+            "backorder_days": max((days for _, days in taken.values()), default=0),
+        }
         IdempotencyRecord.objects.create(shop=shop, key=idempotency_key, request_hash=fingerprint, response=response)
     return response, order
 
 
 def priced_lines(shop, items):
-    """Lignes au prix du serveur. Produit inconnu ou masqué : erreur de saisie. Stock insuffisant : 409."""
+    """
+    Lignes au prix du serveur. Produit inconnu, brouillon ou archivé : erreur de saisie. Stock insuffisant sans
+    précommande : 409. Le prélèvement réel se refait sous verrou dans place_order.
+    """
     wanted = {item["product_id"]: item["quantity"] for item in items}
     # Clés en texte : les identifiants arrivent en texte dans `data` (forme stable pour l'empreinte).
-    products = {str(p.pk): p for p in Product.objects.for_shop(shop).filter(pk__in=wanted, is_active=True)}
+    products = {str(p.pk): p for p in Product.objects.for_shop(shop).filter(pk__in=wanted, status=ProductStatus.ACTIVE)}
 
     unknown = {
         f"items.{index}.product_id": [{"code": "product_unavailable", "message": "Cet article n'est plus en vente."}]
@@ -143,12 +161,12 @@ def priced_lines(shop, items):
         f"items.{index}.quantity": [
             {
                 "code": "out_of_stock",
-                "message": f"Il en reste {products[item['product_id']].stock}." if products[item["product_id"]].stock else "Épuisé.",
-                "available": products[item["product_id"]].stock,
+                "message": f"Il en reste {_available(products[item['product_id']])}." if _available(products[item["product_id"]]) else "Épuisé.",
+                "available": _available(products[item["product_id"]]),
             }
         ]
         for index, item in enumerate(items)
-        if products[item["product_id"]].stock < item["quantity"]
+        if _short(products[item["product_id"]], item["quantity"])
     }
     if short:
         raise ProblemError(409, "out_of_stock", "Certains articles n'ont plus assez de stock.", errors=short)
@@ -157,6 +175,17 @@ def priced_lines(shop, items):
         {"product": products[item["product_id"]], "quantity": item["quantity"], "line_total": products[item["product_id"]].price * item["quantity"]}
         for item in items
     ]
+
+
+def _available(product):
+    return min(product.stock, 1) if product.one_of_a_kind else product.stock
+
+
+def _short(product, quantity):
+    """Pas assez à vendre : ni stock suffisant, ni précommande ; une pièce unique ne se commande qu'à l'unité."""
+    if product.one_of_a_kind and quantity > 1:
+        return True
+    return product.stock < quantity and not product.allow_backorder
 
 
 def _free_reference(shop):

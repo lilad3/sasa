@@ -56,7 +56,7 @@ def dashboard_summary(shop, label):
 
 def low_stock(shop, limit=6):
     """Produits en vente arrivés à leur seuil d'alerte : les plus bas d'abord, ruptures comprises."""
-    products = Product.objects.for_shop(shop).filter(is_active=True, stock__lte=F("low_stock_threshold"))
+    products = Product.objects.for_shop(shop).filter(status="active", stock__lte=F("low_stock_threshold"))
     return {
         "count": products.count(),
         "items": [

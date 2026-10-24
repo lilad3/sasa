@@ -97,6 +97,8 @@ DATABASES = {
             'transaction_mode': 'IMMEDIATE',
             'timeout': 5,
         },
+        # Base de test sur fichier : les tests de concurrence (plusieurs connexions) ne marchent pas sur la base en mémoire.
+        'TEST': {'NAME': BASE_DIR / 'test_db.sqlite3'},
     }
 }
 

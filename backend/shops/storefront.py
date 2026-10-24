@@ -9,7 +9,7 @@ import re
 import uuid
 from datetime import timedelta
 
-from django.db.models import Prefetch, Sum
+from django.db.models import Case, IntegerField, Max, Prefetch, Q, Sum, When
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.exceptions import ErrorDetail, NotFound, ValidationError
@@ -25,7 +25,7 @@ from .checkout import fake_response, place_order, priced_lines
 from .delivery import ZONES, find_zone
 from .design_catalog import published_design
 from .discount_codes import CHECK_CODE_LIMIT, CHECK_IP_LIMIT, code_key, label, normalize_code, usable_discount
-from .models import Channel, Order, OrderItem, OrderStatus, PaymentMethod, Product, ProductPhoto, Shop, ShopLogo
+from .models import Channel, Order, OrderItem, OrderStatus, PaymentMethod, Product, ProductPhoto, ProductStatus, Shop, ShopLogo
 
 ORDER_LIMIT = (10, 3600)  # 10 commandes par heure et par IP (§3.3)
 # Suivi de commande : 4 chiffres de téléphone, c'est 10 000 possibilités. La limite par
@@ -151,47 +151,75 @@ def photos_payload(product):
     return [{"id": str(photo.pk), "version": photo.version} for photo in photos]
 
 
+def on_sale(shop):
+    """Les produits que la vitrine peut montrer et vendre : actifs, en stock ou en précommande."""
+    return Product.objects.for_shop(shop).filter(Q(stock__gt=0) | Q(allow_backorder=True), status=ProductStatus.ACTIVE)
+
+
+def _in_stock_first():
+    """À égalité, un produit en stock passe avant un produit en précommande."""
+    return Max(Case(When(product__stock__gt=0, then=1), default=0, output_field=IntegerField()))
+
+
 def popular_products(shop, limit=3):
-    """Les plus vendus sur 30 jours, en vente et en stock (commandes annulées exclues) : « Les plus demandés »."""
-    on_sale = Product.objects.for_shop(shop).filter(is_active=True, stock__gt=0)
+    """Les plus vendus sur 30 jours, en vente (commandes annulées exclues) : « Les plus demandés »."""
     since = timezone.now() - timedelta(days=BEST_SELLER_DAYS)
     rows = (
-        OrderItem.objects.filter(order__shop=shop, order__created_at__gte=since, product__in=on_sale)
+        OrderItem.objects.filter(order__shop=shop, order__created_at__gte=since, product__in=on_sale(shop))
         .exclude(order__status=OrderStatus.CANCELLED)
         .values("product_id")
-        .annotate(sold=Sum("quantity"))
-        .order_by("-sold", "product_id")[:limit]
+        .annotate(sold=Sum("quantity"), stocked=_in_stock_first())
+        .order_by("-sold", "-stocked", "product_id")[:limit]
     )
     return [str(row["product_id"]) for row in rows]
 
 
 def cover_product(shop):
     """
-    Le produit de la couverture (docs/chantier-p5.md §2.4) : celui à la une s'il est en vente et en
-    stock, sinon le plus vendu sur 30 jours (commandes annulées exclues), sinon le plus cher en stock.
+    Le produit de la couverture (docs/chantier-p5.md §2.4) : celui à la une s'il est en vente (en stock ou en
+    précommande), sinon le plus vendu sur 30 jours (commandes annulées exclues), sinon le plus cher.
     """
-    on_sale = Product.objects.for_shop(shop).filter(is_active=True, stock__gt=0)
-    chosen = on_sale.filter(is_featured=True).first()
+    sellable = on_sale(shop)
+    chosen = sellable.filter(is_featured=True).first()
     if chosen:
         return {"product_id": str(chosen.pk), "source": "chosen"}
     since = timezone.now() - timedelta(days=BEST_SELLER_DAYS)
     best = (
-        OrderItem.objects.filter(order__shop=shop, order__created_at__gte=since, product__in=on_sale)
+        OrderItem.objects.filter(order__shop=shop, order__created_at__gte=since, product__in=sellable)
         .exclude(order__status=OrderStatus.CANCELLED)
         .values("product_id")
-        .annotate(sold=Sum("quantity"))
-        .order_by("-sold", "product_id")
+        .annotate(sold=Sum("quantity"), stocked=_in_stock_first())
+        .order_by("-sold", "-stocked", "product_id")
         .first()
     )
     if best:
         return {"product_id": str(best["product_id"]), "source": "best_seller"}
-    priciest = on_sale.order_by("-price", "name").first()
+    priciest = sellable.order_by("-price", "name").first()
     if priciest:
         return {"product_id": str(priciest.pk), "source": "price"}
     return None
 
 
 def public_product(product):
+    in_stock = product.stock > 0
+    orderable = in_stock or product.allow_backorder
+    if not orderable:
+        availability = "out_of_stock"
+    elif not in_stock:
+        availability = "preorder"
+    elif product.stock <= product.low_stock_threshold:
+        availability = "low_stock"
+    else:
+        availability = "in_stock"
+    if not orderable:
+        max_quantity = 0
+    elif product.one_of_a_kind:
+        max_quantity = 1
+    elif product.allow_backorder:
+        max_quantity = MAX_QUANTITY
+    else:
+        max_quantity = min(product.stock, MAX_QUANTITY)
+    compare_at = product.compare_at_price
     return {
         "id": str(product.pk),
         "slug": product.slug,
@@ -202,10 +230,32 @@ def public_product(product):
         "image_url": product.image_url or None,
         "photos": photos_payload(product),
         # Pas le stock exact : seulement ce qui sert à l'acheteur.
-        "in_stock": product.stock > 0,
+        "in_stock": in_stock,
         "low_stock": 0 < product.stock <= product.low_stock_threshold,
-        "max_quantity": min(product.stock, MAX_QUANTITY),
+        "orderable": orderable,
+        "availability": availability,
+        "backorder_days": product.backorder_days if orderable and not in_stock else None,
+        "max_quantity": max_quantity,
+        # Le prix barré ne sert qu'à l'affichage ; le pourcentage est arrondi à l'inférieur, jamais surévalué.
+        "compare_at_price": compare_at,
+        "discount_percent": (compare_at - product.price) * 100 // compare_at if compare_at else None,
+        "details": public_details(product),
     }
+
+
+def public_details(product):
+    """Seulement les détails renseignés ou différents de la valeur par défaut ; les libellés sont écrits par le front."""
+    details = {}
+    if product.condition:
+        details["condition"] = product.condition
+    if product.warranty_months:
+        details["warranty_months"] = product.warranty_months
+    if product.sold_by != "piece":
+        details["sold_by"] = product.sold_by
+    for flag in ("one_of_a_kind", "made_to_order", "bulky"):
+        if getattr(product, flag):
+            details[flag] = True
+    return details
 
 
 class StorefrontView(APIView):
@@ -235,7 +285,7 @@ class StorefrontDetailView(StorefrontView):
                     "message": shop.vacation_message if shop.on_vacation() else "",
                     "until": shop.vacation_until if shop.on_vacation() else None,
                 },
-                "product_count": Product.objects.for_shop(shop).filter(is_active=True).count(),
+                "product_count": Product.objects.for_shop(shop).filter(status=ProductStatus.ACTIVE).count(),
                 "delivery_zones": [
                     {"id": zone.id, "city": zone.city, "commune": zone.commune, "label": zone.label, "fee": zone.fee, "delay_hours": zone.delay_hours}
                     for zone in ZONES
@@ -248,14 +298,14 @@ class StorefrontDetailView(StorefrontView):
 class StorefrontProductListView(StorefrontView):
     def get(self, request, slug):
         shop = storefront_shop(slug)
-        products = Product.objects.for_shop(shop).filter(is_active=True).prefetch_related(photo_prefetch()).order_by("category", "name")
+        products = Product.objects.for_shop(shop).filter(status=ProductStatus.ACTIVE).prefetch_related(photo_prefetch()).order_by("category", "name")
         return Response([public_product(product) for product in products])
 
 
 class StorefrontProductDetailView(StorefrontView):
     def get(self, request, slug, product_slug):
         shop = storefront_shop(slug)
-        product = Product.objects.for_shop(shop).filter(slug=product_slug, is_active=True).first()
+        product = Product.objects.for_shop(shop).filter(slug=product_slug, status=ProductStatus.ACTIVE).first()
         if product is None:
             raise NotFound("Article introuvable.")
         return Response(public_product(product))
@@ -364,7 +414,7 @@ class StorefrontTrackView(StorefrontView):
                 "delivery_fee": order.delivery_fee,
                 "total": order.total,
                 "payment_method": order.payment_method,
-                "items": [{"name": item.name, "quantity": item.quantity} for item in order.items.all()],
+                "items": [{"name": item.name, "quantity": item.quantity, "backorder_days": item.backorder_days} for item in order.items.all()],
                 "delivery": {"city": order.customer_city, "commune": order.customer_commune},
             }
         )

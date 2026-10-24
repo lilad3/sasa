@@ -5,11 +5,12 @@ côté serveur, que leurs limites s'appliquent : le front ne fait que les affich
 
 from dataclasses import asdict, dataclass
 
+from django.db import connection
 from django.utils import timezone
 
 from core.exceptions import ProblemError
 
-from .models import ApiKey, Membership, Order, Product
+from .models import ApiKey, Membership, Order, Product, ProductStatus, Shop
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,25 @@ def require_feature(shop, feature):
         )
 
 
+# Plafond technique : « archiver puis recréer » ne contourne pas le plan à l'infini.
+ARCHIVE_LIMIT = 2000
+
+
+def lock_shop(shop):
+    """
+    Verrou de la boutique, à prendre dans la transaction avant de compter puis d'ajouter : deux créations
+    simultanées ne dépassent plus la limite d'une unité (SQLite verrouille déjà tout en IMMEDIATE).
+    """
+    if not connection.in_atomic_block:
+        raise RuntimeError("Le verrou de la boutique se prend dans une transaction.")
+    Shop.objects.select_for_update().filter(pk=shop.pk).first()
+
+
+def ensure_archive_room(shop, adding=1):
+    if Product.objects.for_shop(shop).filter(status=ProductStatus.ARCHIVED).count() + adding > ARCHIVE_LIMIT:
+        raise ProblemError(409, "archive_limit", f"{ARCHIVE_LIMIT} produits archivés au plus : supprimez-en d'abord.")
+
+
 def ensure_room(shop, resource, adding=1):
     """Refuse d'ajouter des produits ou des personnes au-delà de la limite du plan."""
     limit = getattr(spec(shop), resource)
@@ -64,7 +84,8 @@ def ensure_room(shop, resource, adding=1):
 
 def count(shop, resource):
     if resource == "products":
-        return Product.objects.for_shop(shop).count()
+        # Un archivé ne compte pas : archiver libère de la place sans perdre l'historique.
+        return Product.objects.for_shop(shop).exclude(status=ProductStatus.ARCHIVED).count()
     return Membership.objects.filter(shop=shop).count()
 
 

@@ -86,7 +86,7 @@ class ImportTests(ApiTestCase):
         report = self.upload(csv).json()
         self.assertEqual(report["created"], 2)
         self.assertEqual(Product.objects.get(sku="KAR-500").price, 2500)
-        self.assertFalse(Product.objects.get(sku="CAF-250").is_active)
+        self.assertEqual(Product.objects.get(sku="CAF-250").status, "draft")
 
     def test_one_bad_line_imports_nothing(self):
         report = self.upload("sku,nom,prix\nA1,Bon produit,100\nA2,Mauvais prix,douze\n").json()
@@ -283,7 +283,7 @@ class LowStockTests(ApiTestCase):
         shop = make_shop("maison-test")
         Product.objects.create(shop=shop, sku="A", slug="a", name="Presque vide", price=100, stock=2, low_stock_threshold=3)
         Product.objects.create(shop=shop, sku="B", slug="b", name="Bien rempli", price=100, stock=50)
-        Product.objects.create(shop=shop, sku="C", slug="c", name="Plus en vente", price=100, stock=0, is_active=False)
+        Product.objects.create(shop=shop, sku="C", slug="c", name="Plus en vente", price=100, stock=0, status="draft")
         self.authenticate(make_member("owner@example.ci", shop, "owner"))
         low = self.client.get("/api/v1/shops/maison-test/dashboard?period=7d").json()["low_stock"]
         self.assertEqual((low["count"], low["items"][0]["name"]), (1, "Presque vide"))

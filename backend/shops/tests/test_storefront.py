@@ -17,7 +17,7 @@ class StorefrontTestCase(ApiTestCase):
             shop=self.shop, sku="PAG", slug="pagne", name="Pagne baoulé", category="Artisanat", price=35000, stock=2
         )
         self.hidden = Product.objects.create(
-            shop=self.shop, sku="OLD", slug="ancien", name="Ancien article", price=1000, stock=5, is_active=False
+            shop=self.shop, sku="OLD", slug="ancien", name="Ancien article", price=1000, stock=5, status="draft"
         )
 
     def order_body(self, **overrides):

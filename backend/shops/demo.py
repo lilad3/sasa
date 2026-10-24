@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from .delivery import ZONES, promised_hours
-from .models import REFERENCE_ALPHABET, Channel, Order, OrderItem, OrderStatus, PaymentMethod, Product
+from .models import REFERENCE_ALPHABET, Channel, Order, OrderItem, OrderStatus, PaymentMethod, Product, StockMovement, StockReason
 
 DEMO_DAYS = 180  # deux fois 90 jours : la période précédente existe aussi pour le filtre 90d
 
@@ -118,6 +118,12 @@ def generate_demo_data(shop):
             )
             for sku, name, price, _, description in entries
         ]
+    )
+    # Le stock de départ a son mouvement : l'invariant stock == somme des delta vaut aussi pour la démo.
+    StockMovement.objects.bulk_create(
+        StockMovement(shop=shop, product=product, delta=product.stock, stock_after=product.stock, reason=StockReason.INITIAL)
+        for product in products
+        if product.stock > 0
     )
     if not products:
         return {"products": 0, "orders": 0, "days": DEMO_DAYS}

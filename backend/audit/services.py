@@ -10,15 +10,17 @@ from .actions import ACTIONS
 from .models import AuditEvent
 
 
-def record(action, request=None, *, actor=None, email="", shop=None, target=None, **metadata):
+def record(action, request=None, *, actor=None, email="", shop=None, target=None, category=None, severity=None, **metadata):
     """
     Ajoute un événement au journal.
 
     `actor` est le compte à l'origine de l'action ; sans compte connu, `email` garde au moins
     l'adresse saisie. `target` vaut (type, identifiant, libellé), par exemple
-    ("order", order.pk, "K7F-92Q"). Le reste part dans `metadata`.
+    ("order", order.pk, "K7F-92Q"). `category` et `severity` remplacent ceux du catalogue quand
+    la gravité dépend du cas (une baisse de prix en masse). Le reste part dans `metadata`.
     """
-    category, severity, _ = ACTIONS[action]
+    default_category, default_severity, _ = ACTIONS[action]
+    category, severity = category or default_category, severity or default_severity
     target_type, target_id, target_label = target or ("", "", "")
     event = AuditEvent(
         created_at=timezone.now(),
