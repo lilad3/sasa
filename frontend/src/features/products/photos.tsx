@@ -9,53 +9,9 @@ import { photoUrl } from "@/lib/photos";
 import type { ProductPhoto } from "@/lib/types";
 
 import { makeMainPhoto, type PhotoState, removePhoto, uploadPhoto } from "./photo-actions";
+import { ACCEPTED, MAX_PHOTOS, photoProblem, shrink, UNREADABLE } from "./photo-files";
 
 const initial: PhotoState = {};
-const ACCEPTED = ["image/png", "image/jpeg", "image/webp"];
-const MAX_PHOTOS = 3;
-// Une Server Action accepte 1 Mo : on vise moins, en baissant la qualité puis la taille s'il le faut.
-const TARGET_BYTES = 900 * 1024;
-const STEPS: [side: number, quality: number][] = [
-  [1200, 0.85],
-  [1200, 0.7],
-  [960, 0.7],
-  [800, 0.6],
-];
-
-function encode(canvas: HTMLCanvasElement, type: string, quality: number) {
-  return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
-}
-
-/**
- * Réduit la photo dans le navigateur (1 200 px au plus) avant l'envoi : léger sur un réseau mobile,
- * et sous la limite des Server Actions. WebP garde la transparence ; un navigateur qui ne sait pas
- * l'écrire envoie du JPEG sur fond blanc. Django redessine de toute façon l'image.
- */
-async function shrink(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  try {
-    for (const [side, quality] of STEPS) {
-      const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-      const context = canvas.getContext("2d");
-      if (!context) break;
-      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      let blob = await encode(canvas, "image/webp", quality);
-      if (!blob || blob.type !== "image/webp") {
-        context.globalCompositeOperation = "destination-over";
-        context.fillStyle = "#ffffff";
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        blob = await encode(canvas, "image/jpeg", quality);
-      }
-      if (blob && blob.size <= TARGET_BYTES) return blob;
-    }
-  } finally {
-    bitmap.close();
-  }
-  throw new Error("image");
-}
 
 type ProductPhotosProps = { slug: string; productId: string; productName: string; photos: ProductPhoto[] };
 
@@ -71,8 +27,8 @@ export function ProductPhotos({ slug, productId, productName, photos }: ProductP
     input.value = "";
     setProblem(null);
     if (!file) return;
-    if (!ACCEPTED.includes(file.type)) return setProblem("PNG, JPEG ou WebP seulement (pas de SVG ni de GIF).");
-    if (file.size > 15 * 1024 * 1024) return setProblem("Image trop lourde : 15 Mo au maximum avant réduction.");
+    const refused = photoProblem(file);
+    if (refused) return setProblem(refused);
     setPreparing(true);
     try {
       const blob = await shrink(file);
@@ -82,7 +38,7 @@ export function ProductPhotos({ slug, productId, productName, photos }: ProductP
       data.append("photo", blob, "photo");
       startTransition(() => formAction(data));
     } catch {
-      setProblem("Cette image ne s’ouvre pas. Essayez une autre photo.");
+      setProblem(UNREADABLE);
     } finally {
       setPreparing(false);
     }
@@ -123,7 +79,7 @@ export function ProductPhotos({ slug, productId, productName, photos }: ProductP
                 <path d="M18.6 3.2v3.4M16.9 4.9h3.4" />
               </svg>
               <span aria-live="polite">{busy ? "Envoi…" : photos.length === 0 ? "Ajouter une photo" : "Ajouter une autre photo"}</span>
-              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={choose} disabled={busy} className="sr-only" />
+              <input type="file" accept={ACCEPTED.join(",")} onChange={choose} disabled={busy} className="sr-only" />
             </label>
           </li>
         ) : null}

@@ -14,7 +14,8 @@ import type { ImportReport, Product } from "./types";
 
 export type ProductField = "name" | "sku" | "price" | "stock" | "low_stock_threshold" | "category" | "description" | "image_url";
 
-export type ProductFormState = { error?: FormError; fields?: Partial<Record<ProductField, string>>; done?: string };
+/** `created` : le produit vient d'être créé ; le formulaire envoie ses photos, puis ouvre sa fiche. */
+export type ProductFormState = { error?: FormError; fields?: Partial<Record<ProductField, string>>; done?: string; created?: { id: string } };
 
 // Le slug et l'identifiant finissent dans l'adresse de l'API : on n'accepte que leur forme attendue.
 const Slug = z.string().regex(/^[a-z0-9-]{1,60}$/);
@@ -91,7 +92,7 @@ export async function saveProduct(_previous: ProductFormState, formData: FormDat
     const fields = fieldErrors(result.problem);
     return fields ? { fields } : { error: describeProblem(result.problem) };
   }
-  if (!id) redirect(`/app/${slug.data}/produits?ok=ajoute`);
+  if (!id) return { created: { id: result.data.id } };
   refresh();
   return { done: "Modifications enregistrées. La vitrine est à jour." };
 }

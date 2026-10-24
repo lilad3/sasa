@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, startTransition, useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type FormEvent, startTransition, useActionState, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { FormAlert } from "@/features/auth/form-alert";
 import { cn } from "@/lib/cn";
+import { messageFor } from "@/lib/messages";
 import { photoUrl } from "@/lib/photos";
 
 import { type ProductFormState, saveProduct } from "./actions";
+import { PHOTO_PROBLEMS } from "./photo-files";
+import { DraftPhotos, sendDrafts, usePhotoDrafts } from "./photo-drafts";
 import { ProductThumb } from "./product-rows";
 import type { Product } from "./types";
 
@@ -20,23 +24,81 @@ type ProductFormProps = { slug: string; product?: Product; categories: string[] 
 /**
  * Fiche produit : création (sans `product`) ou modification.
  * L'envoi passe par onSubmit plutôt que par `action` : React viderait sinon les champs après une erreur.
+ * À la création, le produit est d'abord enregistré, puis ses photos partent une par une, puis sa fiche s'ouvre.
  */
 export function ProductForm({ slug, product, categories }: ProductFormProps) {
-  const [state, formAction, pending] = useActionState(saveProduct, initial);
+  const router = useRouter();
+  const [editState, formAction, saving] = useActionState(saveProduct, initial);
+  const [createState, setCreateState] = useState<ProductFormState>(initial);
+  const [creating, startCreating] = useTransition();
+  // La photo en cours d'envoi (1, 2 ou 3). Elle reste posée jusqu'à l'ouverture de la fiche : le bouton ne se réactive pas entre-temps.
+  const [sending, setSending] = useState<{ position: number; total: number } | null>(null);
+  const photos = usePhotoDrafts();
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
   const [name, setName] = useState(product?.name ?? "");
+  const state = product ? editState : createState;
+  const pending = saving || creating || sending !== null;
   const fields = state.fields ?? {};
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    startTransition(() => formAction(data));
+    if (product) {
+      startTransition(() => formAction(data));
+      return;
+    }
+    if (pending || photos.preparing) return;
+    const drafts = photos.drafts;
+    startCreating(async () => {
+      let result: ProductFormState;
+      try {
+        result = await saveProduct(initial, data);
+      } catch {
+        // Réseau coupé avant la réponse : rien n'est perdu, les champs et les photos restent là.
+        setCreateState({ error: { code: "network_error", message: messageFor("network_error") } });
+        return;
+      }
+      if (!result.created) {
+        setCreateState(result);
+        return;
+      }
+      const { id } = result.created;
+      const query = new URLSearchParams({ ok: "ajoute" });
+      if (drafts.length) {
+        const { sent, reason } = await sendDrafts(slug, id, drafts, (position) => setSending({ position, total: drafts.length }));
+        if (sent < drafts.length) {
+          query.set("photos", `${sent}-${drafts.length}`);
+          if (reason && Object.hasOwn(PHOTO_PROBLEMS, reason)) query.set("raison", reason);
+        }
+      } else {
+        setSending({ position: 0, total: 0 });
+      }
+      router.push(`/app/${slug}/produits/${id}?${query}`);
+    });
   }
 
   const external = /^https:\/\/\S+$/i.test(imageUrl.trim()) ? imageUrl.trim() : "";
   // Une photo envoyée passe avant l'adresse externe, comme sur la vitrine.
   const firstPhoto = product?.photos[0];
-  const preview = firstPhoto ? photoUrl(slug, firstPhoto) : external;
+  const firstDraft = product ? undefined : photos.drafts[0];
+  const preview = firstPhoto ? photoUrl(slug, firstPhoto) : (firstDraft?.url ?? external);
+  const pendingLabel = sending && sending.total > 0 ? `Envoi des photos : ${sending.position} sur ${sending.total}` : "Enregistrement…";
+
+  const imageField = (
+    <Field
+      id="image"
+      name="image_url"
+      type="url"
+      label="Ou l’adresse d’une photo en ligne"
+      hint="Utilisée seulement sans photo envoyée."
+      defaultValue={product?.image_url}
+      onChange={(event) => setImageUrl(event.target.value)}
+      placeholder="https://…"
+      maxLength={200}
+      spellCheck={false}
+      error={fields.image_url}
+    />
+  );
 
   return (
     <form onSubmit={submit} noValidate className="col-span-full grid grid-cols-subgrid gap-y-2.5 md:gap-y-3 lg:gap-y-3.5">
@@ -50,6 +112,7 @@ export function ProductForm({ slug, product, categories }: ProductFormProps) {
         {state.error ? <FormAlert tone="danger">{state.error.message}</FormAlert> : null}
         {state.done && !pending ? <FormAlert tone="success">{state.done}</FormAlert> : null}
 
+        {product ? null : <DraftPhotos {...photos} productName={name} locked={pending} />}
         <Field id="nom" name="name" label="Nom du produit" defaultValue={product?.name} onChange={(event) => setName(event.target.value)} maxLength={120} required error={fields.name} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
@@ -105,27 +168,28 @@ export function ProductForm({ slug, product, categories }: ProductFormProps) {
           <div className="flex items-center gap-3">
             <ProductThumb name={name || "?"} src={preview || null} className="size-16 rounded-[16px] text-xl" />
             <p className="min-w-0 text-[13px] text-texte-3">
-              {firstPhoto ? "Photo principale, choisie dans « Photos »." : preview ? "Aperçu de la photo." : "Sans photo, la vitrine affiche l’initiale du produit."}
+              {firstPhoto || firstDraft ? "Photo principale, choisie dans « Photos »." : preview ? "Aperçu de la photo." : "Sans photo, la vitrine affiche l’initiale du produit."}
             </p>
           </div>
-          <Field
-            id="image"
-            name="image_url"
-            type="url"
-            label="Ou l’adresse d’une photo en ligne"
-            hint="Utilisée seulement sans photo envoyée."
-            defaultValue={product?.image_url}
-            onChange={(event) => setImageUrl(event.target.value)}
-            placeholder="https://…"
-            maxLength={200}
-            spellCheck={false}
-            error={fields.image_url}
-          />
+          {product ? (
+            imageField
+          ) : (
+            // À la création, les photos se choisissent en tête du formulaire : l'adresse en ligne devient une option.
+            <details className="group" open={fields.image_url ? true : undefined}>
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full text-[13px] font-semibold text-texte-2 hover:text-texte [&::-webkit-details-marker]:hidden">
+                <svg viewBox="0 0 16 16" className="size-3.5 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="m6 3.5 4.5 4.5L6 12.5" />
+                </svg>
+                Options avancées
+              </summary>
+              <div className="mt-3">{imageField}</div>
+            </details>
+          )}
           <Toggle name="is_active" defaultChecked={product?.is_active ?? true} label="En vente" hint="Décoché, le produit est masqué de la vitrine mais reste dans vos commandes." />
         </section>
 
         <div className="flex flex-col gap-2">
-          <Button type="submit" pending={pending} pendingLabel="Enregistrement…" className="w-full">
+          <Button type="submit" pending={pending} pendingLabel={pendingLabel} disabled={photos.preparing} className="w-full">
             {product ? "Enregistrer" : "Ajouter le produit"}
           </Button>
           <Link href={`/app/${slug}/produits`} className="rounded-full px-4 py-2.5 text-center text-sm text-texte-2 hover:text-texte">

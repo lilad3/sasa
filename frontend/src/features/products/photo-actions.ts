@@ -6,6 +6,8 @@ import { z } from "zod";
 import { describeProblem, type FormError } from "@/lib/messages";
 import { authedMutation } from "@/lib/server/session";
 
+import { PHOTO_PROBLEMS as PROBLEMS } from "./photo-files";
+
 // Le slug et les identifiants finissent dans l'adresse de l'API : on n'accepte que leur forme attendue.
 const Target = z.object({
   slug: z.string().regex(/^[a-z0-9-]{1,60}$/),
@@ -13,15 +15,8 @@ const Target = z.object({
 });
 const PhotoTarget = Target.extend({ photo: z.uuid() });
 
-// Une Server Action accepte 1 Mo : le navigateur a déjà réduit la photo (photos.tsx).
+// Une Server Action accepte 1 Mo : le navigateur a déjà réduit la photo (photo-files.ts).
 const MAX_BYTES = 1024 * 1024;
-
-const PROBLEMS: Record<string, string> = {
-  file_too_large: "Photo trop lourde : choisissez une image plus petite.",
-  unsupported_file: "Photo refusée : PNG, JPEG ou WebP seulement (pas de SVG ni de GIF).",
-  photo_limit: "3 photos au plus par produit : retirez-en une d’abord.",
-  product_inactive: "Remettez d’abord le produit en vente, puis mettez-le à la une.",
-};
 
 export type PhotoState = { done?: string; error?: FormError };
 
