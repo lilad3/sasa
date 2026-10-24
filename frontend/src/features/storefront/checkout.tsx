@@ -6,20 +6,22 @@ import { useId, useRef, useState, useTransition } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatFcfa, PAYMENT_LABEL } from "@/lib/format";
-import { formatWait } from "@/lib/messages";
-import type { PaymentMethod, PlacedOrder, Storefront } from "@/lib/types";
+import { formatWait, messageFor } from "@/lib/messages";
+import type { Fulfillment, PaymentMethod, PickupPlace, PlacedOrder, Storefront } from "@/lib/types";
 
 import { type CheckoutInput, checkDiscount, placeOrder } from "./actions";
 import { subtotalOf } from "./basket";
 import { type Line, Price } from "./catalogue";
 import { readChannel } from "./channel";
+import { FulfillmentChoice, PickupNote } from "./fulfillment-choice";
+import { PaymentInstructions } from "./payment-instructions";
 import { ZonePicker } from "./zone-picker";
 
 // Champs en pêche translucide (plus de blanc). Indice gris-brun à 4,6:1, anneau de focus indigo.
 const INPUT =
   "w-full rounded-[14px] border border-encre/20 bg-[rgb(255_246_236/0.62)] px-4 py-3 text-base text-encre outline-none transition-[border-color,box-shadow] placeholder:text-[#6b5440] focus-visible:border-encre focus-visible:shadow-[0_0_0_3px_rgb(74_87_214/0.35)] aria-invalid:border-[#8a2412]";
 
-type FieldName = "name" | "phone" | "zone" | "landmark";
+type FieldName = "name" | "phone" | "zone" | "landmark" | "payment";
 
 // Clés d'erreur de l'API → champs du formulaire.
 const API_FIELDS: Record<string, FieldName> = {
@@ -28,6 +30,7 @@ const API_FIELDS: Record<string, FieldName> = {
   "customer.city": "zone",
   "customer.commune": "zone",
   "customer.landmark": "landmark",
+  payment_method: "payment",
 };
 
 /** Même règle que Django (contrat §2.13), pour prévenir avant l'envoi : 01, 05, 07, 21, 25 ou 27, puis 8 chiffres. */
@@ -38,7 +41,17 @@ function isIvorianPhone(raw: string) {
   return /^(0[157]|2[157])\d{8}$/.test(digits);
 }
 
-export type Receipt = { order: PlacedOrder; name: string; phone: string; zone: string; payment: PaymentMethod; discountCode: string };
+export type Receipt = {
+  order: PlacedOrder;
+  name: string;
+  phone: string;
+  /** La zone livrée ; vide pour un retrait. */
+  zone: string;
+  payment: PaymentMethod;
+  discountCode: string;
+  fulfillment: Fulfillment;
+  pickup: PickupPlace | null;
+};
 
 /** Un code vérifié, pour ce numéro et ce panier-là (articles et prix) : changer l'un des deux demande de le vérifier à nouveau. */
 type AppliedDiscount = { code: string; label: string; amount: number; phone: string; basket: string };
@@ -62,7 +75,14 @@ export function Checkout({
   const [phone, setPhone] = useState("");
   const [zoneId, setZoneId] = useState("");
   const [landmark, setLandmark] = useState("");
-  const [payment, setPayment] = useState<PaymentMethod>("cash_on_delivery");
+  const canDeliver = shop.delivery_zones.length > 0;
+  const canPickup = shop.pickup !== null;
+  const [wantedFulfillment, setFulfillment] = useState<Fulfillment>(canDeliver ? "delivery" : "pickup");
+  const [wantedPayment, setPayment] = useState<PaymentMethod>(shop.payment_methods[0]?.id ?? "cash_on_delivery");
+  // La boutique a pu retirer un moyen ou un mode entre-temps (la vitrine se rafraîchit) : le choix repart de ce qui reste.
+  // Le moyen proposé d'office est le premier de ceux qu'elle accepte (elle n'a pas forcément le paiement à la livraison).
+  const fulfillment: Fulfillment = wantedFulfillment === "pickup" && !canPickup ? "delivery" : wantedFulfillment === "delivery" && !canDeliver && canPickup ? "pickup" : wantedFulfillment;
+  const payment: PaymentMethod = shop.payment_methods.some((method) => method.id === wantedPayment) ? wantedPayment : (shop.payment_methods[0]?.id ?? wantedPayment);
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -75,7 +95,8 @@ export function Checkout({
   const attempt = useRef<{ key: string; signature: string } | null>(null);
   const honeypot = useRef<HTMLInputElement>(null);
 
-  const zone = shop.delivery_zones.find((z) => z.id === zoneId) ?? null;
+  const pickup = fulfillment === "pickup";
+  const zone = pickup ? null : (shop.delivery_zones.find((z) => z.id === zoneId) ?? null);
 
   // Une erreur disparaît dès que la personne corrige le champ concerné.
   const edit = (field: FieldName, setter: (value: string) => void) => (value: string) => {
@@ -83,7 +104,7 @@ export function Checkout({
     if (errors[field]) setErrors((current) => ({ ...current, [field]: undefined }));
   };
   const subtotal = subtotalOf(lines);
-  const fee = zone?.fee ?? 0;
+  const fee = pickup ? 0 : (zone?.fee ?? 0);
   const items = lines.map((line) => ({ product_id: line.product.id, quantity: line.quantity }));
   // Le sous-total en fait partie : après un changement de prix, une remise en % n'a plus le même montant.
   const basketSignature = JSON.stringify({ items, subtotal });
@@ -120,9 +141,9 @@ export function Checkout({
 
   function validate() {
     const found: Partial<Record<FieldName, string>> = {};
-    if (name.trim().length < 2) found.name = "Indiquez votre nom, pour que le livreur vous trouve.";
+    if (name.trim().length < 2) found.name = pickup ? "Indiquez votre nom, pour que la boutique vous remette la commande." : "Indiquez votre nom, pour que le livreur vous trouve.";
     if (!isIvorianPhone(phone)) found.phone = "Numéro ivoirien à 10 chiffres, par exemple 07 07 12 34 56.";
-    if (!zone) found.zone = "Choisissez votre commune ou votre ville.";
+    if (!pickup && !zone) found.zone = "Choisissez votre commune ou votre ville.";
     return found;
   }
 
@@ -131,7 +152,7 @@ export function Checkout({
     const found = validate();
     setErrors(found);
     setNotice(null);
-    if (Object.keys(found).length || !zone || lines.length === 0) return;
+    if (Object.keys(found).length || (!pickup && !zone) || lines.length === 0) return;
     // Un code saisi doit être vérifié avant la commande : le client voit le prix qu'il paiera, ou rien.
     if (codeInput.trim() && !discount) {
       setCodeOpen(true);
@@ -142,8 +163,10 @@ export function Checkout({
     const payload: Omit<CheckoutInput, "idempotencyKey"> = {
       slug: shop.slug,
       items,
-      customer: { name: name.trim(), phone, city: zone.city, commune: zone.commune, landmark: landmark.trim() },
+      // En retrait, le lieu n'existe pas : ville, commune et repère partent vides (le serveur les vide aussi).
+      customer: { name: name.trim(), phone, city: zone?.city ?? "", commune: zone?.commune ?? "", landmark: pickup ? "" : landmark.trim() },
       payment_method: payment,
+      fulfillment,
       expected_total: total,
       // Le code entre dans la signature : un autre code donne une autre clé d'idempotence.
       discount_code: discount?.code ?? "",
@@ -157,7 +180,7 @@ export function Checkout({
     startTransition(async () => {
       const result = await placeOrder({ ...payload, idempotencyKey });
       if (result.ok) {
-        onPlaced({ order: result.order, name: name.trim(), phone, zone: zone.label, payment, discountCode: discount?.code ?? "" });
+        onPlaced({ order: result.order, name: name.trim(), phone, zone: zone?.label ?? "", payment, discountCode: discount?.code ?? "", fulfillment, pickup: pickup ? shop.pickup : null });
         return;
       }
       if (result.code === "discount_invalid") {
@@ -171,12 +194,15 @@ export function Checkout({
         const field = API_FIELDS[key];
         if (field) fieldErrors[field] = message;
       }
+      if (result.code === "payment_method_unavailable") fieldErrors.payment = messageFor("payment_method_unavailable");
       setErrors(fieldErrors);
       if (result.code === "out_of_stock" && result.available) onStockShortage(result.available);
       // La boutique a pu changer entre l'affichage et l'envoi (stock, prix, mise en congé) : on recharge ses données.
-      if (["out_of_stock", "price_changed", "validation_error", "shop_on_vacation"].includes(result.code)) router.refresh();
+      if (["out_of_stock", "price_changed", "validation_error", "shop_on_vacation", "payment_method_unavailable", "pickup_unavailable", "delivery_unavailable"].includes(result.code)) router.refresh();
       setNotice(
-        result.code === "too_many_requests" && result.retryAfter
+        result.code === "payment_method_unavailable"
+          ? null
+          : result.code === "too_many_requests" && result.retryAfter
           ? `Trop de commandes depuis cette connexion. Réessayez dans ${formatWait(result.retryAfter)}.`
           : result.code === "price_changed" && result.total
             ? `${result.message} Nouveau total : ${formatFcfa(result.total)}.`
@@ -200,28 +226,35 @@ export function Checkout({
 
       <form noValidate onSubmit={submit} className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
         <fieldset className="verre-clair flex flex-col gap-4 rounded-[22px] p-5">
-          <legend className="sr-only">Livraison</legend>
-          <h3 className="text-sm font-semibold text-encre-doux">Livraison</h3>
+          <legend className="sr-only">{pickup ? "Retrait sur place" : "Livraison"}</legend>
+          <FulfillmentChoice id={id} value={fulfillment} onChange={setFulfillment} canDeliver={canDeliver} canPickup={canPickup} />
+          <h3 className="text-sm font-semibold text-encre-doux">{pickup ? "Retrait sur place" : "Livraison"}</h3>
           <Labeled id={`${id}-nom`} label="Nom complet" error={errors.name}>
             <input id={`${id}-nom`} className={INPUT} value={name} onChange={(e) => edit("name", setName)(e.target.value)} autoComplete="name" aria-invalid={!!errors.name || undefined} aria-describedby={errors.name ? `${id}-nom-erreur` : undefined} maxLength={120} />
           </Labeled>
-          <Labeled id={`${id}-tel`} label="Téléphone" error={errors.phone} hint="Le livreur vous appelle à ce numéro.">
+          <Labeled id={`${id}-tel`} label="Téléphone" error={errors.phone} hint={pickup ? "La boutique vous appelle à ce numéro quand la commande est prête." : "Le livreur vous appelle à ce numéro."}>
             <input id={`${id}-tel`} className={INPUT} value={phone} onChange={(e) => edit("phone", setPhone)(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="07 07 12 34 56" aria-invalid={!!errors.phone || undefined} aria-describedby={`${id}-tel-aide${errors.phone ? ` ${id}-tel-erreur` : ""}`} maxLength={24} />
           </Labeled>
-          <Labeled id={`${id}-zone`} label="Commune ou ville" error={errors.zone}>
-            <ZonePicker
-              id={`${id}-zone`}
-              zones={shop.delivery_zones}
-              value={zoneId}
-              onChange={edit("zone", setZoneId)}
-              className={INPUT}
-              invalid={!!errors.zone}
-              describedBy={errors.zone ? `${id}-zone-erreur` : undefined}
-            />
-          </Labeled>
-          <Labeled id={`${id}-repere`} label="Adresse ou repère" error={errors.landmark} hint="Facultatif. Par exemple : derrière la pharmacie des Deux-Plateaux.">
-            <input id={`${id}-repere`} className={INPUT} value={landmark} onChange={(e) => edit("landmark", setLandmark)(e.target.value)} autoComplete="street-address" aria-invalid={!!errors.landmark || undefined} aria-describedby={`${id}-repere-aide${errors.landmark ? ` ${id}-repere-erreur` : ""}`} maxLength={160} />
-          </Labeled>
+          {pickup && shop.pickup ? (
+            <PickupNote pickup={shop.pickup} />
+          ) : (
+            <>
+              <Labeled id={`${id}-zone`} label="Commune ou ville" error={errors.zone}>
+                <ZonePicker
+                  id={`${id}-zone`}
+                  zones={shop.delivery_zones}
+                  value={zoneId}
+                  onChange={edit("zone", setZoneId)}
+                  className={INPUT}
+                  invalid={!!errors.zone}
+                  describedBy={errors.zone ? `${id}-zone-erreur` : undefined}
+                />
+              </Labeled>
+              <Labeled id={`${id}-repere`} label="Adresse ou repère" error={errors.landmark} hint="Facultatif. Par exemple : derrière la pharmacie des Deux-Plateaux.">
+                <input id={`${id}-repere`} className={INPUT} value={landmark} onChange={(e) => edit("landmark", setLandmark)(e.target.value)} autoComplete="street-address" aria-invalid={!!errors.landmark || undefined} aria-describedby={`${id}-repere-aide${errors.landmark ? ` ${id}-repere-erreur` : ""}`} maxLength={160} />
+              </Labeled>
+            </>
+          )}
           {/* Champ piège : caché aux humains (et aux lecteurs d'écran), un robot le remplit. */}
           <div aria-hidden className="absolute -left-[9999px] h-px w-px overflow-hidden">
             <label htmlFor={`${id}-site`}>Site web</label>
@@ -232,6 +265,7 @@ export function Checkout({
         <div className="verre-clair flex flex-col gap-4 rounded-[22px] p-5">
           <fieldset className="flex flex-col gap-2.5">
             <legend className="mb-2 text-sm font-semibold text-encre-doux">Paiement</legend>
+            {shop.payment_methods.length === 0 ? <p className="text-sm text-[#8a2412]">La boutique n’a pas de moyen de paiement ouvert pour le moment.</p> : null}
             <div className="grid grid-cols-2 gap-2">
               {shop.payment_methods.map((method) => (
                 <label
@@ -247,10 +281,17 @@ export function Checkout({
                 </label>
               ))}
             </div>
+            {errors.payment ? (
+              <p id={`${id}-paiement-erreur`} role="alert" className="text-[13px] text-[#8a2412]">
+                {errors.payment}
+              </p>
+            ) : null}
             <p className="text-xs text-encre-doux">
               {payment === "cash_on_delivery"
-                ? "Vous payez en espèces au livreur, à la réception."
-                : `La boutique vous envoie la demande de paiement ${PAYMENT_LABEL[payment]} au numéro indiqué.`}
+                ? pickup
+                  ? "Vous paierez au retrait."
+                  : "Vous paierez à la réception de la commande."
+                : "Après votre commande, vous verrez le numéro auquel payer et la référence à indiquer."}
             </p>
           </fieldset>
 
@@ -272,8 +313,8 @@ export function Checkout({
               </div>
             ) : null}
             <div className="flex justify-between gap-3">
-              <dt className="text-encre-doux">Livraison{zone ? ` · ${zone.label}` : ""}</dt>
-              <dd>{zone ? formatFcfa(fee) : "selon la commune"}</dd>
+              <dt className="text-encre-doux">{pickup ? "Retrait sur place" : `Livraison${zone ? ` · ${zone.label}` : ""}`}</dt>
+              <dd>{pickup ? formatFcfa(0) : zone ? formatFcfa(fee) : "selon la commune"}</dd>
             </div>
           </dl>
 
@@ -380,7 +421,9 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
         <h2 id="confirmation-titre" className="large text-[clamp(1.6rem,3.4vw,2.4rem)] leading-tight font-bold" tabIndex={-1}>
           Merci {firstName}, votre commande est enregistrée.
         </h2>
-        <p className="text-encre-doux">{shop.name} vous appelle au {receipt.phone} pour convenir de la livraison.</p>
+        <p className="text-encre-doux">
+          {shop.name} vous appelle au {receipt.phone} {receipt.fulfillment === "pickup" ? "quand votre commande est prête à retirer." : "pour convenir de la livraison."}
+        </p>
       </div>
       <dl className="grid gap-3 rounded-[18px] bg-[rgb(255_244_232/0.45)] p-4 sm:grid-cols-3">
         <div>
@@ -401,9 +444,16 @@ export function Confirmation({ receipt, shop, onContinue }: { receipt: Receipt; 
         <div>
           <dt className="text-xs text-encre-doux">Paiement</dt>
           <dd className="text-[15px] font-semibold">{PAYMENT_LABEL[receipt.payment]}</dd>
-          <dd className="text-xs text-encre-doux">Livraison : {receipt.zone}</dd>
+          <dd className="text-xs text-encre-doux">{receipt.fulfillment === "pickup" ? "Retrait sur place" : `Livraison : ${receipt.zone}`}</dd>
         </div>
       </dl>
+      {receipt.fulfillment === "pickup" && receipt.pickup ? <PickupNote pickup={receipt.pickup} /> : null}
+      <PaymentInstructions
+        instructions={receipt.order.payment_instructions ?? null}
+        total={receipt.order.total}
+        fulfillment={receipt.fulfillment}
+        cash={receipt.payment === "cash_on_delivery"}
+      />
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={onContinue} className="bouton-nuit rounded-full px-5 py-3 font-bold">
           Continuer mes achats

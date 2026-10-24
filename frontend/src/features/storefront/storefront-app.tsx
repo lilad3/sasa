@@ -90,7 +90,9 @@ export function StorefrontApp({ shop, products, preview = false }: { shop: Store
 
   const count = articleCount(lines);
   // En congé, Django refuse les commandes (409 shop_on_vacation) : la vitrine reste à parcourir, le panier se garde.
-  const closed = shop.vacation.active;
+  // Sans zone active ni retrait, Django refuserait de toute façon : la vitrine le dit au lieu de proposer un formulaire vide.
+  const noOrders = shop.delivery_zones.length === 0 && shop.pickup === null;
+  const closed = shop.vacation.active || noOrders;
   const ordering = receipt !== null || (view === "commande" && lines.length > 0 && !closed);
   const checkout = () => {
     if (!preview) goTo("commande");
@@ -114,7 +116,7 @@ export function StorefrontApp({ shop, products, preview = false }: { shop: Store
         {preview ? <PreviewNotice /> : null}
         {closed ? (
           <div className="bg-nuit px-3 pt-3">
-            <VacationBanner vacation={shop.vacation} name={shop.name} />
+            <VacationBanner vacation={shop.vacation} name={shop.name} noOrders={!shop.vacation.active} />
           </div>
         ) : null}
         <Theme {...themeProps} />
@@ -159,7 +161,7 @@ export function StorefrontApp({ shop, products, preview = false }: { shop: Store
       </header>
 
       <div className="mx-auto flex max-w-[1180px] flex-col gap-8 px-3 pt-3 pb-28 md:px-5 lg:pb-16">
-        {closed ? <VacationBanner vacation={shop.vacation} name={shop.name} /> : null}
+        {closed ? <VacationBanner vacation={shop.vacation} name={shop.name} noOrders={!shop.vacation.active} /> : null}
         {themed ? null : <Cover shop={shop} featured={design.cover === "featured" ? cover.product : null} source={cover.source} onAdd={add} />}
 
         <div id="contenu-boutique" className="grid scroll-mt-24 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
@@ -234,7 +236,18 @@ function PreviewNotice() {
 }
 
 /** Le mot du marchand en congé, posé au-dessus de la couverture : on le lit avant de remplir un panier. */
-function VacationBanner({ vacation, name }: { vacation: Storefront["vacation"]; name: string }) {
+function VacationBanner({ vacation, name, noOrders }: { vacation: Storefront["vacation"]; name: string; noOrders: boolean }) {
+  if (noOrders) {
+    return (
+      <section role="status" aria-label="Commandes fermées" className="zone-sombre flex flex-col gap-2 rounded-[24px] bg-nuit px-5 py-4 text-creme md:flex-row md:items-center md:gap-5 md:px-6">
+        <span className="large shrink-0 self-start rounded-full bg-ocre px-3 py-1 text-sm font-extrabold text-encre md:self-center">Commandes fermées</span>
+        <div className="flex flex-col gap-1">
+          <p className="text-[15px]">La boutique ne prend pas de commande pour le moment.</p>
+          <p className="text-[13px] text-texte-2">Vous pouvez parcourir la collection et garder votre panier.</p>
+        </div>
+      </section>
+    );
+  }
   return (
     <section role="status" aria-label="Boutique en congé" className="zone-sombre flex flex-col gap-2 rounded-[24px] bg-nuit px-5 py-4 text-creme md:flex-row md:items-center md:gap-5 md:px-6">
       <span className="large shrink-0 self-start rounded-full bg-ocre px-3 py-1 text-sm font-extrabold text-encre md:self-center">En congé</span>

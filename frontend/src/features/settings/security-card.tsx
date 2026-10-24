@@ -105,6 +105,28 @@ function checks(overview: SecurityOverview, slug: string): Check[] {
     result.push({ id: "attempts", level: "ok", text: "Aucune tentative suspecte sur les comptes de l’équipe cette semaine." });
   }
 
+  // Le numéro qui reçoit l'argent des clients : un changement récent est le premier signe d'un détournement.
+  const waiting = overview.payout_pending[0];
+  if (waiting) {
+    result.push({
+      id: "payout",
+      level: "warn",
+      text: `Un nouveau numéro de réception (${waiting.label}, ••${waiting.new_last2 ?? "—"}) attend ses 24 h : il servira dès le ${formatDateTime(waiting.activates_at)}. Ce n’est pas vous ? Annulez-le.`,
+      href: `${base}/parametres/paiements`,
+      action: "Voir et annuler",
+    });
+  } else if (overview.payout_changed_7d) {
+    result.push({
+      id: "payout",
+      level: "warn",
+      text: `Numéro de réception changé ${formatSince(overview.payout_changed_7d.last_at)}${overview.payout_changed_7d.count > 1 ? ` (${overview.payout_changed_7d.count} fois en 7 jours)` : ""}.`,
+      href: `${base}/parametres?onglet=journal`,
+      action: "Journal",
+    });
+  } else {
+    result.push({ id: "payout", level: "ok", text: "Aucun changement de numéro de réception cette semaine." });
+  }
+
   result.push(
     overview.last_export
       ? {

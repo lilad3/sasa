@@ -19,6 +19,7 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
   const { customer } = order;
   const phoneDigits = customer.phone.replace(/\D/g, "");
   const cashOnDelivery = order.payment_method === "cash_on_delivery";
+  const pickup = order.fulfillment === "pickup";
   const articles = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -36,7 +37,9 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
             <span className="font-mono">{order.reference}</span>
             <StatusPill status={order.status} />
           </h1>
-          <p className="text-[12.5px] text-texte-3">Passée le {formatDateTime(order.created_at)}</p>
+          <p className="text-[12.5px] text-texte-3">
+            <span className="font-semibold text-texte-2">{pickup ? "Retrait sur place" : "Livraison"}</span> · Passée le {formatDateTime(order.created_at)}
+          </p>
         </div>
       </header>
 
@@ -70,8 +73,12 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
               <dd className="text-right tabular-nums">−{formatFcfa(order.discount_amount)}</dd>
             </>
           ) : null}
-          <dt className="text-texte-2">Livraison · {customer.commune || customer.city}</dt>
-          <dd className="text-right tabular-nums">{order.delivery_fee ? formatFcfa(order.delivery_fee) : "offerte"}</dd>
+          {pickup ? null : (
+            <>
+              <dt className="text-texte-2">Livraison · {customer.commune || customer.city}</dt>
+              <dd className="text-right tabular-nums">{order.delivery_fee ? formatFcfa(order.delivery_fee) : "offerte"}</dd>
+            </>
+          )}
           <dt className="self-end pt-2 text-texte-2">Total</dt>
           <dd className="pt-2">
             <TwoTone value={formatNumber(order.total)} unit=" F" className="text-right text-[clamp(30px,3.4vw,40px)]" />
@@ -80,12 +87,12 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
         <p className="rounded-[14px] border border-trait-doux bg-encre/40 px-3.5 py-2.5 text-sm text-texte-2">
           {cashOnDelivery ? (
             <>
-              <span className="font-semibold text-ocre">À encaisser à la livraison :</span> {formatFcfa(order.total)}, en espèces.
+              <span className="font-semibold text-ocre">À encaisser {pickup ? "au retrait" : "à la livraison"} :</span> {formatFcfa(order.total)}, en espèces.
             </>
           ) : (
             <>
-              Paiement par <span className="font-semibold text-texte">{PAYMENT_LABEL[order.payment_method]}</span> : envoyez la demande de paiement au{" "}
-              <span className="font-mono">{formatPhone(customer.phone)}</span>.
+              Paiement par <span className="font-semibold text-texte">{PAYMENT_LABEL[order.payment_method]}</span> : le client règle {formatFcfa(order.total)} en indiquant la référence{" "}
+              <span className="font-mono">{order.reference}</span>. S’il n’a pas de numéro à qui payer, envoyez-lui la demande au <span className="font-mono">{formatPhone(customer.phone)}</span>.
             </>
           )}
         </p>
@@ -122,11 +129,18 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
             </a>
           </div>
           <dl className="flex flex-col gap-2.5 border-t border-trait-doux pt-3.5 text-sm">
-            <div>
-              <dt className="text-xs text-texte-3">Livraison</dt>
-              <dd>{[customer.commune, customer.city].filter(Boolean).join(", ")}</dd>
-            </div>
-            {customer.landmark ? (
+            {pickup ? (
+              <div>
+                <dt className="text-xs text-texte-3">Remise</dt>
+                <dd>Le client vient chercher sa commande à la boutique.</dd>
+              </div>
+            ) : (
+              <div>
+                <dt className="text-xs text-texte-3">Livraison</dt>
+                <dd>{[customer.commune, customer.city].filter(Boolean).join(", ")}</dd>
+              </div>
+            )}
+            {customer.landmark && !pickup ? (
               <div>
                 <dt className="text-xs text-texte-3">Repère</dt>
                 <dd>{customer.landmark}</dd>
@@ -165,6 +179,8 @@ function formatHours(hours: number) {
 
 /** Livrée à temps ou en retard, par rapport au délai promis pour la zone (chantier-p5.md §4.3). */
 function DeliveryVerdict({ order }: { order: OrderDetailData }) {
+  // Un retrait n'a pas de délai de livraison promis.
+  if (order.promised_hours === null) return null;
   if (order.delivery_hours === null) {
     if (order.status === "cancelled" || order.status === "delivered") return null;
     return <p className="text-[13px] text-texte-3">Livraison promise sous {order.promised_hours} h pour cette zone, à compter de la commande.</p>;

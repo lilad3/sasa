@@ -119,6 +119,23 @@ function describe(event: ShopActivityEvent): ReactNode {
       return <>{who} a envoyé {d.urgent ? "un mot urgent" : "un mot"} à l’équipe</>;
     case "demo_data_generated":
       return <>{who} a ajouté les données de démonstration</>;
+    case "payout_number_changed":
+      return (
+        <>
+          {who} a modifié le numéro de réception {target}
+          {d.previous_last2 || d.new_last2 ? ` (••${text(d.previous_last2) || "—"} → ••${text(d.new_last2) || "—"})` : ""}
+        </>
+      );
+    case "payout_number_pending":
+      return <>{who} a demandé un nouveau numéro de réception {target} (••{text(d.previous_last2) || "—"} → ••{text(d.new_last2)}) : il servira dans 24 h</>;
+    case "payout_number_activated":
+      return <>Le nouveau numéro de réception {target} (••{text(d.new_last2)}) est en service après 24 h d’attente</>;
+    case "payout_number_cancelled":
+      return <>{who} a annulé le changement du numéro de réception {target}</>;
+    case "payment_methods_changed":
+      return <>{who} a modifié les moyens de paiement proposés</>;
+    case "delivery_settings_changed":
+      return <>{who} a modifié la livraison{event.target?.label ? <> : {target}</> : null}</>;
     case "shop_created":
       return <>{who} a créé la boutique</>;
     default:

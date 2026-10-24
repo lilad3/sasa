@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { callApi, clientIpFrom } from "@/lib/server/api";
 import { COOKIE } from "@/lib/server/cookies";
+import { orderPlace } from "@/lib/format";
 import type { Order, Paginated } from "@/lib/types";
 
 const SLUG = /^[a-z0-9-]{1,60}$/;
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest, { params }: RouteContext<"/app/[
       count: result.data.count,
       // Ni nom ni téléphone : la référence, le montant et la commune suffisent pour l'alerte.
       latest: latest
-        ? { reference: latest.reference, total: latest.total, place: latest.customer.commune || latest.customer.city, created_at: latest.created_at }
+        ? { reference: latest.reference, total: latest.total, place: orderPlace(latest), created_at: latest.created_at }
         : null,
     },
     { headers: NO_STORE },

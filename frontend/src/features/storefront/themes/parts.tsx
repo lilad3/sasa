@@ -144,20 +144,32 @@ export function SectionTitle({ id, children, className }: { id: string; children
 /* ---------- Les parties communes, dans l'ordre choisi par le marchand ---------- */
 
 export function DeliverySection({ shop, tone, className }: { shop: Storefront; tone: Tone; className?: string }) {
+  const groups = deliveryGroups(shop);
   return (
     <Scene as="section" aria-labelledby="titre-livraison" className={cn("flex flex-col gap-3", className)}>
       <SectionTitle id="titre-livraison" className={tone.heading}>
         Livraison et paiement
       </SectionTitle>
-      <ul className="grid gap-2.5 md:grid-cols-3">
-        {deliveryGroups(shop).map((group, index) => (
-          <li key={group.hours} className={cn("th-reveal th-up flex flex-col gap-1 rounded-[18px] p-4", tone.card)} style={{ animationDelay: `${120 + index * 110}ms` }}>
-            <span className="large text-2xl font-extrabold">sous {group.hours} h</span>
-            <span className="text-[14px] font-semibold">{group.where}</span>
-            <span className={cn("text-[13px]", tone.muted)}>livraison dès {formatFcfa(group.from)}</span>
-          </li>
-        ))}
-      </ul>
+      {groups.length > 0 || shop.pickup ? (
+        <ul className="grid gap-2.5 md:grid-cols-3">
+          {groups.map((group, index) => (
+            <li key={group.hours} className={cn("th-reveal th-up flex flex-col gap-1 rounded-[18px] p-4", tone.card)} style={{ animationDelay: `${120 + index * 110}ms` }}>
+              <span className="large text-2xl font-extrabold">sous {group.hours} h</span>
+              <span className="text-[14px] font-semibold">{group.where}</span>
+              <span className={cn("text-[13px]", tone.muted)}>livraison dès {formatFcfa(group.from)}</span>
+            </li>
+          ))}
+          {shop.pickup ? (
+            <li className={cn("th-reveal th-up flex flex-col gap-1 rounded-[18px] p-4", tone.card)} style={{ animationDelay: `${120 + groups.length * 110}ms` }}>
+              <span className="large text-2xl font-extrabold">prête sous {shop.pickup.prep_hours} h</span>
+              <span className="text-[14px] font-semibold">Retrait sur place</span>
+              <span className={cn("text-[13px]", tone.muted)}>{[shop.pickup.address, shop.pickup.hours].filter(Boolean).join(" · ")}</span>
+            </li>
+          ) : null}
+        </ul>
+      ) : (
+        <p className={cn("text-[14px]", tone.muted)}>La boutique ne prend pas de commande pour le moment.</p>
+      )}
       <p className={cn("th-reveal th-up text-[14px]", tone.muted)} style={{ animationDelay: "420ms" }}>
         Paiement : {paymentLine(shop)}.
       </p>

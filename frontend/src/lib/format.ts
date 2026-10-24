@@ -99,3 +99,8 @@ export const ROLE_LABEL: Record<Role, string> = {
   manager: "Gérant",
   seller: "Vendeur",
 };
+
+/** Où va la commande, en un mot : la commune ou la ville, ou « Retrait » quand le client vient la chercher. */
+export function orderPlace(order: { fulfillment: "delivery" | "pickup"; customer: { city: string; commune: string } }) {
+  return order.fulfillment === "pickup" ? "Retrait sur place" : order.customer.commune || order.customer.city;
+}

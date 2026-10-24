@@ -1,7 +1,7 @@
 import "server-only";
 
 import { authed } from "@/lib/server/session";
-import type { ApiKey, Paginated, PlansOverview, SecurityOverview, ShopActivityEvent, ShopSettings } from "@/lib/types";
+import type { ApiKey, DeliverySettings, Paginated, PaymentSettings, PlansOverview, SecurityOverview, ShopActivityEvent, ShopSettings } from "@/lib/types";
 
 // Toutes ces routes sont réservées au propriétaire : Django répond 403 aux autres rôles.
 
@@ -25,4 +25,12 @@ export async function getShopActivity(slug: string, kind: ActivityKind, page: nu
 
 export async function getSecurityOverview(slug: string) {
   return authed<SecurityOverview>(`shops/${encodeURIComponent(slug)}/security-overview`);
+}
+
+export async function getPaymentSettings(slug: string) {
+  return authed<PaymentSettings>(`shops/${encodeURIComponent(slug)}/payment-settings`);
+}
+
+export async function getDelivery(slug: string) {
+  return authed<DeliverySettings>(`shops/${encodeURIComponent(slug)}/delivery`);
 }

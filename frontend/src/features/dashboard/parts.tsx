@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
-import { formatDateTime, formatFcfa, PAYMENT_LABEL, ROLE_LABEL, STATUS_LABEL } from "@/lib/format";
+import { formatDateTime, formatFcfa, orderPlace, PAYMENT_LABEL, ROLE_LABEL, STATUS_LABEL } from "@/lib/format";
 import type { Order, OrderStatus, ShopMembership } from "@/lib/types";
 
 /** Chiffre en deux tons : la valeur en clair, l'unité en retrait. */
@@ -91,7 +91,7 @@ export function OrderRows({ orders, slug, showAllLink = true, empty = "Aucune co
             <span className="font-mono text-[13px]">{order.reference}</span>
             <span className="min-w-0 truncate text-sm">
               {order.customer.name}
-              <span className="text-texte-3"> · {order.customer.commune || order.customer.city}</span>
+              <span className="text-texte-3"> · {orderPlace(order)}</span>
             </span>
             <span className="hidden text-[13px] text-texte-3 md:block">{formatDateTime(order.created_at)}</span>
             <span className="text-right text-sm font-semibold tabular-nums md:text-left">{formatFcfa(order.total)}</span>

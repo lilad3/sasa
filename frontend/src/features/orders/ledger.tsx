@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { StatusPill } from "@/features/dashboard/parts";
-import { formatFcfa, formatNumber, formatToday } from "@/lib/format";
+import { formatFcfa, formatNumber, formatToday, orderPlace } from "@/lib/format";
 import type { Order } from "@/lib/types";
 
 // Le jour et l'heure se lisent à Abidjan, comme les autres dates de l'espace marchand.
@@ -90,7 +90,7 @@ export function OrderLedger({ orders, slug, continuesBefore, continuesAfter, emp
                 >
                   <span className="min-w-0 truncate text-sm md:order-3">
                     {order.customer.name}
-                    <span className="text-texte-3"> · {order.customer.commune || order.customer.city}</span>
+                    <span className="text-texte-3"> · {orderPlace(order)}</span>
                   </span>
                   <span className="text-right text-sm font-semibold tabular-nums md:order-4 md:text-left">{formatFcfa(order.total)}</span>
                   {/* Référence et heure : une ligne sous le client sur téléphone, deux colonnes sur ordinateur. */}

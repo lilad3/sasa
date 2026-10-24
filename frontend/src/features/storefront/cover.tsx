@@ -32,7 +32,17 @@ export function Cover({
   onAdd: (product: PublicProduct) => void;
 }) {
   const accent = ACCENTS[shop.accent];
-  const minFee = Math.min(...shop.delivery_zones.map((zone) => zone.fee));
+  // Sans zone active, Math.min donnerait l'infini : on n'affiche alors que le retrait ou le paiement.
+  const minFee = shop.delivery_zones.length > 0 ? Math.min(...shop.delivery_zones.map((zone) => zone.fee)) : null;
+  const mobile = shop.payment_methods.filter((method) => method.id !== "cash_on_delivery").map((method) => method.label);
+  const facts: [string, string][] = [];
+  if (minFee !== null) facts.push([`dès ${formatNumber(minFee)} F`, "la livraison, selon votre commune"]);
+  if (shop.pickup) facts.push([`prête sous ${shop.pickup.prep_hours}\u00a0h`, "avec le retrait sur place, sans frais"]);
+  facts.push([
+    `${shop.payment_methods.length} façon${shop.payment_methods.length > 1 ? "s" : ""}`,
+    mobile.length > 0 ? `de payer, dont ${mobile.slice(0, 2).join(" et ")}` : "de payer, à la réception",
+  ]);
+  if (shop.delivery_zones.length > 0) facts.push([`${shop.delivery_zones.length} zone${shop.delivery_zones.length > 1 ? "s" : ""}`, "livrée" + (shop.delivery_zones.length > 1 ? "s" : "")]);
   const words = shop.name.toUpperCase().split(/\s+/);
 
   return (
@@ -73,16 +83,13 @@ export function Cover({
           <span>
             {shop.product_count} article{shop.product_count > 1 ? "s" : ""}
           </span>
-          <span>À la livraison ou par Mobile Money</span>
+          <span>{mobile.length > 0 ? (shop.payment_methods.some((method) => method.id === "cash_on_delivery") ? "À la réception ou par Mobile Money" : "Par Mobile Money") : "À la réception"}</span>
         </p>
       </div>
 
       <dl className="absolute top-[clamp(170px,17vw,220px)] right-7 hidden w-[280px] flex-col gap-3.5 rounded-[18px] border border-white/15 bg-nuit/60 p-4 backdrop-blur-md lg:flex">
-        {[
-          [`dès ${formatNumber(minFee)} F`, "la livraison dans le Grand Abidjan, en 24\u00a0h"],
-          [`${shop.payment_methods.length} façons`, "de payer, dont Wave et Orange Money"],
-          [`${shop.delivery_zones.length} zones`, "livrées, du Plateau à Korhogo"],
-        ].map(([value, label], i) => (
+        {facts.map(([value, label], i) => (
+
           <div key={value} className={cn("vit-fade", i > 0 && "border-t border-white/25 pt-2.5")} style={{ "--d": `${0.9 + i * 0.1}s` } as CSSProperties}>
             <dt className="large text-[22px] leading-none font-extrabold" style={{ color: accent.hex }}>
               {value}

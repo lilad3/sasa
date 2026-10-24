@@ -37,4 +37,17 @@ export function voice(role: Role, shopName: string) {
   };
 }
 
+/** Textes de « Paiements » et « Livraison » : écrits au « vous » du propriétaire, sans marque de genre. */
+export const payoutVoice = {
+  payoutChangeWarning:
+    "Vous changez le numéro qui reçoit l’argent de vos clients. Pour votre sécurité, confirmez que c’est bien vous. Nous le notons dans le journal et nous vous écrivons par e-mail.",
+  payoutReplaceWarning:
+    "Un numéro qui en remplace un autre n’est utilisé qu’au bout de 24 h. D’ici là, vos clients voient l’ancien numéro. Vous pouvez annuler l’attente d’un clic.",
+  payoutsMissing: "Ajoutez vos numéros Mobile Money",
+  missingNumberHint: "Sans numéro, le client verra seulement que la boutique le contactera.",
+  deliveryNone: "Ajoutez une zone ou le retrait sur place",
+  keepOnePayment: "Gardez au moins un moyen de paiement",
+  keepOneOption: "Gardez au moins une zone active ou le retrait sur place",
+} as const;
+
 export type Voice = ReturnType<typeof voice>;

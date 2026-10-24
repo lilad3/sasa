@@ -24,6 +24,8 @@ const checkoutSchema = z.object({
     landmark: z.string().trim().max(160),
   }),
   payment_method: z.enum(["cash_on_delivery", "orange_money", "mtn_momo", "moov_money", "wave"]),
+  // Liste fermée ; Django contrôle que le mode est bien proposé par la boutique.
+  fulfillment: z.enum(["delivery", "pickup"]),
   expected_total: z.number().int().min(0),
   // Code de réduction (vide sans code) et canal d'arrivée : Django revérifie et normalise les deux.
   discount_code: z.string().trim().max(20),

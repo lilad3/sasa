@@ -10,10 +10,12 @@ type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
   hint?: string;
   /** Élément posé à droite dans le champ, par exemple « Afficher » pour un mot de passe. */
   trailing?: ReactNode;
+  /** Préfixe fixe posé à gauche dans le champ, par exemple « +225 » devant un numéro. */
+  leading?: ReactNode;
 };
 
 /** Champ en verre : libellé au-dessus, message d'erreur relié par aria-describedby. */
-export function Field({ id, label, error, hint, trailing, className, ...input }: FieldProps) {
+export function Field({ id, label, error, hint, trailing, leading, className, ...input }: FieldProps) {
   const describedBy = [error ? `${id}-erreur` : null, hint ? `${id}-aide` : null].filter(Boolean).join(" ") || undefined;
   return (
     <div className="flex flex-col gap-[7px]">
@@ -31,9 +33,15 @@ export function Field({ id, label, error, hint, trailing, className, ...input }:
             "placeholder:text-texte-3 focus-visible:border-orange focus-visible:shadow-[0_0_0_3px_rgb(255_122_31/0.28)] focus-visible:outline-none",
             error && "border-danger",
             trailing && "pr-24",
+            leading && "pl-[62px]",
             className,
           )}
         />
+        {leading ? (
+          <span aria-hidden className="pointer-events-none absolute top-1/2 left-[15px] -translate-y-1/2 font-mono text-base text-texte-3">
+            {leading}
+          </span>
+        ) : null}
         {trailing ? <div className="absolute top-1/2 right-2 -translate-y-1/2">{trailing}</div> : null}
       </div>
       {hint ? (

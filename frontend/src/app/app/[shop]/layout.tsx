@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { FondNuit } from "@/components/ui/fond-nuit";
 import { Sidebar, SidebarSkeleton } from "@/features/dashboard/sidebar";
 import { NotesBannerFromRoute } from "@/features/notes/banner";
+import { PayoutPendingBannerFromRoute } from "@/features/settings/payout-banner";
 
 /**
  * Espace marchand : le décor vit (la lumière passe derrière le verre cannelé) mais reste voilé pour la lecture des chiffres.
@@ -20,6 +21,10 @@ export default function ShopLayout({ children, params }: LayoutProps<"/app/[shop
           {/* Le mot du patron non lu, épinglé en haut de chaque page jusqu'à « C'est noté ». */}
           <Suspense fallback={null}>
             <NotesBannerFromRoute params={params} />
+          </Suspense>
+          {/* Un nouveau numéro de réception attend ses 24 h : le propriétaire peut encore l'annuler. */}
+          <Suspense fallback={null}>
+            <PayoutPendingBannerFromRoute params={params} />
           </Suspense>
           {children}
         </main>

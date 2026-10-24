@@ -7,6 +7,8 @@ import { formatDateTime, formatFcfa, PAYMENT_LABEL } from "@/lib/format";
 import type { OrderStatus, TrackedOrder } from "@/lib/types";
 
 import { trackOrder, type TrackState } from "./actions";
+import { PickupNote } from "./fulfillment-choice";
+import { PaymentInstructions } from "./payment-instructions";
 
 const initial: TrackState = {};
 
@@ -103,6 +105,9 @@ function OrderStatusCard({ order }: { order: TrackedOrder }) {
   const cancelled = order.status === "cancelled";
   const reached = STEPS.findIndex((step) => step.status === order.status);
   const place = [order.delivery.commune, order.delivery.city].filter(Boolean).join(", ");
+  const pickup = order.fulfillment === "pickup";
+  // Le paiement ne se demande que tant qu'il reste à payer.
+  const toPay = order.status === "pending" || order.status === "confirmed";
 
   return (
     <section aria-label={`Commande ${order.reference}`} className="verre-clair flex flex-col gap-5 rounded-[24px] p-5 md:p-6">
@@ -159,16 +164,20 @@ function OrderStatusCard({ order }: { order: TrackedOrder }) {
           <dd className="large text-2xl font-bold">{formatFcfa(order.total)}</dd>
           <dd className="text-xs text-encre-doux">
             {formatFcfa(order.subtotal)} d’articles
-            {order.discount_amount > 0 ? <>, −{formatFcfa(order.discount_amount)} de remise</> : null}, {order.delivery_fee ? `${formatFcfa(order.delivery_fee)} de livraison` : "livraison offerte"}
+            {order.discount_amount > 0 ? <>, −{formatFcfa(order.discount_amount)} de remise</> : null}, {pickup ? "sans frais de livraison" : order.delivery_fee ? `${formatFcfa(order.delivery_fee)} de livraison` : "livraison offerte"}
           </dd>
           <dd className="text-xs text-encre-doux">{PAYMENT_LABEL[order.payment_method]}</dd>
         </div>
         <div>
-          <dt className="text-xs text-encre-doux">Livraison</dt>
-          <dd className="text-[14px] font-semibold">{place || "—"}</dd>
+          <dt className="text-xs text-encre-doux">{pickup ? "Retrait sur place" : "Livraison"}</dt>
+          <dd className="text-[14px] font-semibold">{pickup ? (order.pickup?.address ?? "—") : place || "—"}</dd>
           <dd className="text-xs text-encre-doux">Mise à jour le {formatDateTime(order.updated_at)}</dd>
         </div>
       </dl>
+      {pickup && order.pickup ? <PickupNote pickup={order.pickup} /> : null}
+      {toPay ? (
+        <PaymentInstructions instructions={order.payment_instructions} total={order.total} fulfillment={order.fulfillment} cash={order.payment_method === "cash_on_delivery"} />
+      ) : null}
     </section>
   );
 }

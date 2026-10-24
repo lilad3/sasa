@@ -60,11 +60,15 @@ export type Period = "7d" | "30d" | "90d";
 export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
 export type PaymentMethod = "cash_on_delivery" | "orange_money" | "mtn_momo" | "moov_money" | "wave";
 
+/** Comment la commande est remise : à domicile ou retirée à la boutique. */
+export type Fulfillment = "delivery" | "pickup";
+
 export type Order = {
   id: string;
   reference: string;
   status: OrderStatus;
   payment_method: PaymentMethod;
+  fulfillment: Fulfillment;
   customer: { name: string; phone: string; city: string; commune: string; landmark: string };
   items: { product_id: string; name: string; unit_price: number; quantity: number; line_total: number }[];
   subtotal: number;
@@ -272,8 +276,8 @@ export type OrderDetail = Order & {
   confirmed_at: string | null;
   shipped_at: string | null;
   delivered_at: string | null;
-  /** Le délai promis pour sa zone, et le temps réel de la commande à la livraison (en heures). */
-  promised_hours: number;
+  /** Le délai promis pour sa zone, et le temps réel de la commande à la livraison (en heures). Null pour un retrait. */
+  promised_hours: number | null;
   delivery_hours: number | null;
   notes: OrderNote[];
 };
@@ -405,8 +409,12 @@ export type Storefront = {
   popular: string[];
   /** La version en ligne de « Ma boutique », sinon Essentiel. */
   design: StorefrontDesign;
+  /** Seulement les zones actives de la boutique ; vide si elle ne livre pas. */
   delivery_zones: DeliveryZone[];
+  /** Seulement les moyens actifs, jamais un numéro : il n'est donné qu'après la commande. */
   payment_methods: { id: PaymentMethod; label: string }[];
+  /** Le retrait sur place ; null s'il est éteint. */
+  pickup: PickupPlace | null;
 };
 
 export type PublicProduct = {
@@ -424,7 +432,31 @@ export type PublicProduct = {
   max_quantity: number;
 };
 
-export type PlacedOrder = { reference: string; total: number; status: OrderStatus; discount_amount: number };
+export type PickupPlace = { address: string; hours: string; prep_hours: number };
+
+/** Ce que le client doit faire pour payer, écrit par le serveur : le front affiche `text` tel quel. */
+export type PaymentInstructions = {
+  method: PaymentMethod;
+  label: string;
+  /** Null tant que la boutique n'a pas donné de numéro (le texte le dit). */
+  number: string | null;
+  number_display: string | null;
+  holder: string | null;
+  amount: number;
+  reference: string;
+  text: string;
+};
+
+export type PlacedOrder = {
+  reference: string;
+  total: number;
+  status: OrderStatus;
+  discount_amount: number;
+  fulfillment?: Fulfillment;
+  payment_method?: PaymentMethod;
+  /** Null pour le paiement à la livraison. */
+  payment_instructions?: PaymentInstructions | null;
+};
 
 /** Suivi d'une commande par le client : l'état seulement, ni adresse ni téléphone (contrat §4.4). */
 export type TrackedOrder = {
@@ -438,6 +470,11 @@ export type TrackedOrder = {
   delivery_fee: number;
   total: number;
   payment_method: PaymentMethod;
+  fulfillment: Fulfillment;
+  /** Seulement tant que la commande est à payer (en attente ou confirmée). */
+  payment_instructions: PaymentInstructions | null;
+  /** Le lieu de retrait, lu en direct, pour un retrait. */
+  pickup: PickupPlace | null;
   items: { name: string; quantity: number }[];
   delivery: { city: string; commune: string };
 };
@@ -528,4 +565,51 @@ export type SecurityOverview = {
   suspicious: { user_id: string; name: string; is_you: boolean; type: string; label: string; count: number; last_at: string }[];
   last_export: { at: string; by: string; rows: number | null } | null;
   sensitive_events_7d: number;
+  /** Un numéro de réception changé ou mis en attente dans les 7 derniers jours (jamais le numéro lui-même). */
+  payout_changed_7d: { count: number; last_at: string } | null;
+  /** Les numéros qui attendent leurs 24 h : deux derniers chiffres seulement. */
+  payout_pending: { method: PaymentMethod; label: string; since: string; activates_at: string; new_last2: string | null }[];
+};
+
+/* ---------- Paiements et livraison de la boutique (propriétaire) ---------- */
+
+export type PaymentSetting = {
+  method: PaymentMethod;
+  label: string;
+  short: string;
+  kind: "cash" | "mobile_money";
+  enabled: boolean;
+  /** Le numéro que voient les clients en ce moment (l'ancien pendant une attente). */
+  payout_number: string;
+  payout_name: string;
+  example: string | null;
+  /** Un numéro qui en remplace un autre attend 24 h ; le propriétaire peut l'annuler. */
+  pending: { payout_number: string; payout_name: string; since: string; activates_at: string } | null;
+};
+
+export type PaymentSettings = {
+  summary: string;
+  missing_numbers: number;
+  pending_count: number;
+  methods: PaymentSetting[];
+};
+
+export type ShopZone = {
+  id: string;
+  city: string;
+  commune: string;
+  label: string;
+  fee: number;
+  delay_hours: number;
+  is_active: boolean;
+  position: number;
+  /** La zone a déjà servi à une commande : on la désactive, on ne la supprime pas. */
+  used: boolean;
+};
+
+export type DeliverySettings = {
+  summary: string;
+  limits: { zones: number; count: number; fee_max: number; delay_min: number; delay_max: number; pickup_prep_max: number };
+  zones: ShopZone[];
+  pickup: { enabled: boolean; address: string; hours: string; prep_hours: number };
 };

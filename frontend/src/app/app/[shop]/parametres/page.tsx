@@ -4,8 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { ApiKeyForm, SCOPE_LABEL } from "@/features/settings/api-key-form";
-import { type ActivityKind, getApiKeys, getPlans, getShopActivity, getShopSettings } from "@/features/settings/data";
+import { type ActivityKind, getApiKeys, getDelivery, getPaymentSettings, getPlans, getShopActivity, getShopSettings } from "@/features/settings/data";
 import { ShopJournal } from "@/features/settings/journal";
+import { SetupLinks } from "@/features/settings/setup-links";
 import { SecurityCard, SecurityCardSkeleton } from "@/features/settings/security-card";
 import { PlanPicker } from "@/features/settings/plan-picker";
 import { ProfileForm } from "@/features/settings/profile-form";
@@ -133,10 +134,12 @@ function logoUrl(slug: string, version: string | null) {
 }
 
 async function ShopTab({ slug, logoVersion }: { slug: string; logoVersion: string | null }) {
-  const settings = await getShopSettings(slug);
+  const [settings, payments, delivery] = await Promise.all([getShopSettings(slug), getPaymentSettings(slug), getDelivery(slug)]);
   if (!settings.ok) fail(settings.problem.detail);
   return (
     <>
+      {/* Si l'un des deux résumés ne charge pas, la ligne reste là et dit « À ouvrir » : la page, elle, s'ouvre. */}
+      <SetupLinks slug={slug} payments={payments.ok ? payments.data : null} delivery={delivery.ok ? delivery.data : null} />
       <ProfileForm settings={settings.data} />
       <LogoForm slug={slug} logoUrl={logoUrl(slug, logoVersion)} />
       <VacationPanel settings={settings.data} tomorrow={tomorrowInAbidjan()} />
