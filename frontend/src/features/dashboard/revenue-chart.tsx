@@ -206,7 +206,7 @@ export function RevenueChart({ series, previous }: { series: DayPoint[]; previou
 
       <details className="text-sm">
         <summary className="cursor-pointer text-[12.5px] text-texte-3 hover:text-texte">Voir les chiffres jour par jour</summary>
-        <div className="mt-2 max-h-[260px] overflow-y-auto rounded-[14px] border border-trait-doux">
+        <div className="mt-2 sans-barre max-h-[260px] overflow-y-auto rounded-[14px] border border-trait-doux">
           <table className="w-full text-left text-[13px]">
             <thead className="sticky top-0 bg-nuit-2 text-xs text-texte-3">
               <tr>

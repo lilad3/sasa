@@ -88,7 +88,7 @@ async function SettingsFromRoute({ params, searchParams }: Pick<PageProps<"/app/
         <p className="max-w-[46ch] text-[13px] text-texte-3">Les actions qui engagent la boutique (équipe, plan, clés API) demandent de confirmer que c’est bien vous.</p>
       </header>
 
-      <nav aria-label="Rubriques des paramètres" className="vitre col-span-full flex gap-1 overflow-x-auto rounded-[16px] p-1.5">
+      <nav aria-label="Rubriques des paramètres" className="vitre sans-barre col-span-full flex gap-1 overflow-x-auto rounded-[16px] p-1.5">
         {TABS.map((item) => (
           <Link
             key={item.id}

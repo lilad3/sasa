@@ -69,7 +69,7 @@ export async function Sidebar({ slug }: { slug: string }) {
     <aside
       aria-label="Espace marchand"
       // Compacte (la hauteur de son contenu) et collée : elle reste à portée pendant qu'on fait défiler la page.
-      className="vitre sticky top-3 z-10 col-span-4 flex items-center gap-2.5 overflow-x-auto rounded-[20px] p-2 md:top-[18px] md:col-span-8 lg:top-5 lg:col-span-2 lg:max-h-[calc(100dvh-2.5rem)] lg:flex-col lg:items-stretch lg:gap-4 lg:self-start lg:overflow-x-hidden lg:overflow-y-auto lg:rounded-[26px] lg:px-3 lg:py-4"
+      className="vitre sans-barre sticky top-3 z-10 col-span-4 flex items-center gap-2.5 overflow-x-auto rounded-[20px] p-2 md:top-[18px] md:col-span-8 lg:top-5 lg:col-span-2 lg:max-h-[calc(100dvh-2.5rem)] lg:flex-col lg:items-stretch lg:gap-4 lg:self-start lg:overflow-x-hidden lg:overflow-y-auto lg:rounded-[26px] lg:px-3 lg:py-4"
     >
       <Link href={`/app/${slug}`} className="shrink-0 px-1.5 lg:px-2 lg:pt-1">
         <Logo />

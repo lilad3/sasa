@@ -170,7 +170,7 @@ async function CustomersFromRoute({ params, searchParams }: Pick<PageProps<"/app
       ) : null}
 
       <section aria-label="Liste des clients" className="vitre col-span-full flex flex-col gap-3 rounded-[26px] px-[18px] pt-3 pb-4">
-        <nav aria-label="Filtrer" className="flex gap-1 overflow-x-auto border-b border-trait-doux pb-2">
+        <nav aria-label="Filtrer" className="sans-barre flex gap-1 overflow-x-auto border-b border-trait-doux pb-2">
           {SEGMENTS.map((segment) => (
             <Link
               key={segment.value}
