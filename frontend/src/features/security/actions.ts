@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { describeProblem, type FormError, messageFor, PASSWORD_RULES } from "@/lib/messages";
+import { confirmIdentity } from "@/lib/server/reauth";
 import { authedMutation } from "@/lib/server/session";
 import type { MfaSetup, Problem } from "@/lib/types";
 
@@ -14,8 +15,10 @@ export type MfaState = {
   step?: "scan" | "codes" | "reauth";
   setup?: { qr: string; secret: string };
   codes?: string[];
+  /** Code à 6 chiffres déjà saisi, gardé pendant qu'on redemande le mot de passe avant de confirmer l'activation. */
+  code?: string;
   /** L'action grave qui attend la confirmation renforcée. */
-  intent?: "regenerate" | "disable";
+  intent?: "regenerate" | "disable" | "setup" | "confirm";
   error?: FormError;
   codeError?: string;
   done?: string;
@@ -35,16 +38,24 @@ function isWrongCode(problem: Problem) {
 
 export async function mfaAction(previous: MfaState, formData: FormData): Promise<MfaState> {
   const intent = formData.get("intent");
-  if (intent === "setup") return startSetup();
+  if (intent === "setup") return startSetup(formData);
   if (intent === "confirm") return confirmSetup(previous, formData);
   if (intent === "regenerate" || intent === "disable") return sensitiveAction(intent, formData);
   // « Annuler » ou « J'ai rangé mes codes » : retour à l'état de départ, sans appel à l'API.
   return {};
 }
 
-async function startSetup(): Promise<MfaState> {
+/**
+ * Activer la 2FA exige la confirmation renforcée. Le compte n'a pas encore de 2FA : elle se fait au mot de passe.
+ * Premier envoi sans preuve ; si Django répond reauth_required, on demande le mot de passe puis on rejoue.
+ */
+async function startSetup(formData: FormData): Promise<MfaState> {
+  const proof = await confirmIdentity(formData);
+  if (!proof.ok) return { step: "reauth", intent: "setup", codeError: proof.fieldError, error: proof.error };
+
   const result = await authedMutation<MfaSetup>("me/2fa/setup", "POST");
   if (!result.ok) {
+    if (result.problem.code === "reauth_required") return { step: "reauth", intent: "setup" };
     if (result.problem.code === "mfa_already_enabled") refresh();
     return { error: describeProblem(result.problem) };
   }
@@ -52,12 +63,16 @@ async function startSetup(): Promise<MfaState> {
 }
 
 async function confirmSetup(previous: MfaState, formData: FormData): Promise<MfaState> {
-  const scan = { step: previous.step, setup: previous.setup };
+  const scan = { step: "scan" as const, setup: previous.setup };
   const parsed = Code.safeParse(formData.get("code") ?? "");
   if (!parsed.success) return { ...scan, codeError: parsed.error.issues[0]?.message };
 
+  const proof = await confirmIdentity(formData);
+  if (!proof.ok) return { step: "reauth", intent: "confirm", setup: previous.setup, code: parsed.data, codeError: proof.fieldError, error: proof.error };
+
   const result = await authedMutation<{ recovery_codes: string[] }>("me/2fa/confirm", "POST", { code: parsed.data });
   if (!result.ok) {
+    if (result.problem.code === "reauth_required") return { step: "reauth", intent: "confirm", setup: previous.setup, code: parsed.data };
     if (isWrongCode(result.problem)) return { ...scan, codeError: WRONG_CODE };
     if (result.problem.code === "mfa_setup_required") return { error: describeProblem(result.problem) };
     return { ...scan, error: describeProblem(result.problem) };
