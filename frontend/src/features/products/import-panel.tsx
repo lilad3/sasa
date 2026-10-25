@@ -139,7 +139,7 @@ export function ImportPanel({ slug }: { slug: string }) {
                   </span>{" "}
                   Rien n’est importé tant qu’il en reste une : corrigez le fichier, choisissez-le à nouveau, puis vérifiez.
                 </p>
-                <ul className="flex max-h-[340px] flex-col overflow-y-auto">
+                <ul className="sans-barre flex max-h-[340px] flex-col overflow-y-auto">
                   {report.errors.map((error, index) => (
                     <li key={`${error.line}-${error.field}-${index}`} className="grid grid-cols-[64px_1fr] gap-x-3 border-b border-trait-doux py-2 text-[13px] last:border-0">
                       <span className="font-mono text-texte-3">{error.line > 0 ? `ligne ${error.line}` : "fichier"}</span>

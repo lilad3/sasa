@@ -110,7 +110,7 @@ async function OrdersFromRoute({ params, searchParams }: Pick<PageProps<"/app/[s
         </div>
       </header>
 
-      <nav aria-label="Filtrer par statut" className="col-span-full flex gap-1 overflow-x-auto rounded-[16px] border border-trait-doux bg-encre/50 p-1">
+      <nav aria-label="Filtrer par statut" className="sans-barre col-span-full flex gap-1 overflow-x-auto rounded-[16px] border border-trait-doux bg-encre/50 p-1">
         <TabLink href={listHref(shop, { q: filters.q, page: 1 })} active={!filters.status} label="Toutes" count={counts.ok ? total : undefined} />
         {TABS.map((tab) => (
           <TabLink

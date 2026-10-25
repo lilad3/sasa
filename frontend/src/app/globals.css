@@ -58,6 +58,14 @@
 }
 
 /* Vitre : bloc posé dans le décor. */
+/* Défilement sans barre grise : la molette, le doigt et le clavier fonctionnent toujours. */
+@utility sans-barre {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility vitre {
   background: rgb(246 240 231 / 0.06);
   border: 1px solid var(--color-trait);

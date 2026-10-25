@@ -116,7 +116,7 @@ async function ProductsFromRoute({ params, searchParams }: Pick<PageProps<"/app/
       ) : null}
 
       <div className="col-span-full flex flex-wrap items-center justify-between gap-2.5">
-        <nav aria-label="Filtrer par stock" className="flex gap-1 overflow-x-auto rounded-[16px] border border-trait-doux bg-encre/50 p-1">
+        <nav aria-label="Filtrer par stock" className="sans-barre flex gap-1 overflow-x-auto rounded-[16px] border border-trait-doux bg-encre/50 p-1">
           <TabLink href={listHref(shop, { ...filters, stock: undefined, page: 1 })} active={!filters.stock} label="Tous" count={summary.count} />
           {STOCK_TABS.map((tab) => (
             <TabLink
