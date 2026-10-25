@@ -31,6 +31,11 @@ ALERTS = {
         "Double authentification désactivée",
         "La double authentification vient d'être désactivée sur votre compte.",
     ),
+    "mfa_enabled": (
+        "Double authentification activée",
+        "La double authentification vient d'être activée sur votre compte. Vos autres sessions ont été fermées. "
+        "Ce n'était pas vous ? Quelqu'un a peut-être accès à votre compte : changez votre mot de passe tout de suite.",
+    ),
     "api_key_created": (
         "Une clé API a été créée pour votre boutique",
         "Une clé API vient d'être créée. Elle permet à un autre logiciel de lire les données de votre boutique "

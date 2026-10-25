@@ -152,6 +152,8 @@ En développement, les e-mails s'affichent dans le terminal de Django.
 - 10 **codes de secours** au format `xxxx-xxxx`, à usage unique, insensibles à la casse et aux tirets. Seule leur empreinte HMAC est stockée, et ils sont affichés une seule fois. Utiliser un code de secours est journalisé et déclenche une alerte e-mail.
 - Le `mfa_token` de l'étape 1 est signé, dure 5 min et sert une seule fois. Il accepte **3 essais** de code ; au-delà, l'utilisateur recommence depuis le mot de passe. Chaque code faux compte aussi dans le verrou du compte (§2.4).
 - Activation : `setup`, qui renvoie l'URI `otpauth://`, le secret (pour une saisie à la main) et un QR en SVG, puis `confirm` avec un premier code valide. La 2FA n'est active qu'après cette confirmation.
+- **Activer la 2FA est une action grave** (correctif A2-F1) : `setup` **et** `confirm` exigent une confirmation renforcée (§2.7), sinon `403 reauth_required`. Sans cela, une session volée activerait la 2FA à la place du titulaire, recevrait les codes de secours et l'expulserait durablement. Le front demande donc la confirmation (mot de passe, la 2FA n'étant pas encore active) **avant** d'afficher l'écran de 2FA, puis rejoue `setup`.
+- À l'activation réussie, Django ferme **toutes les autres sessions** du compte (la session courante est gardée, raison `mfa_enabled`), journalise `mfa_enabled` (avec le nombre de sessions fermées, `others`) et envoie au titulaire l'alerte e-mail « Double authentification activée », qui l'invite à changer son mot de passe si ce n'était pas lui.
 - Désactiver la 2FA demande une confirmation renforcée, qui exige elle-même un code quand la 2FA est active.
 - Un administrateur active sa 2FA depuis le serveur : `python manage.py setup_2fa <email>`, qui affiche le QR dans le terminal.
 
@@ -162,6 +164,7 @@ Avant une action grave, Django exige une confirmation récente, avec la preuve l
 Actions concernées :
 - exporter les ventes ;
 - créer une clé API ;
+- activer la 2FA (`setup` et `confirm`) ;
 - désactiver la 2FA ;
 - régénérer les codes de secours ;
 - changer le mot de passe depuis le compte (le mot de passe actuel fait office de confirmation) ;
@@ -475,8 +478,8 @@ type TokenPair = {
 | P2 | `DELETE /me/sessions/{id}` | `204`, révocation immédiate |
 | P2 | `POST /me/sessions/revoke-others` | `204`, « déconnecter partout ailleurs » |
 | P2 | `GET /me/security-events` | `SecurityEvent[]`, paginé |
-| P2 | `POST /me/2fa/setup` | `{ otpauth_uri, secret, qr_svg }` · `409 mfa_already_enabled` si déjà active |
-| P2 | `POST /me/2fa/confirm` | `{ code }` → `{ recovery_codes: string[] }` affichés une fois · `409 mfa_setup_required` sans `setup` préalable |
+| P2 | `POST /me/2fa/setup` | `{ otpauth_uri, secret, qr_svg }` · `403 reauth_required` sans confirmation renforcée récente · `409 mfa_already_enabled` si déjà active |
+| P2 | `POST /me/2fa/confirm` | `{ code }` → `{ recovery_codes: string[] }` affichés une fois · `403 reauth_required` sans confirmation renforcée récente · `409 mfa_setup_required` sans `setup` préalable · ferme les autres sessions et envoie l'alerte e-mail |
 | P2 | `POST /me/2fa/disable` | Confirmation renforcée (avec code) → `204` + alerte e-mail |
 | P2 | `POST /me/2fa/recovery-codes` | Confirmation renforcée → nouveaux codes, les anciens deviennent invalides |
 

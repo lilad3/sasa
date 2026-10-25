@@ -72,6 +72,7 @@ class UserSession(models.Model):
         PASSWORD_RESET = "password_reset", "Mot de passe réinitialisé"
         REFRESH_REUSE = "refresh_reuse", "Refresh token réutilisé (vol probable)"
         BY_USER = "revoked_by_user", "Fermée depuis la liste des sessions"
+        MFA_ENABLED = "mfa_enabled", "Double authentification activée"
         ACCESS_REMOVED = "access_removed", "Retiré de sa boutique ou nouveau mot de passe provisoire"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

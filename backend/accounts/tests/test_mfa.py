@@ -4,16 +4,19 @@ from unittest import mock
 from django.core import mail
 
 from accounts.models import RecoveryCode, TOTPDevice, UserSession
+from accounts.sessions import open_session
 from audit.models import AuditEvent
-from core.testing import ApiTestCase, enable_mfa, make_user, totp, wrong_code
+from core.testing import PASSWORD, ApiTestCase, enable_mfa, make_user, totp, wrong_code
 
 MFA_URL = "/api/v1/auth/login/2fa"
+REAUTH_URL = "/api/v1/auth/reauth"
 
 
 class MfaSetupTests(ApiTestCase):
     def setUp(self):
         self.user = make_user("awa@example.ci")
         self.authenticate(self.user)
+        self.assertEqual(self.client.post(REAUTH_URL, {"password": PASSWORD}).status_code, 200)
 
     def test_setup_then_first_code_enables_2fa(self):
         setup = self.client.post("/api/v1/me/2fa/setup").json()
@@ -26,6 +29,38 @@ class MfaSetupTests(ApiTestCase):
         self.assertEqual(len(confirm.json()["recovery_codes"]), 10)
         self.assertTrue(self.client.get("/api/v1/me").json()["mfa_enabled"])
         self.assertTrue(AuditEvent.objects.filter(action="mfa_enabled", actor_id=self.user.pk).exists())
+
+    def test_stolen_session_cannot_start_the_setup(self):
+        UserSession.objects.update(reauth_until=None)
+
+        self.assertProblem(self.client.post("/api/v1/me/2fa/setup"), 403, "reauth_required")
+        self.assertFalse(TOTPDevice.objects.filter(user=self.user).exists())
+
+    def test_confirm_also_needs_a_recent_confirmation(self):
+        setup = self.client.post("/api/v1/me/2fa/setup").json()
+        UserSession.objects.update(reauth_until=None)
+
+        response = self.client.post("/api/v1/me/2fa/confirm", {"code": totp(setup["secret"])})
+        self.assertProblem(response, 403, "reauth_required")
+        self.assertFalse(TOTPDevice.objects.filter(confirmed_at__isnull=False).exists())
+
+    def test_enabling_alerts_the_owner_and_closes_the_other_sessions(self):
+        open_session(self.user, None)
+        open_session(self.user, None)
+        setup = self.client.post("/api/v1/me/2fa/setup").json()
+        mail.outbox.clear()
+
+        self.assertEqual(self.client.post("/api/v1/me/2fa/confirm", {"code": totp(setup["secret"])}).status_code, 200)
+
+        sessions = UserSession.objects.filter(user=self.user)
+        self.assertEqual(sessions.filter(revoked_at__isnull=True).count(), 1)  # la session courante seule
+        self.assertEqual(sessions.filter(revoked_reason="mfa_enabled").count(), 2)
+        self.assertEqual(self.client.get("/api/v1/me").status_code, 200)
+        self.assertEqual([m.subject for m in mail.outbox], ["Double authentification activée"])
+        self.assertEqual(mail.outbox[0].to, [self.user.email])
+        self.assertIn("Ce n'était pas vous", mail.outbox[0].body)
+        event = AuditEvent.objects.get(action="mfa_enabled")
+        self.assertEqual(event.metadata["others"], 2)
 
     def test_wrong_first_code_does_not_enable(self):
         setup = self.client.post("/api/v1/me/2fa/setup").json()
