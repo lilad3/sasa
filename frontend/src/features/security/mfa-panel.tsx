@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { ReauthFields } from "@/components/ui/reauth-fields";
 import { FormAlert } from "@/features/auth/form-alert";
 import { cn } from "@/lib/cn";
 import { formatWait } from "@/lib/messages";
@@ -54,7 +55,9 @@ export function MfaPanel({ enabled, demo }: { enabled: boolean; demo: boolean })
           <ScanStep qr={state.setup.qr} secret={state.setup.secret} codeError={state.codeError} pending={pending} />
         ) : state.step === "codes" && state.codes ? (
           <RecoveryCodes codes={state.codes} />
-        ) : state.step === "reauth" && state.intent ? (
+        ) : state.step === "reauth" && (state.intent === "setup" || state.intent === "confirm") ? (
+          <PasswordStep intent={state.intent} code={state.code} codeError={state.codeError} pending={pending} />
+        ) : state.step === "reauth" && (state.intent === "regenerate" || state.intent === "disable") ? (
           <ReauthStep intent={state.intent} codeError={state.codeError} pending={pending} />
         ) : enabled ? (
           <>
@@ -187,6 +190,29 @@ function RecoveryCodes({ codes }: { codes: string[] }) {
       <Button type="submit" name="intent" value="reset" disabled={!stored} className="self-start">
         Terminer
       </Button>
+    </div>
+  );
+}
+
+/** Compte sans 2FA : la confirmation renforcée se fait au mot de passe, avant l'écran d'activation. */
+function PasswordStep({ intent, code, codeError, pending }: { intent: "setup" | "confirm"; code?: string; codeError?: string; pending: boolean }) {
+  return (
+    <div className="flex flex-col gap-3.5">
+      {code ? <input type="hidden" name="code" value={code} /> : null}
+      <ReauthFields
+        mfaEnabled={false}
+        what="activer la double authentification"
+        message="Pour activer la double authentification, confirmez d’abord votre mot de passe."
+        error={codeError}
+      />
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Button type="submit" name="intent" value={intent} pending={pending} pendingLabel="Vérification…">
+          Confirmer
+        </Button>
+        <button type="submit" name="intent" value="reset" formNoValidate className="rounded-full px-4 py-2.5 text-sm text-texte-3 hover:text-texte">
+          Annuler
+        </button>
+      </div>
     </div>
   );
 }
