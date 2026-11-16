@@ -20,7 +20,7 @@ export function NameVipForm({ slug }: { slug: string }) {
   return (
     <details className="group relative" open={state.error || state.fields ? true : undefined}>
       <summary className="bouton-contour flex cursor-pointer list-none items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-        <svg viewBox="0 0 24 24" className="size-4 text-ocre" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg viewBox="0 0 24 24" className="size-4 text-alerte" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M12 4l2.3 4.8 5.2.7-3.8 3.6.9 5.2L12 15.8l-4.6 2.5.9-5.2-3.8-3.6 5.2-.7z" />
         </svg>
         Nommer un fidèle

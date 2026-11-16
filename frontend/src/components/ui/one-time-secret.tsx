@@ -33,7 +33,7 @@ export function OneTimeSecret({ label, value, children }: { label: string; value
 
   return (
     <div ref={box} tabIndex={-1} role="status" className="flex flex-col gap-3 rounded-[18px] border border-ocre/40 bg-ocre/[0.08] p-4 outline-none">
-      <p className="text-[13px] font-semibold text-ocre">{label}</p>
+      <p className="text-[13px] font-semibold text-alerte">{label}</p>
       <div className="flex flex-wrap items-center gap-2">
         <code className="min-w-0 flex-1 rounded-xl bg-encre/60 px-3 py-2.5 font-mono text-[15px] tracking-wide break-all text-texte select-all">{value}</code>
         <button type="button" onClick={copy} className="bouton-nuit rounded-full px-4 py-2 text-sm font-bold">

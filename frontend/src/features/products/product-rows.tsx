@@ -29,7 +29,7 @@ export function ProductThumb({ name, src, className }: { name: string; src: stri
 export function StockLevel({ stock, threshold }: { stock: number; threshold: number }) {
   if (stock === 0) {
     return (
-      <span className="inline-flex items-center rounded-full border border-ocre/45 bg-nuit/70 px-2.5 py-0.5 text-[12.5px] font-semibold whitespace-nowrap text-ocre">
+      <span className="inline-flex items-center rounded-full border border-ocre/45 bg-nuit/70 px-2.5 py-0.5 text-[12.5px] font-semibold whitespace-nowrap text-alerte">
         Rupture
       </span>
     );

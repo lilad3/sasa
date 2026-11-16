@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { Dashboard, DashboardSkeleton, periodFromParam } from "@/features/dashboard/dashboard";
 
-export const metadata: Metadata = { title: "Vue d'ensemble" };
+export const metadata: Metadata = { title: "Accueil" };
 
 export default function ShopDashboardPage({ params, searchParams }: PageProps<"/app/[shop]">) {
   return (

@@ -60,7 +60,7 @@ export function PlanPicker({ slug, overview, mfaEnabled }: { slug: string; overv
                   <span className="text-sm text-texte-3"> F / mois</span>
                 </p>
               </div>
-              {current ? <span className="rounded-full bg-orange px-2.5 py-1 text-[12px] font-bold text-encre">Votre plan</span> : null}
+              {current ? <span className="rounded-full bg-orange px-2.5 py-1 text-[12px] font-bold text-sur-orange">Votre plan</span> : null}
             </div>
             <ul className="flex flex-1 flex-col gap-1.5 text-[13.5px] text-texte-2">
               {features(plan).map((feature) => (

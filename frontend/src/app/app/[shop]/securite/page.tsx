@@ -39,7 +39,7 @@ async function SecurityFromRoute({ params, searchParams }: Pick<PageProps<"/app/
 
       {me.data.is_demo ? (
         <p role="note" className="col-span-full rounded-[18px] border border-ocre/35 bg-ocre/10 px-4 py-3 text-sm">
-          <span className="font-semibold text-ocre">Compte de démonstration.</span> Son mot de passe est public : il ne peut changer ni de mot de passe ni de
+          <span className="font-semibold text-alerte">Compte de démonstration.</span> Son mot de passe est public : il ne peut changer ni de mot de passe ni de
           double authentification. Les sessions et le journal fonctionnent normalement.
         </p>
       ) : null}

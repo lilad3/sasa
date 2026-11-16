@@ -81,7 +81,7 @@ async function CustomersFromRoute({ params, searchParams }: Pick<PageProps<"/app
   const tiles: { segment: CustomerSegment; label: string; value: number; foot: string; tone: string }[] = [
     { segment: "all", label: "Actifs sur 30 jours", value: s.active_30d, foot: activeChange === null ? `${formatNumber(s.total)} clients en tout` : `${formatVariation(activeChange)} vs les 30 jours d’avant`, tone: "" },
     { segment: "loyal", label: "Fidèles", value: s.loyal, foot: `${s.loyalty_threshold} commandes livrées ou plus, ou nommés`, tone: "text-orange-clair" },
-    { segment: "win_back", label: "À relancer", value: s.win_back, foot: "bons clients silencieux depuis 45 jours", tone: "text-ocre" },
+    { segment: "win_back", label: "À relancer", value: s.win_back, foot: "bons clients silencieux depuis 45 jours", tone: "text-alerte" },
     { segment: "at_risk", label: "À risque", value: s.at_risk, foot: "annulent ou refusent à la livraison", tone: "text-danger-clair" },
   ];
 

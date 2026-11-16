@@ -1,8 +1,7 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
-import { formatDateTime, formatFcfa, PAYMENT_LABEL, ROLE_LABEL, STATUS_LABEL } from "@/lib/format";
+import { formatDateTime, formatNumber, PAYMENT_LABEL, ROLE_LABEL, STATUS_LABEL } from "@/lib/format";
 import type { Order, OrderStatus, ShopMembership } from "@/lib/types";
 
 /** Chiffre en deux tons : la valeur en clair, l'unité en retrait. */
@@ -56,11 +55,13 @@ export function RoleBadge({ membership }: { membership: ShopMembership }) {
   );
 }
 
+// Couleurs des états (maquette du 16/11/2026) : ce qui attend le marchand en orange, ce qui roule en indigo,
+// ce qui est fini en retrait, l'annulation en corail.
 export const STATUS_TONE: Record<OrderStatus, string> = {
-  pending: "text-alerte",
-  confirmed: "text-indigo-clair",
-  shipped: "text-texte-2",
-  delivered: "text-orange-clair",
+  pending: "text-orange-clair",
+  confirmed: "text-texte",
+  shipped: "text-indigo-clair",
+  delivered: "text-texte-3",
   cancelled: "text-danger",
 };
 
@@ -73,42 +74,53 @@ export function StatusPill({ status }: { status: OrderStatus }) {
   );
 }
 
-type OrderRowsProps = { orders: Order[]; slug: string; showAllLink?: boolean; empty?: ReactNode };
-
-/** Liste de commandes : chaque ligne ouvre la fiche de la commande. */
-export function OrderRows({ orders, slug, showAllLink = true, empty = "Aucune commande pour l’instant." }: OrderRowsProps) {
-  if (orders.length === 0) {
-    return <div className="rounded-[16px] border border-dashed border-trait p-4 text-sm text-texte-3">{empty}</div>;
-  }
+/** Les dernières commandes en tableau (maquette du 16/11/2026) : la référence ouvre la fiche, toute la ligne est cliquable. */
+export function OrderTable({ orders, slug }: { orders: Order[]; slug: string }) {
   return (
-    <ul className="flex flex-col">
-      {orders.map((order) => (
-        <li key={order.id} className="border-b border-trait-doux last:border-0">
-          <Link
-            href={`/app/${slug}/commandes/${order.id}`}
-            className="-mx-2 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 rounded-xl px-2 py-3 transition-colors hover:bg-white/[0.05] md:grid-cols-[110px_1fr_140px_120px_130px]"
-          >
-            <span className="font-mono text-[13px]">{order.reference}</span>
-            <span className="min-w-0 truncate text-sm">
-              {order.customer.name}
-              <span className="text-texte-3"> · {order.customer.commune || order.customer.city}</span>
-            </span>
-            <span className="hidden text-[13px] text-texte-3 md:block">{formatDateTime(order.created_at)}</span>
-            <span className="text-right text-sm font-semibold tabular-nums md:text-left">{formatFcfa(order.total)}</span>
-            <span className="flex items-center justify-between gap-2 md:justify-start">
-              <StatusPill status={order.status} />
-              <span className="text-xs text-texte-3 md:hidden">{PAYMENT_LABEL[order.payment_method]}</span>
-            </span>
-          </Link>
-        </li>
-      ))}
-      {showAllLink ? (
-        <li className="pt-3">
-          <Link href={`/app/${slug}/commandes`} className="text-sm font-semibold text-sable underline decoration-sable/40 underline-offset-[3px] hover:decoration-sable">
-            Voir toutes les commandes
-          </Link>
-        </li>
-      ) : null}
-    </ul>
+    <div className="sans-barre overflow-x-auto">
+      <table className="w-full min-w-[640px] border-collapse text-sm">
+        <thead>
+          <tr className="text-left text-xs text-texte-3">
+            <th scope="col" className="border-b border-trait-doux px-2 py-2.5 font-medium">
+              Commande
+            </th>
+            <th scope="col" className="border-b border-trait-doux px-2 py-2.5 font-medium">
+              Client
+            </th>
+            <th scope="col" className="border-b border-trait-doux px-2 py-2.5 font-medium">
+              Commune
+            </th>
+            <th scope="col" className="border-b border-trait-doux px-2 py-2.5 font-medium">
+              Paiement
+            </th>
+            <th scope="col" className="border-b border-trait-doux px-2 py-2.5 text-right font-medium">
+              Total
+            </th>
+            <th scope="col" className="border-b border-trait-doux px-2 py-2.5 font-medium">
+              État
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <tr key={order.id} className="relative transition-colors hover:bg-white/[0.04]">
+              <td className="border-b border-trait-doux px-2 py-3 font-mono text-[13px] text-texte-2">
+                {/* Le lien couvre toute la ligne (after:inset-0) : un seul arrêt au clavier par commande. */}
+                <Link href={`/app/${slug}/commandes/${order.id}`} className="after:absolute after:inset-0 hover:text-texte" title={formatDateTime(order.created_at)}>
+                  {order.reference}
+                </Link>
+              </td>
+              <td className="border-b border-trait-doux px-2 py-3 font-semibold">{order.customer.name}</td>
+              <td className="border-b border-trait-doux px-2 py-3 text-texte-2">{order.customer.commune || order.customer.city}</td>
+              <td className="border-b border-trait-doux px-2 py-3 text-texte-2">{PAYMENT_LABEL[order.payment_method]}</td>
+              <td className="border-b border-trait-doux px-2 py-3 text-right font-mono tabular-nums">{formatNumber(order.total)}</td>
+              <td className="border-b border-trait-doux px-2 py-3">
+                <StatusPill status={order.status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

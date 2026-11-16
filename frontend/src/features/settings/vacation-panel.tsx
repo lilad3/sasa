@@ -36,7 +36,7 @@ export function VacationPanel({ settings, tomorrow }: { settings: ShopSettings; 
         <span
           className={
             vacation.on_vacation
-              ? "rounded-full bg-ocre px-2.5 py-1 text-[12px] font-bold text-encre"
+              ? "rounded-full bg-ocre px-2.5 py-1 text-[12px] font-bold text-sur-orange"
               : "rounded-full border border-sable/40 px-2.5 py-1 text-[12px] font-semibold text-texte"
           }
         >

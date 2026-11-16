@@ -80,7 +80,7 @@ export function OrderDetail({ order, slug, canManage }: { order: OrderDetailData
         <p className="rounded-[14px] border border-trait-doux bg-encre/40 px-3.5 py-2.5 text-sm text-texte-2">
           {cashOnDelivery ? (
             <>
-              <span className="font-semibold text-ocre">À encaisser à la livraison :</span> {formatFcfa(order.total)}, en espèces.
+              <span className="font-semibold text-alerte">À encaisser à la livraison :</span> {formatFcfa(order.total)}, en espèces.
             </>
           ) : (
             <>
@@ -176,7 +176,7 @@ function DeliveryVerdict({ order }: { order: OrderDetailData }) {
       {late <= 0 ? (
         <span className="text-indigo-clair"> · à temps</span>
       ) : (
-        <span className="text-ocre"> · {formatHours(late)} de retard</span>
+        <span className="text-alerte"> · {formatHours(late)} de retard</span>
       )}
       <span className="text-texte-3"> (promis : {order.promised_hours} h)</span>
     </p>

@@ -76,7 +76,7 @@ async function ProductFromRoute({ params, searchParams }: Pick<PageProps<"/app/[
       ) : null}
       {missing ? (
         <p role="note" className="col-span-full rounded-[18px] border border-ocre/35 bg-ocre/10 px-4 py-3 text-sm">
-          <span className="font-semibold text-ocre">{missing.text}</span>
+          <span className="font-semibold text-alerte">{missing.text}</span>
           {missing.reason ? ` ${missing.reason}` : null}
         </p>
       ) : null}

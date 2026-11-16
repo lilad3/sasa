@@ -11,7 +11,7 @@ type Check = { id: string; level: Level; text: string; href?: string; action?: s
 
 const MARK: Record<Level, { className: string; sign: string; sr: string }> = {
   ok: { className: "border-indigo-clair/50 text-indigo-clair", sign: "✓", sr: "En ordre : " },
-  warn: { className: "border-ocre/60 bg-ocre/15 text-ocre", sign: "!", sr: "À surveiller : " },
+  warn: { className: "border-ocre/60 bg-ocre/15 text-alerte", sign: "!", sr: "À surveiller : " },
   alert: { className: "border-danger/60 bg-danger/15 text-danger-clair", sign: "!", sr: "À corriger : " },
   info: { className: "border-sable/40 text-sable", sign: "i", sr: "" },
 };
@@ -145,9 +145,9 @@ export async function SecurityCard({ slug }: { slug: string }) {
         <span
           className={cn(
             "shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold",
-            worst === "ok" && "bg-indigo/40 text-creme",
-            worst === "warn" && "bg-ocre text-encre",
-            worst === "alert" && "bg-danger text-encre",
+            worst === "ok" && "bg-indigo/40 text-texte",
+            worst === "warn" && "bg-ocre text-sur-orange",
+            worst === "alert" && "bg-corail text-sur-orange",
           )}
         >
           {worst === "ok" ? "En ordre" : worst === "warn" ? "À surveiller" : "À corriger"}

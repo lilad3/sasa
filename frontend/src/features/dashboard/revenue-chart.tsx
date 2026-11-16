@@ -86,7 +86,7 @@ export function RevenueChart({ series, previous }: { series: DayPoint[]; previou
               type="button"
               aria-pressed={measure === option.value}
               onClick={() => setMeasure(option.value)}
-              className="rounded-[10px] px-2.5 py-1 text-[12px] font-semibold text-texte-3 hover:text-texte aria-pressed:bg-white/12 aria-pressed:text-texte"
+              className="rounded-[10px] px-2.5 py-1 text-[12px] font-semibold text-texte-3 hover:text-texte aria-pressed:bg-(--surface) aria-pressed:text-texte"
             >
               {option.label}
             </button>
@@ -94,11 +94,11 @@ export function RevenueChart({ series, previous }: { series: DayPoint[]; previou
         </div>
         <ul aria-label="Légende" className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-texte-3">
           <li className="flex items-center gap-1.5">
-            <span aria-hidden className="h-0.5 w-4 rounded-full bg-orange-clair" />
+            <span aria-hidden className="h-[3px] w-[18px] rounded-full bg-orange" />
             Cette période
           </li>
           <li className="flex items-center gap-1.5">
-            <span aria-hidden className="h-0.5 w-4 rounded-full bg-sable/45" />
+            <span aria-hidden className="w-[18px] border-t-2 border-dashed border-indigo-clair" />
             Période précédente
           </li>
         </ul>
@@ -130,7 +130,7 @@ export function RevenueChart({ series, previous }: { series: DayPoint[]; previou
           <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible" aria-hidden>
             <defs>
               <linearGradient id="ca-remplissage" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#ff7a1f" stopOpacity="0.26" />
+                <stop offset="0" stopColor="#ff7a1f" stopOpacity="0.2" />
                 <stop offset="1" stopColor="#ff7a1f" stopOpacity="0" />
               </linearGradient>
               <filter id="ca-halo" x="-5%" y="-30%" width="110%" height="160%">
@@ -142,13 +142,13 @@ export function RevenueChart({ series, previous }: { series: DayPoint[]; previou
               </clipPath>
             </defs>
             {[1, 0.5, 0].map((share) => (
-              <line key={share} x1="0" x2={W} y1={toY(top * share)} y2={toY(top * share)} stroke="rgb(240 221 186 / 0.1)" vectorEffect="non-scaling-stroke" />
+              <line key={share} x1="0" x2={W} y1={toY(top * share)} y2={toY(top * share)} className="stroke-trait" vectorEffect="non-scaling-stroke" />
             ))}
-            <path d={smoothPath(previousPoints)} fill="none" stroke="rgb(240 221 186 / 0.45)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+            <path d={smoothPath(previousPoints)} fill="none" className="stroke-indigo-clair" strokeWidth="1.6" strokeDasharray="5 6" opacity="0.7" vectorEffect="non-scaling-stroke" />
             <g clipPath="url(#ca-trace)">
               <path d={`${line} L${W} ${H - BOTTOM} L0 ${H - BOTTOM} Z`} fill="url(#ca-remplissage)" />
-              <path d={line} fill="none" stroke="#ff9b52" strokeWidth="6" opacity="0.4" filter="url(#ca-halo)" vectorEffect="non-scaling-stroke" />
-              <path d={line} fill="none" stroke="#ff9b52" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+              <path d={line} fill="none" stroke="#ff7a1f" strokeWidth="6" opacity="0.35" filter="url(#ca-halo)" vectorEffect="non-scaling-stroke" />
+              <path d={line} fill="none" stroke="#ff7a1f" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
             </g>
           </svg>
 
@@ -157,7 +157,7 @@ export function RevenueChart({ series, previous }: { series: DayPoint[]; previou
           {active !== null && previousPoints[focus] ? (
             <span
               aria-hidden
-              className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sable/70 ring-2 ring-nuit-2"
+              className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-clair ring-2 ring-(--surface-2)"
               style={{ left: `${focusRatio * 100}%`, top: `${(previousPoints[focus][1] / H) * 100}%` }}
             />
           ) : null}
@@ -165,7 +165,7 @@ export function RevenueChart({ series, previous }: { series: DayPoint[]; previou
           <span
             key={measure}
             aria-hidden
-            className="courbe-point absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-orange-clair bg-encre ring-2 ring-nuit-2"
+            className="courbe-point absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-orange bg-(--surface) ring-2 ring-(--surface-2)"
             style={{ left: `${focusRatio * 100}%`, top: `${(points[focus][1] / H) * 100}%` }}
           />
 
@@ -173,19 +173,19 @@ export function RevenueChart({ series, previous }: { series: DayPoint[]; previou
             <div
               // À côté du repère, du côté où il y a le plus de place : la bulle ne cache ni le point ni les boutons.
               className={cn(
-                "pointer-events-none absolute top-0 z-10 w-max min-w-[150px] rounded-[12px] border border-trait bg-nuit-2/95 px-3 py-2 text-xs shadow-[0_12px_30px_rgb(0_0_0/0.45)]",
+                "pointer-events-none absolute top-0 z-10 w-max min-w-[150px] rounded-[12px] border border-trait bg-(--surface) px-3 py-2 text-xs shadow-[0_12px_30px_rgb(0_0_0/0.25)]",
                 focusRatio < 0.5 ? "translate-x-3" : "-translate-x-[calc(100%+12px)]",
               )}
               style={{ left: `${focusRatio * 100}%` }}
             >
               <p className="text-texte-3">{formatDay(day.date)}</p>
               <p className="mt-0.5 flex items-center gap-1.5 text-[13px] font-semibold text-texte">
-                <span aria-hidden className="h-0.5 w-3 rounded-full bg-orange-clair" />
+                <span aria-hidden className="h-0.5 w-3 rounded-full bg-orange" />
                 {formatValue(measure, day[measure])}
               </p>
               {previousDay ? (
                 <p className="mt-0.5 flex items-center gap-1.5 text-texte-2">
-                  <span aria-hidden className="h-0.5 w-3 rounded-full bg-sable/45" />
+                  <span aria-hidden className="w-3 border-t-2 border-dashed border-indigo-clair" />
                   {formatValue(measure, previousDay[measure])} le {formatDay(previousDay.date)}
                 </p>
               ) : null}
@@ -208,7 +208,7 @@ export function RevenueChart({ series, previous }: { series: DayPoint[]; previou
         <summary className="cursor-pointer text-[12.5px] text-texte-3 hover:text-texte">Voir les chiffres jour par jour</summary>
         <div className="mt-2 sans-barre max-h-[260px] overflow-y-auto rounded-[14px] border border-trait-doux">
           <table className="w-full text-left text-[13px]">
-            <thead className="sticky top-0 bg-nuit-2 text-xs text-texte-3">
+            <thead className="sticky top-0 bg-(--surface) text-xs text-texte-3">
               <tr>
                 <th scope="col" className="px-3 py-2 font-normal">
                   Jour

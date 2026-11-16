@@ -117,7 +117,7 @@ export function DesignEditor({ slug, overview, versions, canManageShop }: Editor
                   </span>
                   <span className="text-[12.5px] leading-snug text-texte-3">{meta.forWho}</span>
                   <span className="text-[12.5px] leading-snug text-texte-2">{meta.pitch}</span>
-                  <span className={cn("inline-flex items-center gap-1.5 text-[12px] font-semibold", option.allowed ? "text-sable" : "text-ocre")}>
+                  <span className={cn("inline-flex items-center gap-1.5 text-[12px] font-semibold", option.allowed ? "text-sable" : "text-alerte")}>
                     <span aria-hidden className="h-3 w-[3px] rounded-sm bg-current" />
                     {option.allowed ? `Plan ${PLAN_LABEL[option.plan]}` : `Plan ${PLAN_LABEL[option.plan]} · aperçu seulement`}
                   </span>

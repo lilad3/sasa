@@ -41,7 +41,7 @@ async function ImportFromRoute({ params }: Pick<PageProps<"/app/[shop]/produits/
       ) : (
         <section className="vitre col-span-full flex flex-col gap-3 rounded-[24px] p-[18px] lg:col-span-6">
           <p className="text-[15px]">
-            <span className="font-semibold text-ocre">L’import de produits arrive avec le plan Pro.</span> Avec le plan Gratuit, ajoutez vos produits un par
+            <span className="font-semibold text-alerte">L’import de produits arrive avec le plan Pro.</span> Avec le plan Gratuit, ajoutez vos produits un par
             un, jusqu’à {overview.data.limit ?? 25}.
           </p>
           {membership.permissions.includes("shop.manage") ? (

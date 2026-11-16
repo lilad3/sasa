@@ -9,7 +9,7 @@ import type { CustomerFlag, CustomerRow } from "@/lib/types";
 
 const FLAG: Record<CustomerFlag, { label: string; className: string }> = {
   new: { label: "Nouveau", className: "bg-indigo/25 text-indigo-clair" },
-  win_back: { label: "À relancer", className: "bg-ocre/15 text-ocre" },
+  win_back: { label: "À relancer", className: "bg-ocre/15 text-alerte" },
   at_risk: { label: "À risque", className: "bg-corail/20 text-danger-clair" },
 };
 
@@ -88,7 +88,7 @@ export function LoyalCard({ customer, slug, action }: { customer: CustomerRow & 
         {formatNumber(customer.orders)} commande{customer.orders > 1 ? "s" : ""}
         {customer.last_order_at ? ` · dernière ${formatSince(customer.last_order_at)}` : ""}
       </p>
-      {silent ? <p className="text-xs font-semibold text-ocre">Pas de nouvelles depuis un moment : un petit mot ?</p> : null}
+      {silent ? <p className="text-xs font-semibold text-alerte">Pas de nouvelles depuis un moment : un petit mot ?</p> : null}
       <div className="mt-auto pt-1">
         <MonthlyCurve values={customer.monthly} />
       </div>

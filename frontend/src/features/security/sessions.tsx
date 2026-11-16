@@ -47,7 +47,7 @@ export function SessionList({ sessions }: { sessions: Session[] }) {
               <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm font-semibold">
                 {session.device_label || "Appareil inconnu"}
                 {session.current ? <span className="text-xs font-semibold text-orange-clair">Cet appareil</span> : null}
-                {session.shared_device ? <span className="text-xs font-semibold text-ocre">Appareil partagé</span> : null}
+                {session.shared_device ? <span className="text-xs font-semibold text-alerte">Appareil partagé</span> : null}
               </p>
               <p className="mt-0.5 text-[13px] text-texte-3">
                 <span className="font-mono">{session.ip || "IP inconnue"}</span> · ouverte le {formatDateTime(session.created_at)} · active{" "}

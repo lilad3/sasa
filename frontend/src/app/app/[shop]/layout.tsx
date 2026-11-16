@@ -1,17 +1,15 @@
 import { Suspense } from "react";
 
-import { FondNuit } from "@/components/ui/fond-nuit";
 import { Sidebar, SidebarSkeleton } from "@/features/dashboard/sidebar";
 import { NotesBannerFromRoute } from "@/features/notes/banner";
 
 /**
- * Espace marchand : le décor vit (la lumière passe derrière le verre cannelé) mais reste voilé pour la lecture des chiffres.
+ * Espace marchand : des panneaux pleins sur un fond uni, clair ou sombre (maquette validée le 16/11/2026).
  * Grille en lames : barre latérale sur 2 lames, contenu sur 10 (12 sur ordinateur, 8 sur tablette, 4 sur mobile).
  */
 export default function ShopLayout({ children, params }: LayoutProps<"/app/[shop]">) {
   return (
     <div className="relative isolate">
-      <FondNuit />
       <div className="grid min-h-dvh grid-cols-4 content-start gap-2.5 p-3 md:grid-cols-8 md:gap-3 md:p-[18px] lg:grid-cols-12 lg:gap-3.5 lg:p-5">
         <Suspense fallback={<SidebarSkeleton />}>
           <ShopSidebar params={params} />

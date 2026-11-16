@@ -134,7 +134,7 @@ export function ImportPanel({ slug }: { slug: string }) {
             {report.error_count > 0 ? (
               <>
                 <p className="rounded-[16px] border border-ocre/35 bg-ocre/10 px-3.5 py-3 text-sm">
-                  <span className="font-semibold text-ocre">
+                  <span className="font-semibold text-alerte">
                     {formatNumber(report.error_count)} erreur{report.error_count > 1 ? "s" : ""} à corriger.
                   </span>{" "}
                   Rien n’est importé tant qu’il en reste une : corrigez le fichier, choisissez-le à nouveau, puis vérifiez.

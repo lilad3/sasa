@@ -23,6 +23,9 @@
   --color-encre-doux: #5c5146;
   --color-trait-clair: #e3d6c2;
 
+  /* Texte posé sur l'orange, l'ocre ou le corail : reste sombre dans les deux apparences. */
+  --color-sur-orange: #17110a;
+
   --color-orange: #ff7a1f;
   --color-orange-clair: #ff9b52;
   --color-indigo: #4a57d6;
@@ -35,6 +38,8 @@
   --color-texte-2: #ccc2b4;
   --color-texte-3: #9a8f81;
   --color-danger: #ff7a6b;
+  /* Une hausse ou une réussite : le seul vert d'Akwaba. */
+  --color-hausse: #6fd3a0;
   --color-danger-clair: #ffb3a8;
   --color-alerte: #f2b33d;
 
@@ -67,35 +72,12 @@
 }
 
 @utility vitre {
-  background: rgb(246 240 231 / 0.06);
+  /* Dans l'espace marchand, les variables en font un panneau plein, clair ou sombre (voir .espace plus bas). */
+  background: var(--vitre-fond, rgb(246 240 231 / 0.06));
   border: 1px solid var(--color-trait);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
-  backdrop-filter: blur(20px) saturate(1.3);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07);
-
-  /*
-   * Le bord capte la lumière du décor. Dans l'espace marchand, FondNuit décrit dans --lumiere où passent
-   * la traînée orange, la lueur indigo et le trait de lumière, en dégradés fixés à l'écran : le bord
-   * s'allume exactement là où la lumière passe derrière la vitre. Ailleurs, la variable est absente.
-   * Pas besoin de position: relative : backdrop-filter fait déjà de la vitre le bloc conteneur du pseudo-élément.
-   */
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    padding: 1px;
-    border-radius: inherit;
-    background-image: var(--lumiere, none);
-    background-attachment: fixed;
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask:
-      linear-gradient(#000 0 0) content-box exclude,
-      linear-gradient(#000 0 0);
-    pointer-events: none;
-  }
+  -webkit-backdrop-filter: var(--vitre-flou, blur(20px) saturate(1.3));
+  backdrop-filter: var(--vitre-flou, blur(20px) saturate(1.3));
+  box-shadow: var(--vitre-ombre, inset 0 1px 0 rgb(255 255 255 / 0.07));
 }
 
 /* Panneau neutre et sombre pour les écrans d'authentification. */
@@ -122,7 +104,7 @@
 
 /* Carte sombre, à l'intérieur d'une vitre. */
 @utility carte {
-  background: linear-gradient(180deg, rgb(246 240 231 / 0.05), rgb(14 12 10 / 0.42));
+  background: var(--carte-fond, linear-gradient(180deg, rgb(246 240 231 / 0.05), rgb(14 12 10 / 0.42)));
   border: 1px solid var(--color-trait-doux);
 }
 
@@ -347,6 +329,117 @@ body {
     var(--color-nuit);
 }
 
+/*
+ * ---------- Espace marchand : apparence « sombre » ou « claire » (validée le 16/11/2026) ----------
+ * Plus de décor ni de sable doré : des panneaux pleins, emboîtés, à filets fins.
+ * Le choix vit dans le cookie akwaba_mode ; app/layout.tsx le pose sur <html data-mode> avant l'affichage.
+ * On redéfinit les jetons existants : toutes les pages suivent sans changer leurs classes.
+ * Rôles des couleurs : orange pour le bouton principal, la courbe et le point du menu actif ;
+ * indigo pour les liens (le « sable » d'avant devient indigo) ; ocre pour les alertes seulement.
+ */
+.espace {
+  --fond: #0b0d14;
+  --surface: #121521;
+  --surface-2: #191d2c;
+  --color-nuit: #0b0d14;
+  --color-nuit-2: #191d2c;
+  --color-encre: #07080d;
+  --color-texte: #eef0f6;
+  --color-texte-2: #b3b8c9;
+  --color-texte-3: #8a90a6;
+  --color-trait: rgb(163 171 255 / 0.14);
+  --color-trait-doux: rgb(163 171 255 / 0.08);
+  --color-sable: #a3abff;
+  --color-alerte: #f2b33d;
+  --vitre-fond: var(--surface);
+  --vitre-flou: none;
+  --vitre-ombre: none;
+  --carte-fond: var(--surface-2);
+  --contour: rgb(163 171 255 / 0.22);
+  --contour-survol: rgb(163 171 255 / 0.45);
+  --contour-fond: transparent;
+  --contour-fond-survol: var(--surface-2);
+  color-scheme: dark;
+  background: var(--fond);
+  color: var(--color-texte);
+}
+
+html[data-mode="clair"] .espace {
+  --fond: #eceef4;
+  --surface: #f8f9fc;
+  --surface-2: #eff1f7;
+  --color-nuit: #eceef4;
+  --color-nuit-2: #f8f9fc;
+  --color-encre: #dde1ea;
+  /* Les voiles « blancs » (survol, sélection) deviennent des voiles d'encre sur le clair. */
+  --color-white: #141724;
+  --color-texte: #141724;
+  --color-texte-2: #444a61;
+  --color-texte-3: #5f6580;
+  --color-trait: #d9dde8;
+  --color-trait-doux: #e3e6ee;
+  --color-sable: #3f4cc9;
+  --color-orange-clair: #b84f06;
+  --color-indigo-clair: #3f4cc9;
+  --color-alerte: #8a5a00;
+  --color-danger: #b93a29;
+  --color-danger-clair: #b93a29;
+  --color-hausse: #1d7a4a;
+  --vitre-ombre: 0 1px 2px rgb(20 23 36 / 0.05);
+  --contour: #c9cedb;
+  --contour-survol: #9aa1b8;
+  color-scheme: light;
+}
+
+/* La carte mise en avant reste sombre dans les deux apparences : ses textes gardent les couleurs du sombre. */
+.espace .carte-une {
+  --color-texte: #eef0f6;
+  --color-texte-2: #b3b8c9;
+  --color-texte-3: #9aa0b6;
+  --color-trait: rgb(163 171 255 / 0.16);
+  --color-trait-doux: rgb(163 171 255 / 0.1);
+  --color-white: #fff;
+  --color-encre: #07080d;
+  --color-sable: #a3abff;
+  --color-orange-clair: #ff9b52;
+  --color-indigo-clair: #a3abff;
+  --contour: rgb(163 171 255 / 0.3);
+  --contour-fond: rgb(7 8 13 / 0.35);
+  color: var(--color-texte);
+  color-scheme: dark;
+}
+
+/* La fenêtre prend la couleur de l'espace : rien de doré ni de noir ne dépasse autour. */
+html:has(.espace) {
+  background: #0b0d14;
+}
+html[data-mode="clair"]:has(.espace) {
+  background: #eceef4;
+  color-scheme: light;
+}
+body:has(.espace) {
+  background: none;
+}
+
+@layer components {
+  /* Bouton principal d'un bloc : plein, de la couleur du texte (le verre cannelé reste sur la vitrine et l'accueil). */
+  .espace .bouton-nuit {
+    color: var(--fond);
+    background: var(--color-texte);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .espace .bouton-nuit::before,
+  .espace .bouton-nuit::after {
+    content: none;
+  }
+  .espace .bouton-nuit:hover {
+    background: var(--color-texte-2);
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
+
 ::selection {
   background: rgb(255 122 31 / 0.35);
 }
@@ -426,7 +519,7 @@ body {
 
 /* Carte produit : la lumière vient du haut, la courbe s'éclaire au survol. */
 .carte-produit {
-  background: linear-gradient(180deg, rgb(246 240 231 / 0.07), rgb(14 12 10 / 0.55) 70%);
+  background: var(--carte-fond, linear-gradient(180deg, rgb(246 240 231 / 0.07), rgb(14 12 10 / 0.55) 70%));
   border: 1px solid var(--color-trait-doux);
   transition: border-color 0.3s ease;
 }
@@ -465,10 +558,10 @@ body {
   isolation: isolate;
   overflow: hidden;
   background:
-    radial-gradient(80% 60% at 100% 0%, rgb(255 122 31 / 0.32), transparent 70%),
-    radial-gradient(70% 60% at 0% 100%, rgb(74 87 214 / 0.32), transparent 70%),
-    linear-gradient(165deg, rgb(38 30 24 / 0.94), rgb(16 13 11 / 0.95));
-  border: 1px solid rgb(240 221 186 / 0.22);
+    radial-gradient(80% 60% at 100% 0%, rgb(255 122 31 / 0.3), transparent 70%),
+    radial-gradient(70% 60% at 0% 100%, rgb(74 87 214 / 0.4), transparent 70%),
+    linear-gradient(165deg, #1b1f35, #0e1120);
+  border: 1px solid rgb(163 171 255 / 0.22);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 .carte-une::before {
@@ -517,7 +610,7 @@ body {
   align-items: center;
   justify-content: center;
   background: var(--color-orange);
-  color: var(--color-encre);
+  color: var(--color-sur-orange);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.35),
     0 10px 24px rgb(255 122 31 / 0.22);
@@ -527,7 +620,7 @@ body {
     transform 0.15s ease;
 }
 .bouton-clair:hover {
-  background: var(--color-orange-clair);
+  background: #ff9b52;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.4),
     0 12px 30px rgb(255 122 31 / 0.34);
@@ -542,44 +635,44 @@ body {
   align-items: center;
   justify-content: center;
   color: var(--color-texte);
-  border: 1px solid rgb(240 221 186 / 0.25);
-  background: rgb(14 12 10 / 0.35);
+  border: 1px solid var(--contour, rgb(240 221 186 / 0.25));
+  background: var(--contour-fond, rgb(14 12 10 / 0.35));
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease;
 }
 .bouton-contour:hover {
-  border-color: rgb(240 221 186 / 0.5);
-  background: rgb(246 240 231 / 0.06);
+  border-color: var(--contour-survol, rgb(240 221 186 / 0.5));
+  background: var(--contour-fond-survol, rgb(246 240 231 / 0.06));
 }
 
 /* Bouton rond à icône (actualiser, télécharger). */
 .bouton-rond {
   color: var(--color-texte-2);
-  border: 1px solid rgb(240 221 186 / 0.2);
-  background: rgb(14 12 10 / 0.4);
+  border: 1px solid var(--contour, rgb(240 221 186 / 0.2));
+  background: var(--contour-fond, rgb(14 12 10 / 0.4));
   transition:
     color 0.2s ease,
     border-color 0.2s ease;
 }
 .bouton-rond:hover {
   color: var(--color-texte);
-  border-color: rgb(240 221 186 / 0.45);
+  border-color: var(--contour-survol, rgb(240 221 186 / 0.45));
 }
 
 /* Le grand panneau du mois et la carte de l'objectif, emboîtés dans la vitre. */
 .carte-panneau {
-  background: linear-gradient(180deg, rgb(246 240 231 / 0.05), rgb(14 12 10 / 0.5));
+  background: var(--carte-fond, linear-gradient(180deg, rgb(246 240 231 / 0.05), rgb(14 12 10 / 0.5)));
   border: 1px solid var(--color-trait-doux);
 }
 .carte-objectif {
-  background: rgb(14 12 10 / 0.55);
+  background: var(--carte-fond, rgb(14 12 10 / 0.55));
   border: 1px solid var(--color-trait-doux);
 }
 
 /* Jauge de l'objectif : les traits s'allument l'un après l'autre (--i, posé par trait). */
 .trait-jauge {
-  background: rgb(246 240 231 / 0.18);
+  background: color-mix(in oklab, var(--color-texte) 18%, transparent);
   transition:
     background-color 0.35s ease,
     box-shadow 0.35s ease;
@@ -592,19 +685,21 @@ body {
 
 /* Curseur sur fond sombre : la partie choisie en orange. */
 .curseur-nuit::-webkit-slider-runnable-track {
-  background: linear-gradient(90deg, var(--color-orange) var(--rempli, 0%), rgb(246 240 231 / 0.14) var(--rempli, 0%));
+  background: linear-gradient(90deg, var(--color-orange) var(--rempli, 0%), color-mix(in oklab, var(--color-texte) 14%, transparent) var(--rempli, 0%));
 }
 .curseur-nuit::-moz-range-track {
-  background: rgb(246 240 231 / 0.14);
+  background: color-mix(in oklab, var(--color-texte) 14%, transparent);
 }
 .curseur-nuit::-moz-range-progress {
   background: var(--color-orange);
 }
 .curseur-nuit::-webkit-slider-thumb {
+  background: var(--surface, #1a1613);
   border-color: var(--color-sable);
   box-shadow: 0 0 0 4px rgb(255 122 31 / 0.3);
 }
 .curseur-nuit::-moz-range-thumb {
+  background: var(--surface, #1a1613);
   border-color: var(--color-sable);
   box-shadow: 0 0 0 4px rgb(255 122 31 / 0.3);
 }

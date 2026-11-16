@@ -171,7 +171,7 @@ export function LiveOrders() {
       className="zone-sombre fixed inset-x-3 bottom-3 z-40 flex flex-col gap-3 rounded-[22px] border border-ocre/40 bg-nuit/92 p-4 text-texte shadow-[0_18px_50px_rgb(0_0_0/0.5)] backdrop-blur-lg sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-[360px]"
     >
       <div className="flex items-start gap-3">
-        <span className="chiffres grid size-11 shrink-0 place-items-center rounded-full bg-ocre text-[22px] font-semibold text-encre">{fresh}</span>
+        <span className="chiffres grid size-11 shrink-0 place-items-center rounded-full bg-ocre text-[22px] font-semibold text-sur-orange">{fresh}</span>
         <div className="min-w-0">
           <p className="font-semibold">
             {fresh > 1 ? `${fresh} nouvelles commandes` : "Nouvelle commande"} en vitrine
@@ -203,7 +203,7 @@ export function LiveOrders() {
           type="button"
           onClick={toggleSound}
           aria-pressed={sound}
-          className="ml-auto rounded-full border border-trait px-3 py-1.5 text-[12.5px] text-texte-2 hover:text-texte aria-pressed:border-ocre/50 aria-pressed:text-ocre"
+          className="ml-auto rounded-full border border-trait px-3 py-1.5 text-[12.5px] text-texte-2 hover:text-texte aria-pressed:border-ocre/50 aria-pressed:text-alerte"
         >
           {sound ? "Son activé" : "Activer le son"}
         </button>

@@ -104,7 +104,7 @@ async function ProductsFromRoute({ params, searchParams }: Pick<PageProps<"/app/
 
       {canWrite && full ? (
         <p role="note" className="col-span-full rounded-[18px] border border-ocre/35 bg-ocre/10 px-4 py-3 text-sm">
-          <span className="font-semibold text-ocre">Catalogue plein.</span> Votre plan permet {formatNumber(summary.limit ?? 0)} produits.{" "}
+          <span className="font-semibold text-alerte">Catalogue plein.</span> Votre plan permet {formatNumber(summary.limit ?? 0)} produits.{" "}
           {membership?.permissions.includes("shop.manage") ? (
             <Link href={`/app/${shop}/parametres?onglet=plan`} className="font-semibold underline decoration-texte/40 underline-offset-[3px]">
               Voir les plans

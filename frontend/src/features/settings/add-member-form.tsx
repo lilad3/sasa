@@ -68,7 +68,7 @@ export function AddMemberForm({ slug, mfaEnabled, full, sellersOnly = false, cla
       {full ? (
         <p className="rounded-[18px] border border-ocre/35 bg-ocre/10 px-4 py-3 text-sm">
           Le plan {full.plan} permet {full.limit} personne{full.limit > 1 ? "s" : ""}, vous compris.{" "}
-          <Link href={`/app/${slug}/parametres?onglet=plan`} className="font-semibold text-ocre underline-offset-2 hover:underline">
+          <Link href={`/app/${slug}/parametres?onglet=plan`} className="font-semibold text-alerte underline-offset-2 hover:underline">
             Voir les plans
           </Link>
         </p>

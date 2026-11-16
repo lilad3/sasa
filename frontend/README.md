@@ -78,6 +78,22 @@ Chaque couleur a un rôle, pour qu'aucune ne recouvre tout (jetons dans `src/app
 | `zone-sombre` | Bloc sombre posé sur l'orange | Remet l'anneau de focus en clair |
 | `curseur`, `radio-verre` | Curseur des tarifs, choix du paiement | Contrôles dessinés à la main (les versions natives sont blanches) |
 
+### Espace marchand : clair ou sombre
+
+L'espace marchand (`/app…`) a deux apparences, choisies par le bouton Clair / Sombre (en-tête de l'accueil et bas du menu). Le choix est gardé un an dans le cookie `akwaba_mode` ; un petit script de `app/layout.tsx` le pose sur `<html data-mode>` avant le premier affichage, pour éviter un éclair de la mauvaise couleur.
+
+La classe `espace` (`app/app/layout.tsx`) redéfinit les jetons existants : les pages n'ont pas à changer leurs classes.
+
+| | Sombre « encre » | Clair |
+|---|---|---|
+| Fond / panneau / panneau emboîté | `#0b0d14` / `#121521` / `#191d2c` | `#eceef4` / `#f8f9fc` / `#eff1f7` |
+| Texte / secondaire / discret | `#eef0f6` / `#b3b8c9` / `#8a90a6` | `#141724` / `#444a61` / `#5f6580` |
+| Filets | indigo translucide | `#d9dde8` |
+| Liens (`sable`, `indigo-clair`) | `#a3abff` | `#3f4cc9` |
+| Alerte (`alerte`) / hausse (`hausse`) | `#f2b33d` / `#6fd3a0` | `#8a5a00` / `#1d7a4a` |
+
+L'orange est réservé au bouton principal (`bouton-clair`), à la courbe des ventes et au point du menu actif. Le texte posé sur l'orange, l'ocre ou le corail utilise `sur-orange` (toujours sombre). Dans l'espace, `bouton-nuit` devient un bouton plein de la couleur du texte. Le texte d'alerte s'écrit `text-alerte`, pas `text-ocre` : l'ocre vif serait illisible sur le clair. La carte mise en avant (`carte-une`) reste sombre dans les deux apparences.
+
 Contraste vérifié (WCAG, 4,5:1 pour le texte) : le dégradé orange ne descend pas sous `#DA8748` et la traînée brune ne dépasse pas 33 % d'opacité, ce qui garde le texte encre au-dessus de 4,8:1. Le texte posé directement sur l'orange reste en `encre` ; le texte secondaire n'apparaît que dans les vitres.
 
 Le décor (`public/decor.jpg`) se régénère avec `python scripts/generer-decor.py public/decor.jpg` (numpy et Pillow). Copiez-le aussi dans `backend/static/akwaba_admin/decor.jpg` pour l'admin Django.

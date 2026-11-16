@@ -38,7 +38,7 @@ export function SecurityJournal({ events, slug }: { events: Paginated<SecurityEv
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-x-2.5 text-sm font-semibold">
                     {event.label}
-                    {severity.label ? <span className={cn("text-xs", event.severity === "critical" ? "text-danger-clair" : "text-ocre")}>{severity.label}</span> : null}
+                    {severity.label ? <span className={cn("text-xs", event.severity === "critical" ? "text-danger-clair" : "text-alerte")}>{severity.label}</span> : null}
                   </p>
                   <p className="mt-0.5 truncate text-[13px] text-texte-3">
                     {event.device_label || "Appareil inconnu"} · <span className="font-mono">{event.ip || "IP inconnue"}</span>
