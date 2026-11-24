@@ -19,7 +19,9 @@ from core.ratelimit import enforce
 
 from . import plans
 from .design_catalog import COVERS, MOTIONS, PLAN_RANK, SECTIONS, THEMES, VERSIONS_KEPT, default_config, selectable_themes
+from .generation import AUDIENCES, SECTORS, generate
 from .models import StorefrontVersion
+from .packs import PACKS
 from .permissions import ShopScopedView
 from .storefront import plain_text
 from .team import full_name
@@ -45,6 +47,7 @@ class TextsSerializer(serializers.Serializer):
 class DesignSerializer(serializers.Serializer):
     version = serializers.IntegerField(min_value=1, max_value=1)
     theme = serializers.ChoiceField(choices=list(THEMES))
+    pack = serializers.ChoiceField(choices=["", *PACKS], required=False, default="")
     motion = serializers.ChoiceField(choices=MOTIONS)
     cover = serializers.ChoiceField(choices=COVERS)
     sections = serializers.ListField(child=serializers.ChoiceField(choices=SECTIONS), min_length=1, max_length=len(SECTIONS))
@@ -71,6 +74,7 @@ def clean_config(raw):
     return {
         "version": 1,
         "theme": data["theme"],
+        "pack": data["pack"],
         "motion": data["motion"],
         "cover": data["cover"],
         "sections": list(data["sections"]),
@@ -84,12 +88,17 @@ def limits(shop):
     return {"plan": plan.id, "plan_name": plan.name, "custom_sections": rank >= 1, "story": rank >= 1, "versions_kept": VERSIONS_KEPT[plan.id]}
 
 
+def theme_allowed(shop, key):
+    """Le style généré pour la boutique est toujours permis ; les autres suivent le plan."""
+    return key == shop.generated_style or PLAN_RANK[THEMES[key]["plan"]] <= PLAN_RANK[plans.spec(shop).id]
+
+
 def check_plan(shop, config):
     """Ce que le plan ne permet pas ne s'enregistre pas (un aperçu, lui, montre tout)."""
     plan = plans.spec(shop)
     rank = PLAN_RANK[plan.id]
     theme = THEMES[config["theme"]]
-    if PLAN_RANK[theme["plan"]] > rank:
+    if not theme_allowed(shop, config["theme"]):
         raise ProblemError(403, "plan_limit_reached", f"Le thème {theme['label']} est compris à partir du plan Pro.", feature="theme")
     if rank == 0:
         if tuple(config["sections"]) != theme["sections"]:
@@ -161,7 +170,7 @@ class DesignView(DesignScopedView):
                 "limits": current,
                 "accent": self.shop.accent,
                 "themes": [
-                    {"id": key, "label": THEMES[key]["label"], "plan": THEMES[key]["plan"], "allowed": PLAN_RANK[THEMES[key]["plan"]] <= rank, "sections": list(THEMES[key]["sections"])}
+                    {"id": key, "label": THEMES[key]["label"], "plan": THEMES[key]["plan"], "allowed": theme_allowed(self.shop, key), "sections": list(THEMES[key]["sections"])}
                     for key in self.listed_themes()
                 ],
             }
@@ -234,3 +243,50 @@ class DesignRestoreView(DesignScopedView):
             target=("storefront", version.pk, f"Version {version.number}"), number=version.number,
         )
         return Response(version_payload(draft))
+
+
+class GenerateSerializer(serializers.Serializer):
+    sector = serializers.ChoiceField(choices=SECTORS)
+    focus = serializers.ListField(child=serializers.CharField(max_length=20), max_length=10, required=False, default=list)
+    audience = serializers.ChoiceField(choices=AUDIENCES)
+
+    def to_internal_value(self, data):
+        refuse_unknown_keys(data, self.fields)
+        return super().to_internal_value(data)
+
+
+class DesignGenerateView(DesignScopedView):
+    """Inscription : les réponses choisissent le style et le pack, publiés tout de suite (shops/generation.py)."""
+
+    permission_by_method = {"POST": "storefront.edit"}
+
+    def post(self, request, slug):
+        serializer = GenerateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        answers = serializer.validated_data
+        enforce("design_save:member", str(self.membership.pk), SAVE_LIMIT)
+        result = generate(answers["sector"], answers["focus"], answers["audience"])
+        config = default_config(result["style"], result["pack"])
+        try:
+            with transaction.atomic():
+                self.versions().filter(status=Status.DRAFT).delete()
+                self.versions().filter(status=Status.PUBLISHED).update(status=Status.ARCHIVED)
+                number = (self.versions().aggregate(top=Max("number"))["top"] or 0) + 1
+                version = StorefrontVersion.objects.create(
+                    shop=self.shop, number=number, status=Status.PUBLISHED, config=config,
+                    created_by=request.user, created_by_name=full_name(request.user),
+                    published_at=timezone.now(), published_by_name=full_name(request.user),
+                )
+                kept = limits(self.shop)["versions_kept"]
+                old = list(self.versions().order_by("-number").values_list("pk", flat=True)[kept:])
+                if old:
+                    StorefrontVersion.objects.filter(pk__in=old).delete()
+                self.shop.sector, self.shop.pack, self.shop.generated_style = answers["sector"], result["pack"], result["style"]
+                self.shop.save(update_fields=["sector", "pack", "generated_style"])
+        except IntegrityError:
+            raise ProblemError(409, "conflict", "La vitrine vient d'être modifiée ailleurs : actualisez la page.") from None
+        record(
+            "storefront_published", request, actor=request.user, shop=self.shop,
+            target=("storefront", version.pk, f"Version {version.number}"), number=version.number, theme=result["style"],
+        )
+        return Response({**result, "published": version_payload(version)}, status=status.HTTP_201_CREATED)

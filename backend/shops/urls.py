@@ -29,6 +29,7 @@ urlpatterns = [
     path("shops/<slug:slug>/storefront", design.DesignView.as_view()),
     path("shops/<slug:slug>/storefront/draft", design.DesignDraftView.as_view()),
     path("shops/<slug:slug>/storefront/publish", design.DesignPublishView.as_view()),
+    path("shops/<slug:slug>/storefront/generate", design.DesignGenerateView.as_view()),
     path("shops/<slug:slug>/storefront/versions", design.DesignVersionsView.as_view()),
     path("shops/<slug:slug>/storefront/versions/<int:number>/restore", design.DesignRestoreView.as_view()),
     # Clients : les routes nommées avant l'identifiant de fiche.

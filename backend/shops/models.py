@@ -48,6 +48,10 @@ class Shop(models.Model):
     vacation_active = models.BooleanField("en vacances", default=False)
     vacation_message = models.CharField("message de vacances", max_length=280, blank=True)
     vacation_until = models.DateField("date de retour", null=True, blank=True)
+    # Réponses d'inscription et thème généré (shops/generation.py) : le style généré reste permis quel que soit le plan.
+    sector = models.CharField("secteur", max_length=20, blank=True)
+    pack = models.CharField(max_length=30, blank=True)
+    generated_style = models.CharField("style généré", max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

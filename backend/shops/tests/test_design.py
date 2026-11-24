@@ -14,6 +14,7 @@ STOREFRONT = "/api/v1/storefront/maison-test"
 BASE = {
     "version": 1,
     "theme": "epicerie",
+    "pack": "",
     "motion": "soft",
     "cover": "featured",
     "sections": ["livraison", "demandes", "collection", "suivi"],

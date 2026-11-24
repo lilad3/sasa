@@ -37,11 +37,12 @@ PLAN_RANK = {"free": 0, "pro": 1, "business": 2}
 VERSIONS_KEPT = {"free": 1, "pro": 5, "business": 20}
 
 
-def default_config(theme="essentiel"):
+def default_config(theme="essentiel", pack=""):
     """La vitrine d'une boutique qui n'a encore rien publié : la vitrine d'avant l'éditeur."""
     return {
         "version": 1,
         "theme": theme,
+        "pack": pack,
         "motion": "full",
         "cover": "featured",
         "sections": list(THEMES[theme]["sections"]),
@@ -51,4 +52,6 @@ def default_config(theme="essentiel"):
 
 def published_design(shop):
     published = StorefrontVersion.objects.for_shop(shop).filter(status=StorefrontVersion.Status.PUBLISHED).first()
-    return published.config if published else default_config()
+    if not published:
+        return default_config()
+    return {"pack": "", **published.config}  # les vitrines publiées avant les packs n'ont pas la clé
