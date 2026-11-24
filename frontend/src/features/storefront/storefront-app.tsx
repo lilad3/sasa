@@ -19,6 +19,7 @@ import { Checkout, Confirmation, type Receipt } from "./checkout";
 import { Cover } from "./cover";
 import { KitchenTheme } from "./themes/kitchen";
 import { MarketTheme } from "./themes/market";
+import { WardrobeTheme } from "./themes/wardrobe";
 import { Sections, type ThemeProps, type Tone } from "./themes/parts";
 
 type View = "catalogue" | "commande";
@@ -28,6 +29,7 @@ type View = "catalogue" | "commande";
 const THEMES: Partial<Record<ThemeId, (props: ThemeProps) => ReactNode>> = {
   kitchen: KitchenTheme,
   market: MarketTheme,
+  wardrobe: WardrobeTheme,
 };
 
 // Les parties communes posées sur la vitre orangée de la mise en page commune.

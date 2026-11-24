@@ -300,7 +300,7 @@ export function CartButton({ count, onCheckout, closed, className }: { count: nu
       type="button"
       onClick={() => count > 0 && !closed && onCheckout()}
       aria-label={`Panier : ${count} article${count > 1 ? "s" : ""}`}
-      className={cn("inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold", className)}
+      className={cn("inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold whitespace-nowrap", className)}
     >
       <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M7.5 10c0-4.2 9-4.2 9 0M3.5 10h17M4.8 10l1.7 9.5h11l1.7-9.5" />
