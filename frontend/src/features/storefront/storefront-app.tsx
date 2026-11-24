@@ -19,6 +19,7 @@ import { Checkout, Confirmation, type Receipt } from "./checkout";
 import { Cover } from "./cover";
 import { KitchenTheme } from "./themes/kitchen";
 import { MarketTheme } from "./themes/market";
+import { TailorTheme } from "./themes/tailor";
 import { WardrobeTheme } from "./themes/wardrobe";
 import { Sections, type ThemeProps, type Tone } from "./themes/parts";
 
@@ -29,6 +30,7 @@ type View = "catalogue" | "commande";
 const THEMES: Partial<Record<ThemeId, (props: ThemeProps) => ReactNode>> = {
   kitchen: KitchenTheme,
   market: MarketTheme,
+  tailor: TailorTheme,
   wardrobe: WardrobeTheme,
 };
 
