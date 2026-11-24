@@ -11,6 +11,7 @@ import type { PublicProduct } from "@/lib/types";
 
 import { flipFrom, flyToCart } from "../motion";
 import { CartButton, ProductImage, Sections, StockHint, ThemeFooter, type ThemeProps, type Tone } from "../parts";
+import { Universe, universeFrom, type UniverseLook, type UniverseOpen } from "../universe";
 
 const serif = Young_Serif({ subsets: ["latin"], weight: "400", variable: "--tl-serif" });
 const sans = Hanken_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--tl-sans" });
@@ -23,6 +24,8 @@ const TONE: Tone = {
   button: "tl-encre",
   ghost: "tl-ghost",
 };
+
+const LOOK: UniverseLook = { ink: "#fbf8f2", accent: "#e9a46b", onAccent: "#17191d", fallback: "#3a3631" };
 
 type Open = { product: PublicProduct; from: DOMRect; opener: HTMLElement };
 
@@ -41,6 +44,7 @@ export function TailorTheme(props: ThemeProps) {
   const cats = useMemo(() => categories(products), [products]);
   const [cat, setCat] = useState("Tout");
   const [open, setOpen] = useState<Open | null>(null);
+  const [universe, setUniverse] = useState<UniverseOpen | null>(null);
   const shown = cat === "Tout" ? products : products.filter((p) => (p.category.trim() || "Pièces") === cat);
 
   return (
@@ -76,7 +80,16 @@ export function TailorTheme(props: ThemeProps) {
               <p className="tl-muted max-w-[52ch] text-[15px]">Touchez une pièce pour la voir de face, touchez-la encore pour l’ouvrir.</p>
               <div className="tl-etiquettes" role="group" aria-label="Filtrer le portant">
                 {["Tout", ...cats].map((name) => (
-                  <button key={name} type="button" aria-pressed={cat === name} onClick={() => setCat(name)} className="tl-etiquette">
+                  <button
+                    key={name}
+                    type="button"
+                    aria-pressed={cat === name}
+                    onClick={(e) => {
+                      setCat(name);
+                      if (name !== "Tout") setUniverse(universeFrom(name, e.currentTarget));
+                    }}
+                    className="tl-etiquette"
+                  >
                     {name}
                   </button>
                 ))}
@@ -90,6 +103,7 @@ export function TailorTheme(props: ThemeProps) {
 
       <ThemeFooter shop={shop} tone={TONE} className="tl-footer" />
       {open ? <PieceSheet key={open.product.id} {...open} props={props} shopSlug={shop.slug} onClose={() => setOpen(null)} /> : null}
+      {universe ? <Universe open={universe} products={products} props={props} look={LOOK} uncategorized="Pièces" onClose={() => setUniverse(null)} /> : null}
     </div>
   );
 }

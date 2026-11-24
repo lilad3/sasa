@@ -11,6 +11,7 @@ import type { PublicProduct } from "@/lib/types";
 
 import { flipFrom, flyToCart, motionAllowed } from "../motion";
 import { CartButton, ProductImage, Sections, StockHint, ThemeFooter, type ThemeProps, type Tone } from "../parts";
+import { Universe, universeFrom, type UniverseLook, type UniverseOpen } from "../universe";
 
 const display = Syne({ subsets: ["latin"], weight: ["700", "800"], variable: "--wd-display" });
 const text = Figtree({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--wd-text" });
@@ -23,6 +24,8 @@ const TONE: Tone = {
   button: "wd-encre",
   ghost: "wd-ghost",
 };
+
+const LOOK: UniverseLook = { ink: "#fff4f7", accent: "#ffe14d", onAccent: "#1c0d12", fallback: "#c9142d" };
 
 type Open = { product: PublicProduct; from: DOMRect; opener: HTMLElement };
 const STORY_MS = 5000;
@@ -42,6 +45,7 @@ export function WardrobeTheme(props: ThemeProps) {
   const [open, setOpen] = useState<Open | null>(null);
   const groups = useMemo(() => byCategory(products), [products]);
   const [filter, setFilter] = useState<string>("Tout");
+  const [universe, setUniverse] = useState<UniverseOpen | null>(null);
   const shown = filter === "Tout" ? products : (groups.find((g) => g.name === filter)?.items ?? []);
   const stories = useMemo(() => products.filter((p) => p.in_stock).slice(0, 6), [products]);
 
@@ -77,7 +81,16 @@ export function WardrobeTheme(props: ThemeProps) {
               </div>
               <div className="wd-filtres" role="group" aria-label="Filtrer">
                 {["Tout", ...groups.map((g) => g.name)].map((name) => (
-                  <button key={name} type="button" aria-pressed={filter === name} onClick={() => setFilter(name)} className="wd-filtre">
+                  <button
+                    key={name}
+                    type="button"
+                    aria-pressed={filter === name}
+                    onClick={(e) => {
+                      setFilter(name);
+                      if (name !== "Tout") setUniverse(universeFrom(name, e.currentTarget));
+                    }}
+                    className="wd-filtre"
+                  >
                     {name}
                   </button>
                 ))}
@@ -112,6 +125,7 @@ export function WardrobeTheme(props: ThemeProps) {
 
       <ThemeFooter shop={shop} tone={TONE} className="wd-footer" />
       {open ? <PieceSheet key={open.product.id} {...open} props={props} onClose={() => setOpen(null)} /> : null}
+      {universe ? <Universe open={universe} products={products} props={props} look={LOOK} uncategorized="Nouveautés" onClose={() => setUniverse(null)} /> : null}
     </div>
   );
 }

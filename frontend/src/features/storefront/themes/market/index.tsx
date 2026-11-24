@@ -11,6 +11,7 @@ import type { PublicProduct } from "@/lib/types";
 
 import { flipFrom, flyToCart, fold } from "../motion";
 import { CartButton, ProductImage, Sections, StockHint, ThemeFooter, type ThemeProps, type Tone } from "../parts";
+import { Universe, universeFrom, type UniverseLook, type UniverseOpen } from "../universe";
 
 const enseigne = Big_Shoulders({ subsets: ["latin"], weight: ["700", "900"], variable: "--mk-enseigne" });
 const texte = Barlow({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--mk-texte" });
@@ -23,6 +24,8 @@ const TONE: Tone = {
   button: "mk-button",
   ghost: "mk-ghost",
 };
+
+const LOOK: UniverseLook = { ink: "#f1ede4", accent: "#ff7a1f", onAccent: "#1a0e04", fallback: "#141724" };
 
 type Aisle = { id: string; name: string; items: PublicProduct[] };
 
@@ -46,6 +49,7 @@ export function MarketTheme(props: ThemeProps) {
   const [aisleId, setAisleId] = useState(aisles[0]?.id ?? "");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<{ product: PublicProduct; from: DOMRect; opener: HTMLElement } | null>(null);
+  const [universe, setUniverse] = useState<UniverseOpen | null>(null);
   const aisle = aisles.find((a) => a.id === aisleId) ?? aisles[0];
 
   const words = fold(query.trim());
@@ -94,7 +98,10 @@ export function MarketTheme(props: ThemeProps) {
                 </h2>
                 <nav aria-label="Rayons" className="mk-panneaux">
                   {aisles.map((a, index) => (
-                    <button key={a.id} type="button" aria-pressed={a.id === aisle?.id} onClick={() => setAisleId(a.id)} className="mk-panneau">
+                    <button key={a.id} type="button" aria-pressed={a.id === aisle?.id} onClick={(e) => {
+                        setAisleId(a.id);
+                        setUniverse(universeFrom(a.name, e.currentTarget));
+                      }} className="mk-panneau">
                       <b>{index + 1}</b>
                       <span>{a.name}</span>
                     </button>
@@ -121,6 +128,7 @@ export function MarketTheme(props: ThemeProps) {
 
       <ThemeFooter shop={shop} tone={TONE} className="mk-footer" />
       {open ? <ProductSheet key={open.product.id} {...open} props={props} onClose={() => setOpen(null)} /> : null}
+      {universe ? <Universe open={universe} products={products} props={props} look={LOOK} onClose={() => setUniverse(null)} /> : null}
     </div>
   );
 }

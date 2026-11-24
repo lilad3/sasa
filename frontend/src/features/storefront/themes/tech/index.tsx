@@ -11,6 +11,7 @@ import type { PublicProduct } from "@/lib/types";
 
 import { flyToCart, motionAllowed } from "../motion";
 import { CartButton, ProductImage, Sections, StockHint, ThemeFooter, type ThemeProps, type Tone } from "../parts";
+import { Universe, universeFrom, type UniverseLook, type UniverseOpen } from "../universe";
 
 const mono = Martian_Mono({ subsets: ["latin"], weight: ["400", "600", "800"], variable: "--tc-mono" });
 const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--tc-sans" });
@@ -25,6 +26,7 @@ const TONE: Tone = {
 };
 
 const MAX_COMPARE = 3;
+const LOOK: UniverseLook = { ink: "#f2f3f5", accent: "#ffcf1f", onAccent: "#15171b", fallback: "#23262c" };
 
 /** Tech : l'appareil sur l'établi, qu'on fait tourner au doigt ; le tarif du jour en lignes ; le comparateur. */
 export function TechTheme(props: ThemeProps) {
@@ -32,6 +34,7 @@ export function TechTheme(props: ThemeProps) {
   const [selectedId, setSelectedId] = useState(featured?.id ?? products[0]?.id ?? "");
   const [compare, setCompare] = useState<string[]>([]);
   const [showCompare, setShowCompare] = useState(false);
+  const [universe, setUniverse] = useState<UniverseOpen | null>(null);
   const selected = products.find((p) => p.id === selectedId) ?? products[0];
 
   const toggleCompare = (id: string) =>
@@ -60,7 +63,7 @@ export function TechTheme(props: ThemeProps) {
         <Sections
           props={props}
           tone={TONE}
-          collection={<PriceList products={products} selectedId={selected?.id ?? ""} onSelect={setSelectedId} compare={compare} onCompare={toggleCompare} />}
+          collection={<PriceList products={products} selectedId={selected?.id ?? ""} onSelect={setSelectedId} compare={compare} onCompare={toggleCompare} onUniverse={setUniverse} />}
         />
       </main>
 
@@ -77,6 +80,7 @@ export function TechTheme(props: ThemeProps) {
 
       <ThemeFooter shop={shop} tone={TONE} className="tc-footer" />
       {showCompare ? <Comparator items={products.filter((p) => compare.includes(p.id))} onClose={() => setShowCompare(false)} /> : null}
+      {universe ? <Universe open={universe} products={products} props={props} look={LOOK} onClose={() => setUniverse(null)} /> : null}
     </div>
   );
 }
@@ -196,12 +200,14 @@ function PriceList({
   onSelect,
   compare,
   onCompare,
+  onUniverse,
 }: {
   products: PublicProduct[];
   selectedId: string;
   onSelect: (id: string) => void;
   compare: string[];
   onCompare: (id: string) => void;
+  onUniverse: (value: UniverseOpen) => void;
 }) {
   const cats = useMemo(() => ["Tout", ...new Set(products.map((p) => p.category.trim() || "Divers"))], [products]);
   const top = useMemo(() => Math.max(0, ...products.map((p) => p.price)), [products]);
@@ -219,7 +225,16 @@ function PriceList({
       </div>
       <div className="tc-onglets" role="group" aria-label="Catégories">
         {cats.map((c) => (
-          <button key={c} type="button" aria-pressed={cat === c} onClick={() => setCat(c)} className="tc-onglet">
+          <button
+            key={c}
+            type="button"
+            aria-pressed={cat === c}
+            onClick={(e) => {
+              setCat(c);
+              if (c !== "Tout") onUniverse(universeFrom(c, e.currentTarget));
+            }}
+            className="tc-onglet"
+          >
             {c}
           </button>
         ))}

@@ -1,0 +1,43 @@
+/* L'univers d'une catégorie : plein écran, fond tiré des photos, l'article qui tourne, la piste à faire défiler. */
+.uv {
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; flex-direction: column;
+  background-color: var(--uv-bg);
+  background-image: radial-gradient(90% 60% at 50% 40%, color-mix(in srgb, var(--uv-bg) 88%, white), var(--uv-bg) 75%);
+  color: var(--uv-ink);
+  transition: background 0.8s ease;
+  overflow: hidden;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+.uv-haut { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+.uv-retour { min-height: 44px; padding: 0 16px; border-radius: 999px; background: color-mix(in srgb, var(--uv-ink) 14%, transparent); font-weight: 700; font-size: 14px; }
+.uv-compte { font-size: 13px; opacity: 0.8; }
+.uv-titre { position: absolute; left: 0; right: 0; top: 64px; margin: 0; text-align: center; font-family: inherit; font-weight: 900; font-size: clamp(3.6rem, 19vw, 10rem); line-height: 0.85; text-transform: uppercase; letter-spacing: -0.03em; color: transparent; -webkit-text-stroke: 1.5px color-mix(in srgb, var(--uv-ink) 35%, transparent); white-space: nowrap; overflow: hidden; pointer-events: none; animation: uv-titre 0.9s cubic-bezier(.22, 1, .36, 1) 0.15s backwards; }
+@keyframes uv-titre { from { opacity: 0; transform: translateY(30px) scale(1.1); } }
+
+.uv-scene { position: relative; z-index: 1; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 0 16px; }
+.uv-plateau { position: relative; width: min(64vw, 340px); aspect-ratio: 1; perspective: 900px; animation: uv-arrive 0.7s cubic-bezier(.34, 1.4, .64, 1); }
+@keyframes uv-arrive { from { opacity: 0; transform: translateY(40px) scale(0.85); } }
+.uv-plateau-file { opacity: 0.55; transform: scale(0.94); transition: opacity 0.2s, transform 0.2s; }
+.uv-objet { position: absolute; inset: 6% 6% 14%; border-radius: 26px; overflow: hidden; background: color-mix(in srgb, var(--uv-ink) 10%, transparent); box-shadow: 0 30px 50px rgb(0 0 0 / 0.35); animation: uv-tourne 6s ease-in-out infinite; transform-style: preserve-3d; }
+@keyframes uv-tourne { 0%, 100% { transform: rotateY(-22deg) translateY(0); } 50% { transform: rotateY(22deg) translateY(-10px); } }
+.uv-sol { position: absolute; left: 16%; right: 16%; bottom: 2%; height: 9%; border-radius: 50%; background: radial-gradient(rgb(0 0 0 / 0.4), transparent 70%); animation: uv-ombre 6s ease-in-out infinite; }
+@keyframes uv-ombre { 50% { transform: scaleX(0.82); opacity: 0.7; } }
+
+.uv-info { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; opacity: 0; transform: translateY(14px); transition: opacity 0.35s, transform 0.45s cubic-bezier(.22, 1, .36, 1); }
+.uv-info-on { opacity: 1; transform: none; }
+.uv-nom { margin: 0; font-weight: 700; font-size: 17px; max-width: 30ch; }
+.uv-prix { margin: 0; font-weight: 900; font-size: clamp(2.6rem, 12vw, 4.4rem); line-height: 0.95; letter-spacing: -0.03em; color: var(--uv-accent); }
+.uv-prix small { font-size: 0.4em; }
+.uv-stock { font-size: 12.5px; font-weight: 600; opacity: 0.85; }
+.uv-ajouter { margin-top: 6px; min-height: 50px; padding: 0 22px; border-radius: 999px; background: var(--uv-accent); color: var(--uv-on-accent); font-weight: 800; font-size: 15px; box-shadow: 0 12px 24px rgb(0 0 0 / 0.25); }
+.uv-vide { flex: 1; display: grid; place-items: center; font-size: 15px; }
+
+.uv-piste { position: relative; z-index: 2; display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 14px calc(50vw - 40px) 18px; }
+.uv-piste::-webkit-scrollbar { display: none; }
+.uv-vignette { position: relative; flex: none; width: 80px; height: 80px; border-radius: 18px; overflow: hidden; scroll-snap-align: center; opacity: 0.55; transform: scale(0.88); transition: transform 0.3s cubic-bezier(.22, 1, .36, 1), opacity 0.3s; background: color-mix(in srgb, var(--uv-ink) 10%, transparent); }
+.uv-vignette-on { opacity: 1; transform: scale(1.06); box-shadow: 0 0 0 3px var(--uv-accent); }
+
+[data-motion="soft"] .uv-objet, [data-motion="soft"] .uv-sol { animation: none; }
+[data-motion="none"] .uv, [data-motion="none"] .uv * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .uv, .uv * { animation: none !important; transition: none !important; } }

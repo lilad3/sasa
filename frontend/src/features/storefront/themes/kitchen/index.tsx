@@ -11,6 +11,7 @@ import type { PublicProduct } from "@/lib/types";
 
 import { flipFrom, flyToCart } from "../motion";
 import { CartButton, ProductImage, Sections, StockHint, ThemeFooter, type ThemeProps, type Tone } from "../parts";
+import { Universe, universeFrom, type UniverseLook, type UniverseOpen } from "../universe";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["600", "800"], variable: "--kt-display" });
 const text = Instrument_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--kt-text" });
@@ -23,6 +24,8 @@ const TONE: Tone = {
   button: "kt-dark",
   ghost: "kt-ghost",
 };
+
+const LOOK: UniverseLook = { ink: "#f7e9d6", accent: "#f4b63f", onAccent: "#22140e", fallback: "#8c321b" };
 
 type Course = { id: string; name: string; items: PublicProduct[] };
 
@@ -40,6 +43,7 @@ export function KitchenTheme(props: ThemeProps) {
   const { shop, products, featured, design } = props;
   const menu = useMemo(() => buildMenu(products), [products]);
   const [open, setOpen] = useState<{ product: PublicProduct; from: DOMRect; opener: HTMLElement } | null>(null);
+  const [universe, setUniverse] = useState<UniverseOpen | null>(null);
   const names = products.filter((p) => p.in_stock).map((p) => p.name);
   const heroPlate = useRef<HTMLDivElement>(null);
   const inCartHero = featured ? (props.cart[featured.id] ?? 0) : 0;
@@ -116,17 +120,28 @@ export function KitchenTheme(props: ThemeProps) {
         ) : null}
 
         <div className="px-4">
-          <Sections props={props} tone={TONE} collection={<Menu menu={menu} props={props} onOpen={setOpen} />} />
+          <Sections props={props} tone={TONE} collection={<Menu menu={menu} props={props} onOpen={setOpen} onUniverse={setUniverse} />} />
         </div>
       </main>
 
       <ThemeFooter shop={shop} tone={TONE} className="kt-footer" />
       {open ? <DishSheet key={open.product.id} {...open} props={props} onClose={() => setOpen(null)} /> : null}
+      {universe ? <Universe open={universe} products={products} props={props} look={LOOK} uncategorized="La carte" onClose={() => setUniverse(null)} /> : null}
     </div>
   );
 }
 
-function Menu({ menu, props, onOpen }: { menu: Course[]; props: ThemeProps; onOpen: (value: { product: PublicProduct; from: DOMRect; opener: HTMLElement }) => void }) {
+function Menu({
+  menu,
+  props,
+  onOpen,
+  onUniverse,
+}: {
+  menu: Course[];
+  props: ThemeProps;
+  onOpen: (value: { product: PublicProduct; from: DOMRect; opener: HTMLElement }) => void;
+  onUniverse: (value: UniverseOpen) => void;
+}) {
   return (
     <section aria-labelledby="kt-carte" className="flex flex-col gap-5">
       <h2 id="kt-carte" className="kt-heading">
@@ -135,9 +150,9 @@ function Menu({ menu, props, onOpen }: { menu: Course[]; props: ThemeProps; onOp
       {menu.length > 1 ? (
         <nav aria-label="Rubriques" className="kt-chips">
           {menu.map((course) => (
-            <a key={course.id} href={`#${course.id}`} className="kt-chip">
+            <button key={course.id} type="button" onClick={(e) => onUniverse(universeFrom(course.name, e.currentTarget))} className="kt-chip">
               {course.name}
-            </a>
+            </button>
           ))}
         </nav>
       ) : null}
