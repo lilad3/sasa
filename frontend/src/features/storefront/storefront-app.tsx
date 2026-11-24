@@ -17,13 +17,16 @@ import { Collection, type Line } from "./catalogue";
 import { rememberChannel } from "./channel";
 import { Checkout, Confirmation, type Receipt } from "./checkout";
 import { Cover } from "./cover";
+import { MarketTheme } from "./themes/market";
 import { Sections, type ThemeProps, type Tone } from "./themes/parts";
 
 type View = "catalogue" | "commande";
 
 // Les styles qui ont leur propre page de catalogue. Un style pas encore porté garde la mise en page
 // commune (couverture, collection en cartes), qui sert aussi de page de commande.
-const THEMES: Partial<Record<ThemeId, (props: ThemeProps) => ReactNode>> = {};
+const THEMES: Partial<Record<ThemeId, (props: ThemeProps) => ReactNode>> = {
+  market: MarketTheme,
+};
 
 // Les parties communes posées sur la vitre orangée de la mise en page commune.
 const BASE_TONE: Tone = {

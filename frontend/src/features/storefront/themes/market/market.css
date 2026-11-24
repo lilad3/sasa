@@ -1,0 +1,97 @@
+/* Market : la nuit d'Essentiel, une lumière orangée qui respire, des étagères métalliques et des étiquettes. */
+.mk {
+  --mk-nuit: #0c0e16;
+  --mk-nuit-2: #141724;
+  --mk-nuit-3: #1c2031;
+  --mk-acier: #3a4054;
+  --mk-acier-clair: #7d859c;
+  --mk-orange: #ff7a1f;
+  --mk-craie: #f1ede4;
+  --mk-gris: #9096ab;
+  --mk-ocre: #e2a83b;
+  --mk-filet: rgb(144 150 171 / 0.18);
+  position: relative;
+  isolation: isolate;
+  background: var(--mk-nuit);
+  color: var(--mk-craie);
+  font-family: var(--mk-texte), system-ui, sans-serif;
+  color-scheme: dark;
+  overflow-x: clip;
+}
+.mk-enseigne { font-family: var(--mk-enseigne), "Arial Narrow", Impact, sans-serif; font-weight: 900; letter-spacing: 0.01em; text-transform: uppercase; }
+.mk-orange { color: var(--mk-orange); }
+.mk-ocre { color: var(--mk-ocre); }
+.mk-muted { color: var(--mk-gris); }
+.mk-heading { font-family: var(--mk-enseigne), Impact, sans-serif; font-weight: 900; text-transform: uppercase; font-size: clamp(1.6rem, 5vw, 2.3rem); line-height: 1; }
+.mk-card { background: var(--mk-nuit-2); border: 1px solid var(--mk-filet); }
+.mk-button { background: var(--mk-orange); color: #1a0e04; font-weight: 700; }
+.mk-ghost { background: transparent; color: var(--mk-craie); border: 1.5px solid var(--mk-acier); }
+.mk-footer { border-top: 1px solid var(--mk-filet); color: var(--mk-craie); }
+
+.mk-lumiere {
+  position: fixed; inset: -20% -10% auto; height: 70vh; z-index: -1; pointer-events: none;
+  background: radial-gradient(50% 50% at 70% 30%, rgb(255 122 31 / 0.16), transparent 70%);
+  animation: mk-respire 7s ease-in-out infinite;
+}
+@keyframes mk-respire { 50% { opacity: 0.55; transform: scale(1.06); } }
+
+.mk-head { position: sticky; top: 0; z-index: 30; background: rgb(12 14 22 / 0.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--mk-filet); }
+.mk-badge { align-items: center; border: 1.5px solid var(--mk-orange); color: var(--mk-orange); border-radius: 6px; padding: 3px 8px; font-family: var(--mk-enseigne), Impact, sans-serif; font-weight: 900; letter-spacing: 0.08em; font-size: 14px; }
+.mk-badge-off { border-color: var(--mk-ocre); color: var(--mk-ocre); }
+
+/* Recherche d'abord */
+.mk-search { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 0 8px 0 16px; border-radius: 18px; background: var(--mk-nuit-2); border: 1.5px solid rgb(255 122 31 / 0.55); box-shadow: 0 0 0 6px rgb(255 122 31 / 0.07); }
+.mk-search:focus-within { border-color: var(--mk-orange); box-shadow: 0 0 0 6px rgb(255 122 31 / 0.16); }
+.mk-sugg { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 25; background: #171a28; border: 1px solid var(--mk-filet); border-radius: 18px; padding: 6px; box-shadow: 0 20px 50px rgb(0 0 0 / 0.5); }
+.mk-sugg-item { display: flex; width: 100%; align-items: center; gap: 12px; padding: 8px; border-radius: 12px; text-align: left; }
+.mk-sugg-item:hover, .mk-sugg-item:focus-visible { background: var(--mk-nuit-3); }
+
+/* Panneaux de rayon suspendus */
+.mk-panneaux { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 14px 2px 4px; scroll-snap-type: x proximity; }
+.mk-panneaux::-webkit-scrollbar { display: none; }
+.mk-panneau { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 10px; background: var(--mk-nuit-2); border: 1px solid var(--mk-filet); font-family: var(--mk-enseigne), Impact, sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.03em; font-size: 17px; scroll-snap-align: start; transform-origin: 50% -14px; }
+.mk-panneau::before, .mk-panneau::after { content: ""; position: absolute; top: -14px; width: 1.5px; height: 14px; background: var(--mk-acier-clair); }
+.mk-panneau::before { left: 18%; } .mk-panneau::after { right: 18%; }
+.mk-panneau b { color: var(--mk-orange); font-size: 22px; }
+.mk-panneau[aria-pressed="true"] { background: var(--mk-orange); color: #1a0e04; border-color: var(--mk-orange); }
+.mk-panneau[aria-pressed="true"] b { color: #1a0e04; }
+.mk-panneau:active { animation: mk-balance 0.6s ease-out; }
+@keyframes mk-balance { 30% { transform: rotate(3deg); } 60% { transform: rotate(-2deg); } }
+
+/* L'allée : le nom du rayon en lettres géantes détourées sur le mur, l'entrée en profondeur */
+.mk-allee { position: relative; display: flex; flex-direction: column; gap: 18px; padding: 18px 14px 6px; border-radius: 24px; background: linear-gradient(180deg, var(--mk-nuit-2), var(--mk-nuit)); border: 1px solid var(--mk-filet); overflow: hidden; animation: mk-entree 0.55s cubic-bezier(.22, 1, .36, 1); }
+@keyframes mk-entree { from { opacity: 0; transform: perspective(900px) translateZ(-120px) translateX(28px); } }
+.mk-mur { position: absolute; left: -4px; top: 4px; margin: 0; font-family: var(--mk-enseigne), Impact, sans-serif; font-weight: 900; text-transform: uppercase; font-size: clamp(4.5rem, 22vw, 11rem); line-height: 0.85; white-space: nowrap; color: transparent; -webkit-text-stroke: 1.5px rgb(255 122 31 / 0.22); pointer-events: none; user-select: none; }
+
+/* Étagère : chaque article posé sur sa tablette, l'étiquette accrochée dessous */
+.mk-etagere { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 12px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 720px) { .mk-etagere { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.mk-case { min-width: 0; }
+.mk-article { display: flex; width: 100%; flex-direction: column; align-items: stretch; text-align: left; }
+.mk-photo { position: relative; display: block; aspect-ratio: 1 / 1; margin: 0 8px; border-radius: 14px 14px 4px 4px; overflow: hidden; background: var(--mk-nuit-3); transition: transform 0.35s cubic-bezier(.22, 1, .36, 1); }
+.mk-article:hover .mk-photo, .mk-article:focus-visible .mk-photo { transform: translateY(-6px); }
+.mk-dans { position: absolute; left: 6px; top: 6px; z-index: 1; border-radius: 6px; background: var(--mk-orange); color: #1a0e04; padding: 2px 7px; font-size: 11.5px; font-weight: 700; }
+.mk-tablette { display: block; height: 10px; border-radius: 3px; background: linear-gradient(180deg, #4a5168, var(--mk-acier)); box-shadow: 0 6px 12px rgb(0 0 0 / 0.45); }
+.mk-etiquette { position: relative; display: flex; flex-direction: column; gap: 3px; margin: 0 6px; padding: 9px 10px 10px; border-radius: 0 0 10px 10px; background: var(--mk-craie); color: #141724; border-top: 4px solid var(--mk-orange); transform-origin: 50% 0; }
+.mk-article:hover .mk-etiquette, .mk-article:focus-visible .mk-etiquette { animation: mk-etiquette 0.9s cubic-bezier(.22, 1, .36, 1); }
+@keyframes mk-etiquette { 25% { transform: rotate(4deg); } 55% { transform: rotate(-2.5deg); } 80% { transform: rotate(1deg); } }
+.mk-etiquette-off { background: #b9b5ad; border-top-color: var(--mk-acier); }
+
+/* Fiche : la photo grandit depuis l'étagère, la feuille monte du bas */
+.mk-voile { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; background: rgb(5 6 10 / 0.62); animation: mk-fondu 0.25s ease-out; }
+@keyframes mk-fondu { from { opacity: 0; } }
+.mk-feuille { display: flex; width: min(560px, 100%); max-height: 92vh; flex-direction: column; gap: 16px; overflow-y: auto; padding: 12px 18px calc(18px + env(safe-area-inset-bottom, 0px)); border-radius: 24px 24px 0 0; background: #121521; border: 1px solid var(--mk-filet); animation: mk-monte 0.45s cubic-bezier(.22, 1, .36, 1); }
+@keyframes mk-monte { from { transform: translateY(40px); opacity: 0; } }
+.mk-poignee { align-self: center; width: 44px; height: 5px; border-radius: 3px; background: var(--mk-acier); }
+.mk-fiche-photo { position: relative; width: 112px; height: 112px; flex: none; overflow: hidden; border-radius: 16px; background: var(--mk-nuit-3); }
+.mk-qte { min-width: 54px; min-height: 48px; border-radius: 12px; border: 1.5px solid var(--mk-acier); font-family: var(--mk-enseigne), Impact, sans-serif; font-weight: 900; font-size: 22px; }
+.mk-qte[aria-pressed="true"] { background: var(--mk-craie); color: #141724; border-color: var(--mk-craie); }
+.mk-qte-autre { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 10px; border-radius: 12px; border: 1.5px solid var(--mk-acier); }
+
+[data-motion="soft"] .mk-lumiere, [data-motion="none"] .mk-lumiere { animation: none; }
+[data-motion="none"] .mk *, [data-motion="none"] .mk { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .mk *, .mk { animation: none !important; transition: none !important; }
+}
+/* Un seul « effacer » : celui de la vitrine, pas celui du navigateur. */
+.mk-search input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
