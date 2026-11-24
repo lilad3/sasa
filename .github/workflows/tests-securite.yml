@@ -1,0 +1,70 @@
+# À chaque envoi sur GitHub (push) et à chaque pull request : les tests d'attaque, puis tous les
+# tests du serveur. Le rapport lisible s'affiche dans l'onglet « Actions » (résumé de l'exécution)
+# et se télécharge en pièce jointe. GitHub prévient par e-mail quand une exécution échoue.
+name: Tests et sécurité
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  serveur:
+    name: Serveur Django
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Dépendances
+        run: pip install -r requirements.txt
+
+      # Des clés jetables, créées pour cette exécution et jamais réutilisées : aucun vrai secret ici.
+      - name: Clés de test jetables
+        run: |
+          python - >> "$GITHUB_ENV" <<'EOF'
+          import secrets
+          from cryptography.fernet import Fernet
+          t = lambda: secrets.token_urlsafe(48)
+          print(f"DJANGO_SECRET_KEY={t()}")
+          print(f"JWT_SIGNING_KEY={t()}")
+          print(f"BFF_SHARED_SECRET={t()}")
+          print(f"AUDIT_HMAC_KEY={t()}")
+          print(f"TOTP_ENCRYPTION_KEY={Fernet.generate_key().decode()}")
+          print("DJANGO_DEBUG=1")
+          print("DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1")
+          print("FRONTEND_URL=http://localhost:3000")
+          EOF
+
+      - name: Tests d'attaque (rapport)
+        run: python securite/rapport.py --sortie rapport-securite.md
+
+      - name: Publier le rapport dans le résumé
+        if: always()
+        run: test -f rapport-securite.md && cat rapport-securite.md >> "$GITHUB_STEP_SUMMARY" || echo "Pas de rapport."
+
+      - name: Joindre le rapport
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-securite
+          path: backend/rapport-securite.md
+          if-no-files-found: ignore
+
+      - name: Tous les tests du serveur
+        run: python manage.py test --noinput

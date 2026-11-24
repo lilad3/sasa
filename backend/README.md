@@ -92,6 +92,17 @@ Chaque protection du contrat (§5) a son test :
 - admin : 2FA obligatoire et lecture seule ;
 - divers : alertes e-mail et format des erreurs.
 
+### Tests d'attaque
+
+`securite/test_attaques.py` joue l'attaquant sur huit familles propres à Akwaba : séparation des boutiques, droits par rôle, relais Vercel, connexion et sessions, panier et paiement, fichiers envoyés, journal infalsifiable, vitrine publique.
+
+```bash
+.venv/Scripts/python securite/rapport.py   # lance les attaques et écrit rapport-securite.md
+```
+
+- Une faille repérée mais pas encore corrigée porte `@faille_connue("…")`. Elle figure dans le rapport sans bloquer le reste. Une fois corrigée, son test « réussit par surprise » et échoue : on retire alors la marque.
+- GitHub Actions (`.github/workflows/tests-securite.yml`) lance les attaques puis tous les tests à chaque push et à chaque pull request. Le rapport s'affiche dans le résumé de l'exécution, onglet Actions.
+
 `manage.py flush` échoue volontairement : les triggers du journal refusent tout `DELETE`. Pour repartir de zéro en développement, supprimez `db.sqlite3` puis relancez `migrate`, `createcachetable` et `seed_demo`.
 
 ## Où lire quoi
