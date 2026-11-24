@@ -18,7 +18,7 @@ from core.exceptions import ProblemError
 from core.ratelimit import enforce
 
 from . import plans
-from .design_catalog import COVERS, MOTIONS, PLAN_RANK, SECTIONS, THEMES, VERSIONS_KEPT, default_config
+from .design_catalog import COVERS, MOTIONS, PLAN_RANK, SECTIONS, THEMES, VERSIONS_KEPT, default_config, selectable_themes
 from .models import StorefrontVersion
 from .permissions import ShopScopedView
 from .storefront import plain_text
@@ -142,6 +142,14 @@ class DesignScopedView(ShopScopedView):
 class DesignView(DesignScopedView):
     permission_by_method = {"GET": "storefront.edit"}
 
+    def listed_themes(self):
+        """Les styles proposés, plus l'ancien thème encore en ligne pour qu'il reste affiché."""
+        keys = selectable_themes()
+        published = self.versions().filter(status=Status.PUBLISHED).first()
+        if published and published.config["theme"] not in keys:
+            keys.append(published.config["theme"])
+        return keys
+
     def get(self, request, slug):
         current = limits(self.shop)
         rank = PLAN_RANK[current["plan"]]
@@ -153,8 +161,8 @@ class DesignView(DesignScopedView):
                 "limits": current,
                 "accent": self.shop.accent,
                 "themes": [
-                    {"id": key, "label": theme["label"], "plan": theme["plan"], "allowed": PLAN_RANK[theme["plan"]] <= rank, "sections": list(theme["sections"])}
-                    for key, theme in THEMES.items()
+                    {"id": key, "label": THEMES[key]["label"], "plan": THEMES[key]["plan"], "allowed": PLAN_RANK[THEMES[key]["plan"]] <= rank, "sections": list(THEMES[key]["sections"])}
+                    for key in self.listed_themes()
                 ],
             }
         )

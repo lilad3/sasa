@@ -91,7 +91,8 @@ class PlanTests(DesignTestCase):
 
         overview = self.client.get(f"{SHOP}/storefront").json()
         allowed = {theme["id"]: theme["allowed"] for theme in overview["themes"]}
-        self.assertEqual(allowed, {"essentiel": True, "epicerie": True, "beaute": False, "artisanat": False, "piece-phare": False})
+        # Les anciens thèmes ne sont plus proposés ; les 5 styles sont compris à partir du plan Pro.
+        self.assertEqual(allowed, {"kitchen": False, "wardrobe": False, "tailor": False, "tech": False, "market": False})
         self.assertEqual(overview["limits"]["versions_kept"], 1)
         self.assertFalse(overview["limits"]["custom_sections"])
 
