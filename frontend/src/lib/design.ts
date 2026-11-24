@@ -1,16 +1,28 @@
 import { z } from "zod";
 
-import { MOTIONS, SECTION_IDS, type SectionId, type StorefrontDesign, THEME_IDS, type ThemeId } from "./types";
+import { MOTIONS, PACK_IDS, type PackId, SECTION_IDS, type SectionId, type StorefrontDesign, THEME_IDS, type ThemeId } from "./types";
 
 // Les thèmes de la vitrine (docs/chantier-p5.md §3.1). Les règles sont celles de Django : ce fichier
 // ne sert qu'à afficher et à revalider l'aperçu, qui reçoit sa configuration dans l'adresse.
 
 export const THEME_META: Record<ThemeId, { label: string; pitch: string; forWho: string }> = {
-  essentiel: { label: "Essentiel", pitch: "Une couverture façon magazine et la collection en cartes.", forWho: "Toute boutique" },
-  epicerie: { label: "Épicerie", pitch: "Recherche, rayons et quantités sur place : on commande vite.", forWho: "Alimentation, produits du quotidien" },
-  beaute: { label: "Beauté", pitch: "Fond sable, vagues et produits qui flottent, la description en avant.", forWho: "Cosmétiques, karité, soins" },
-  artisanat: { label: "Artisanat", pitch: "Toile écrue, dessins au trait et l’histoire de la boutique.", forWho: "Fait main, pièces uniques" },
-  "piece-phare": { label: "Pièce phare", pitch: "Une grande image pleine page et de grandes fiches.", forWho: "Peu de produits, ou un lancement" },
+  kitchen: { label: "Kitchen", pitch: "Le plat en grand, la commande en direct et le suivi jusqu’à la table.", forWho: "Restaurants, maquis, plats à emporter" },
+  wardrobe: { label: "Wardrobe", pitch: "Vidéos façon story et cabine d’essayage : on compose sa tenue.", forWho: "Mode et beauté femme" },
+  tailor: { label: "Tailor", pitch: "Le portant qui pivote, les chaussures en vitrine et le mannequin du tailleur.", forWho: "Mode homme, chaussures" },
+  tech: { label: "Tech", pitch: "L’appareil qui tourne sur l’établi, l’état, la garantie et le comparateur.", forWho: "Téléphones, ordinateurs" },
+  market: { label: "Market", pitch: "La recherche d’abord, des rayons à parcourir et le carton qui se remplit.", forWho: "Toute boutique, un peu de tout" },
+};
+
+export const PACK_LABEL: Record<PackId, string> = {
+  plats: "Plats",
+  "mode-femme": "Mode femme",
+  "mode-homme": "Mode homme",
+  chaussures: "Chaussures",
+  sacs: "Sacs",
+  "bijoux-montres": "Bijoux et montres",
+  "parfums-beaute": "Parfums et beauté",
+  tech: "Téléphones et ordinateurs",
+  general: "Un peu de tout",
 };
 
 export const SECTION_LABEL: Record<SectionId, string> = {
@@ -32,6 +44,7 @@ export const designSchema = z
   .object({
     version: z.literal(1),
     theme: z.enum(THEME_IDS),
+    pack: z.union([z.enum(PACK_IDS), z.literal("")]),
     motion: z.enum(MOTIONS),
     cover: z.enum(["featured", "name"]),
     sections: z

@@ -345,8 +345,11 @@ export type DeliveryZone = { id: string; city: string; commune: string; label: s
 
 /* ---------- Vitrine : thèmes et versions (docs/chantier-p5.md §3) ---------- */
 
-export const THEME_IDS = ["essentiel", "epicerie", "beaute", "artisanat", "piece-phare"] as const;
+/** Les 5 styles (24/11/2026) ; un thème = un style × un pack (backend/shops/packs.py). */
+export const THEME_IDS = ["kitchen", "wardrobe", "tailor", "tech", "market"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
+export const PACK_IDS = ["plats", "mode-femme", "mode-homme", "chaussures", "sacs", "bijoux-montres", "parfums-beaute", "tech", "general"] as const;
+export type PackId = (typeof PACK_IDS)[number];
 export const SECTION_IDS = ["livraison", "demandes", "collection", "histoire", "suivi"] as const;
 export type SectionId = (typeof SECTION_IDS)[number];
 export const MOTIONS = ["full", "soft", "none"] as const;
@@ -356,6 +359,8 @@ export type Motion = (typeof MOTIONS)[number];
 export type StorefrontDesign = {
   version: 1;
   theme: ThemeId;
+  /** La spécialité ("" : vitrine publiée avant les packs). */
+  pack: PackId | "";
   motion: Motion;
   cover: "featured" | "name";
   sections: SectionId[];
@@ -403,7 +408,7 @@ export type Storefront = {
   featured: { product_id: string; source: CoverSource } | null;
   /** Les 3 produits les plus vendus sur 30 jours (« Les plus demandés »). */
   popular: string[];
-  /** La version en ligne de « Ma boutique », sinon Essentiel. */
+  /** La version en ligne de « Ma boutique », sinon Market. */
   design: StorefrontDesign;
   delivery_zones: DeliveryZone[];
   payment_methods: { id: PaymentMethod; label: string }[];

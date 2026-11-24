@@ -13,7 +13,7 @@ STOREFRONT = "/api/v1/storefront/maison-test"
 
 BASE = {
     "version": 1,
-    "theme": "epicerie",
+    "theme": "market",
     "pack": "",
     "motion": "soft",
     "cover": "featured",
@@ -69,7 +69,7 @@ class ValidationTests(DesignTestCase):
             "accroche trop longue": config(texts={"tagline": "x" * 81}),
             "HTML dans l'accroche": config(texts={"tagline": "<script>alert(1)</script>"}),
             "mauvaise version": config(version=2),
-            "pas un objet": ["epicerie"],
+            "pas un objet": ["market"],
         }
         for label, value in cases.items():
             with self.subTest(label):
@@ -79,44 +79,44 @@ class ValidationTests(DesignTestCase):
 
     def test_texts_are_trimmed_and_newlines_kept_in_the_story(self):
         self.use_plan("pro")
-        saved = self.save(config(theme="artisanat", texts={"tagline": "  Fait main  ", "story": "Depuis 2019.\nÀ Cocody."})).json()
+        saved = self.save(config(theme="kitchen", texts={"tagline": "  Fait main  ", "story": "Depuis 2019.\nÀ Cocody."})).json()
         self.assertEqual(saved["config"]["texts"], {"tagline": "Fait main", "story": "Depuis 2019.\nÀ Cocody."})
 
 
 class PlanTests(DesignTestCase):
-    def test_free_plan_keeps_its_two_themes_fixed_sections_and_no_story(self):
-        self.assertEqual(self.save(config(theme="essentiel", sections=["collection", "livraison", "suivi"])).status_code, 200)
-        self.assertProblem(self.save(config(theme="beaute", sections=["collection", "histoire", "livraison", "suivi"])), 403, "plan_limit_reached")
+    def test_free_plan_keeps_market_fixed_sections_and_no_story(self):
+        self.assertEqual(self.save(config(theme="market")).status_code, 200)
+        self.assertProblem(self.save(config(theme="wardrobe", sections=["collection", "histoire", "livraison", "suivi"])), 403, "plan_limit_reached")
         self.assertProblem(self.save(config(sections=["collection", "livraison"])), 403, "plan_limit_reached")
         self.assertProblem(self.save(config(texts={"story": "Notre histoire"})), 403, "plan_limit_reached")
 
         overview = self.client.get(f"{SHOP}/storefront").json()
         allowed = {theme["id"]: theme["allowed"] for theme in overview["themes"]}
-        # Les anciens thèmes ne sont plus proposés ; les 5 styles sont compris à partir du plan Pro.
-        self.assertEqual(allowed, {"kitchen": False, "wardrobe": False, "tailor": False, "tech": False, "market": False})
+        # Market reste compris en Gratuit ; les 4 autres styles, à partir du plan Pro.
+        self.assertEqual(allowed, {"kitchen": False, "wardrobe": False, "tailor": False, "tech": False, "market": True})
         self.assertEqual(overview["limits"]["versions_kept"], 1)
         self.assertFalse(overview["limits"]["custom_sections"])
 
     def test_pro_plan_opens_everything(self):
         self.use_plan("pro")
-        value = config(theme="piece-phare", sections=["collection", "histoire"], texts={"story": "Une seule pièce par mois."})
+        value = config(theme="tailor", sections=["collection", "histoire"], texts={"story": "Une seule pièce par mois."})
         self.assertEqual(self.save(value).status_code, 200)
         self.assertTrue(all(theme["allowed"] for theme in self.client.get(f"{SHOP}/storefront").json()["themes"]))
 
     def test_a_plan_that_drops_cannot_publish_a_pro_draft_but_keeps_what_is_online(self):
         self.use_plan("pro")
-        self.save(config(theme="beaute", sections=["collection", "histoire"]))
+        self.save(config(theme="wardrobe", sections=["collection", "histoire"]))
         self.publish()
-        self.save(config(theme="artisanat", sections=["histoire", "collection"]))
+        self.save(config(theme="kitchen", sections=["histoire", "collection"]))
         self.use_plan("free")
         self.assertProblem(self.publish(), 403, "plan_limit_reached")
-        self.assertEqual(self.client.get(STOREFRONT).json()["design"]["theme"], "beaute")
+        self.assertEqual(self.client.get(STOREFRONT).json()["design"]["theme"], "wardrobe")
 
 
 class LifecycleTests(DesignTestCase):
     def test_publish_archive_and_storefront(self):
         public = self.client.get(STOREFRONT).json()["design"]
-        self.assertEqual((public["theme"], public["sections"]), ("essentiel", ["collection", "livraison", "suivi"]))
+        self.assertEqual((public["theme"], public["pack"], public["sections"]), ("market", "general", ["livraison", "demandes", "collection", "suivi"]))
 
         self.assertProblem(self.publish(), 409, "no_draft")
         self.save()
@@ -126,7 +126,7 @@ class LifecycleTests(DesignTestCase):
         self.assertEqual(self.client.get(STOREFRONT).json()["design"], BASE)
         self.assertIsNone(self.client.get(f"{SHOP}/storefront").json()["draft"])
         event = AuditEvent.objects.get(action="storefront_published")
-        self.assertEqual((event.metadata["number"], event.metadata["theme"]), (1, "epicerie"))
+        self.assertEqual((event.metadata["number"], event.metadata["theme"]), (1, "market"))
 
     def test_versions_kept_depend_on_the_plan(self):
         for motion in ("full", "soft", "none"):
@@ -154,7 +154,7 @@ class LifecycleTests(DesignTestCase):
         self.assertTrue(AuditEvent.objects.filter(action="storefront_restored").exists())
         self.assertProblem(self.client.post(f"{SHOP}/storefront/versions/99/restore"), 404, "not_found")
         # La reprise passe aussi par le plan.
-        self.save(config(theme="beaute", sections=["collection"]))
+        self.save(config(theme="wardrobe", sections=["collection"]))
         self.publish()
         self.use_plan("free")
         self.assertProblem(self.client.post(f"{SHOP}/storefront/versions/3/restore"), 403, "plan_limit_reached")

@@ -10,34 +10,31 @@ SECTIONS = ("livraison", "demandes", "collection", "histoire", "suivi")
 MOTIONS = ("full", "soft", "none")
 COVERS = ("featured", "name")
 
-# Les 5 styles (24/11/2026) : noms anglais validés par le fondateur. Le style généré pour la boutique
-# est toujours permis ; passer à un autre style suit la colonne « plan » (choix d'argent du fondateur).
+# Les 5 styles (24/11/2026) : noms anglais validés par le fondateur ; les anciens thèmes sont supprimés
+# (migration 0010). Le style généré pour la boutique est toujours permis ; les autres suivent la colonne
+# « plan » (choix d'argent du fondateur). Market, héritier d'Essentiel, reste compris en Gratuit.
 STYLES = ("kitchen", "wardrobe", "tailor", "tech", "market")
-STYLE_PLAN = "pro"
-_STYLE_SECTIONS = ("collection", "livraison", "suivi")
 
-# Chaque thème : son nom, le plan à partir duquel il est compris, ses sections par défaut
-# (celles du plan Gratuit, qui ne peut pas les changer), et « legacy » pour les anciens thèmes :
-# toujours valides pour les vitrines déjà publiées, mais plus proposés.
+# Chaque style : son nom, le plan à partir duquel il est compris, et ses sections par défaut
+# (celles du plan Gratuit, qui ne peut pas les changer).
 THEMES = {
-    **{key: {"label": key.capitalize(), "plan": STYLE_PLAN, "legacy": False, "sections": _STYLE_SECTIONS} for key in STYLES},
-    "essentiel": {"label": "Essentiel", "plan": "free", "legacy": True, "sections": ("collection", "livraison", "suivi")},
-    "epicerie": {"label": "Épicerie", "plan": "free", "legacy": True, "sections": ("livraison", "demandes", "collection", "suivi")},
-    "beaute": {"label": "Beauté", "plan": "pro", "legacy": True, "sections": ("collection", "histoire", "livraison", "suivi")},
-    "artisanat": {"label": "Artisanat", "plan": "pro", "legacy": True, "sections": ("histoire", "collection", "livraison", "suivi")},
-    "piece-phare": {"label": "Pièce phare", "plan": "pro", "legacy": True, "sections": ("histoire", "collection", "livraison", "suivi")},
+    "kitchen": {"label": "Kitchen", "plan": "pro", "sections": ("collection", "livraison", "suivi")},
+    "wardrobe": {"label": "Wardrobe", "plan": "pro", "sections": ("collection", "livraison", "suivi")},
+    "tailor": {"label": "Tailor", "plan": "pro", "sections": ("collection", "livraison", "suivi")},
+    "tech": {"label": "Tech", "plan": "pro", "sections": ("collection", "livraison", "suivi")},
+    "market": {"label": "Market", "plan": "free", "sections": ("livraison", "demandes", "collection", "suivi")},
 }
 
 
 def selectable_themes():
     """Les styles proposés au marchand, dans l'ordre d'affichage."""
-    return [key for key in STYLES if not THEMES[key]["legacy"]]
+    return list(STYLES)
 
 PLAN_RANK = {"free": 0, "pro": 1, "business": 2}
 VERSIONS_KEPT = {"free": 1, "pro": 5, "business": 20}
 
 
-def default_config(theme="essentiel", pack=""):
+def default_config(theme="market", pack="general"):
     """La vitrine d'une boutique qui n'a encore rien publié : la vitrine d'avant l'éditeur."""
     return {
         "version": 1,

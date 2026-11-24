@@ -17,11 +17,11 @@ const ACCENT_LABEL = { orange: "Orange", indigo: "Indigo", ocre: "Ocre", corail:
 
 // Une vignette par thème, dessinée en CSS : on reconnaît le thème d'un coup d'œil.
 const THUMB: Record<ThemeId, string> = {
-  essentiel: "bg-[#0e0c0a] [background-image:radial-gradient(circle_at_78%_50%,#ff7a1f_0_14px,transparent_15px),linear-gradient(180deg,transparent_0_60%,#f2b98a_60%)]",
-  epicerie: "bg-creme [background-image:linear-gradient(180deg,transparent_0_14px,#f2b33d_14px_24px,transparent_24px),repeating-linear-gradient(180deg,transparent_0_34px,#17110a_34px_35px)]",
-  beaute: "[background-image:radial-gradient(circle_at_72%_48%,#f2b33d_0_13px,transparent_14px),linear-gradient(180deg,#fbf3e6_0_58%,#24709f_58%)]",
-  artisanat: "bg-[#efe3cc] [background-image:radial-gradient(60%_40%_at_30%_60%,transparent_60%,#17110a_61%_64%,transparent_65%)]",
-  "piece-phare": "bg-[#3b2417] [background-image:radial-gradient(60%_60%_at_80%_80%,rgb(242_179_61/0.45),transparent_70%),linear-gradient(180deg,transparent_55%,rgb(14_12_10/0.9))]",
+  kitchen: "bg-[#a33e23] [background-image:radial-gradient(circle_at_70%_46%,#f7e9d6_0_15px,#f4b63f_16px_18px,transparent_19px)]",
+  wardrobe: "bg-[#ffb3cf] [background-image:radial-gradient(70%_90%_at_50%_100%,#ffe14d_0_45%,transparent_46%),linear-gradient(90deg,transparent_46%,#f2263f_46%_54%,transparent_54%)]",
+  tailor: "bg-[#cbc6bd] [background-image:linear-gradient(180deg,transparent_0_12px,#b08a4a_12px_15px,transparent_15px),repeating-linear-gradient(90deg,transparent_0_11px,rgb(255_255_255/0.25)_11px_12px)]",
+  tech: "bg-[#dcdfe3] [background-image:linear-gradient(90deg,transparent_0_38%,#15171b_38%_62%,transparent_62%),linear-gradient(180deg,transparent_0_70%,#ffcf1f_70%_82%,transparent_82%)]",
+  market: "bg-[#0c0e16] [background-image:repeating-linear-gradient(180deg,transparent_0_18px,#3a4054_18px_20px),radial-gradient(circle_at_80%_30%,#ff7a1f_0_9px,transparent_10px)]",
 };
 
 type EditorProps = { slug: string; overview: DesignOverview; versions: DesignVersion[]; canManageShop: boolean };
@@ -312,7 +312,7 @@ function StatusCard({ overview, dirty, slug }: { overview: DesignOverview; dirty
         <p className="text-[15px]">
           {published
             ? `${THEME_META[published.config.theme].label}, publiée le ${formatDateTime(published.published_at ?? published.updated_at)}${published.published_by_name ? ` par ${published.published_by_name}` : ""}`
-            : "Rien n’est encore publié : vos clients voient le thème Essentiel."}
+            : "Rien n’est encore publié : vos clients voient le thème Market."}
         </p>
         <p aria-live="polite" className="text-[13px] text-texte-3">
           {dirty ? "Modifications non enregistrées." : draft ? `Brouillon enregistré le ${formatDateTime(draft.updated_at)}.` : "Aucun brouillon en cours."}

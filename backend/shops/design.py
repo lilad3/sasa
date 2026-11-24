@@ -151,14 +151,6 @@ class DesignScopedView(ShopScopedView):
 class DesignView(DesignScopedView):
     permission_by_method = {"GET": "storefront.edit"}
 
-    def listed_themes(self):
-        """Les styles proposés, plus l'ancien thème encore en ligne pour qu'il reste affiché."""
-        keys = selectable_themes()
-        published = self.versions().filter(status=Status.PUBLISHED).first()
-        if published and published.config["theme"] not in keys:
-            keys.append(published.config["theme"])
-        return keys
-
     def get(self, request, slug):
         current = limits(self.shop)
         rank = PLAN_RANK[current["plan"]]
@@ -171,7 +163,7 @@ class DesignView(DesignScopedView):
                 "accent": self.shop.accent,
                 "themes": [
                     {"id": key, "label": THEMES[key]["label"], "plan": THEMES[key]["plan"], "allowed": theme_allowed(self.shop, key), "sections": list(THEMES[key]["sections"])}
-                    for key in self.listed_themes()
+                    for key in selectable_themes()
                 ],
             }
         )

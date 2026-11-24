@@ -1,10 +1,11 @@
 """API de génération du thème : publie le style et le pack choisis par les règles."""
 
 import copy
+import importlib
 
 from audit.models import AuditEvent
 from core.testing import ApiTestCase, make_member, make_shop
-from shops.models import Shop, StorefrontVersion
+from shops.models import StorefrontVersion
 
 SHOP = "/api/v1/shops/maison-test"
 STOREFRONT = "/api/v1/storefront/maison-test"
@@ -70,13 +71,11 @@ class GenerationApiTests(ApiTestCase):
         design = self.client.get(STOREFRONT).json()["design"]
         self.assertEqual((design["theme"], design["pack"]), ("tailor", "chaussures"))
 
-    def test_existing_legacy_storefront_untouched(self):
-        StorefrontVersion.objects.create(
-            shop=self.shop, number=1, status=StorefrontVersion.Status.PUBLISHED,
-            config={"version": 1, "theme": "epicerie", "motion": "soft", "cover": "featured",
-                    "sections": ["livraison", "demandes", "collection", "suivi"], "texts": {"tagline": "", "story": ""}},
-        )
-        self.assertEqual(self.client.get(STOREFRONT).json()["design"]["theme"], "epicerie")
-        ids = [t["id"] for t in self.client.get(f"{SHOP}/storefront").json()["themes"]]
-        self.assertEqual(ids[-1], "epicerie")
-        self.assertEqual(Shop.objects.get(pk=self.shop.pk).pack, "")
+    def test_old_theme_storefronts_move_to_market(self):
+        convert = importlib.import_module("shops.migrations.0010_anciens_themes_vers_market").convert
+        old = {"version": 1, "theme": "epicerie", "motion": "soft", "cover": "featured",
+               "sections": ["livraison", "demandes", "collection", "suivi"], "texts": {"tagline": "", "story": ""}}
+        self.assertEqual(convert(old), {**old, "theme": "market", "pack": "general"})
+        self.assertEqual(convert({**old, "theme": "beaute", "sections": ["histoire"]})["sections"], ["livraison", "demandes", "collection", "suivi"])
+        self.assertIsNone(convert({**old, "theme": "tailor"}))
+        self.assertIsNone(convert("pas un objet"))

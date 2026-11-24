@@ -248,7 +248,7 @@ export function Sections({ props, tone, collection, className }: { props: ThemeP
   );
 }
 
-/** La photo du produit, ou le visuel de son rayon (le même que la vitrine Essentiel). */
+/** La photo du produit, ou le visuel de son rayon (le même que la mise en page commune). */
 export function ProductImage({ product, className, style }: { product: PublicProduct; className?: string; style?: CSSProperties }) {
   if (product.image_url) {
     return (

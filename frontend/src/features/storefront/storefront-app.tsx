@@ -17,24 +17,16 @@ import { Collection, type Line } from "./catalogue";
 import { rememberChannel } from "./channel";
 import { Checkout, Confirmation, type Receipt } from "./checkout";
 import { Cover } from "./cover";
-import { ArtisanatTheme } from "./themes/artisanat";
-import { BeauteTheme } from "./themes/beaute";
-import { EpicerieTheme } from "./themes/epicerie";
 import { Sections, type ThemeProps, type Tone } from "./themes/parts";
-import { PiecePhareTheme } from "./themes/piece-phare";
 
 type View = "catalogue" | "commande";
 
-// Les thèmes qui ont leur propre page de catalogue ; Essentiel garde la vitrine d'origine (docs/chantier-p5.md §3.1).
-const THEMES: Record<Exclude<ThemeId, "essentiel">, (props: ThemeProps) => ReactNode> = {
-  epicerie: EpicerieTheme,
-  beaute: BeauteTheme,
-  artisanat: ArtisanatTheme,
-  "piece-phare": PiecePhareTheme,
-};
+// Les styles qui ont leur propre page de catalogue. Un style pas encore porté garde la mise en page
+// commune (couverture, collection en cartes), qui sert aussi de page de commande.
+const THEMES: Partial<Record<ThemeId, (props: ThemeProps) => ReactNode>> = {};
 
-// Les parties communes posées sur la vitre orangée d'Essentiel.
-const ESSENTIEL_TONE: Tone = {
+// Les parties communes posées sur la vitre orangée de la mise en page commune.
+const BASE_TONE: Tone = {
   muted: "text-encre-doux",
   card: "verre-clair",
   line: "border-trait-clair",
@@ -80,7 +72,8 @@ export function StorefrontApp({ shop, products, preview = false }: { shop: Store
   const add = (product: PublicProduct) => change(product, (cart[product.id] ?? 0) + 1);
 
   const design = shop.design;
-  const themed = design.theme !== "essentiel";
+  const Theme = THEMES[design.theme];
+  const themed = Theme !== undefined;
 
   const goTo = (next: View) => {
     setView(next);
@@ -107,8 +100,7 @@ export function StorefrontApp({ shop, products, preview = false }: { shop: Store
     onCheckout: checkout,
   };
 
-  if (themed && !ordering) {
-    const Theme = THEMES[design.theme as Exclude<ThemeId, "essentiel">];
+  if (Theme && !ordering) {
     return (
       <div data-motion={design.motion} className="relative isolate min-h-dvh scheme-light">
         {preview ? <PreviewNotice /> : null}
@@ -194,7 +186,7 @@ export function StorefrontApp({ shop, products, preview = false }: { shop: Store
             ) : (
               <Sections
                 props={themeProps}
-                tone={ESSENTIEL_TONE}
+                tone={BASE_TONE}
                 collection={<Collection products={products} description={design.texts.tagline || shop.description} quantities={cart} onChange={change} />}
               />
             )}

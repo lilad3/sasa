@@ -78,7 +78,7 @@ export function Basket({
 
 /**
  * Barre flottante : total et bouton Commander, toujours à portée de pouce. Sur ordinateur, la vitrine
- * Essentiel a son panier latéral ; les autres thèmes gardent la barre (`always`).
+ * La mise en page commune a son panier latéral ; les styles gardent la barre (`always`).
  */
 export function MobileBar({
   lines,
